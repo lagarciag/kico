@@ -166,14 +166,6 @@ func (ms *MinuteStrategy) Ema() float64 {
 	return ms.movingStats.Ema1()
 }
 
-func (ms *MinuteStrategy) EmaDirectionUp() bool {
-	return ms.movingStats.Ema1Up()
-}
-
-func (ms *MinuteStrategy) SEmaDirectionUp() bool {
-	return ms.movingStats.Ema1Up()
-}
-
 func (ms *MinuteStrategy) EmaSlope() float64 {
 
 	return ms.movingStats.Ema1Slope()
@@ -212,6 +204,21 @@ func (ms *MinuteStrategy) MacdBullish() bool {
 
 }
 
+func (ms *MinuteStrategy) EmaDirectionUp() bool {
+	return ms.movingStats.Ema1Up()
+}
+
+func (ms *MinuteStrategy) Buy() bool {
+	if ms.StdDevBuy() && ms.MacdBullish() && ms.EmaDirectionUp() {
+		return true
+	}
+	return false
+}
+
+// --------------
+// Utilities
+// --------------
+
 func (ms *MinuteStrategy) Stable() bool {
 	return ms.stable
 }
@@ -231,15 +238,16 @@ func (ms *MinuteStrategy) Print() string {
 	//stdDevBuy := ms.StdDevBuy()
 
 	md9 := ms.movingStats.EmaMacd9()
+	buy := ms.Buy()
 
-	encode := `%-10d - VAL : %-4.2f - SMA: %-4.2f - STD: %-4.2f - STDP: %-4.2f - EMA: %-4.2f - ELP: %+4.2f N: %4.2f - H: %4.2f - T: %4.2F - EMUP: %-4v -MAC: %4.2f -Md9: %4.2f MDI: %-4.2f - MBUL:%t - `
+	encode := `%-10d - VAL : %-4.2f - SMA: %-4.2f - STD: %-4.2f - STDP: %-4.2f - EMA: %-4.2f - ELP: %+4.2f N: %4.2f - H: %4.2f - T: %4.2F - EMUP: %-4v -MAC: %4.2f -Md9: %4.2f MDI: %-4.2f - MdBUL:%t - BUY:%t- `
 
 	toPrint := fmt.Sprintf(encode,
 		ms.currentSampleCount, lastValue,
 		sma, stdDev, stdDevPercentage,
 		ema, slope, ms.movingStats.HistNow, ms.movingStats.HistMostRecent,
 		ms.movingStats.HistOldest, emaUup, macd,
-		md9, macdDiv, macdBull)
+		md9, macdDiv, macdBull, buy)
 
 	return toPrint
 
@@ -260,22 +268,16 @@ func (ms *MinuteStrategy) PrintCsv() string {
 	//stdDevBuy := ms.StdDevBuy()
 
 	md9 := ms.movingStats.EmaMacd9()
-
-	encode := `%s,%-10d,%-4.2f,%-4.2f,%-4.2f,%-4.2f,%-4.2f,%+4.2f,%4.2f,%4.2f,%4.2f,%-4v,%4.2f,%4.2f,%-4.2f,%t`
+	buy := ms.Buy()
+	encode := `%s,%-10d,%-4.2f,%-4.2f,%-4.2f,%-4.2f,%-4.2f,%+4.2f,%4.2f,%4.2f,%4.2f,%-4v,%4.2f,%4.2f,%-4.2f,%t, %t`
 
 	toPrint := fmt.Sprintf(encode, time.Now().String(),
 		ms.currentSampleCount, lastValue,
 		sma, stdDev, stdDevPercentage,
 		ema, slope, ms.movingStats.HistNow, ms.movingStats.HistMostRecent,
 		ms.movingStats.HistOldest, emaUup, macd,
-		md9, macdDiv, macdBull)
+		md9, macdDiv, macdBull, buy)
 
 	return toPrint
 
 }
-
-/*
-func (ms *MinuteStrategy) DoubleEmaDirectionUp() bool {
-	return ms.movingStats.DoubleE
-}
-*/

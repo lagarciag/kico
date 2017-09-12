@@ -129,16 +129,3 @@ func (st *Statistician) Stable(size uint) (bool, error) {
 	}
 	return false, fmt.Errorf("Invalid size request")
 }
-
-func (st *Statistician) SprintfBuySelIndicators(size uint) (string, error) {
-	buySell := `stdev buy:%v - macd buy:%v - emaDirUp:%v - stable:%v`
-
-	aStat, ok := st.statsHash[size]
-	if ok {
-
-		return fmt.Sprintf(buySell, aStat.stDevBuy,
-			aStat.macdBuy, aStat.SEmaDirectionUp, aStat.stable), nil
-	}
-	return "", fmt.Errorf("Invalid size request")
-
-}
