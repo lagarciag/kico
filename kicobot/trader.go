@@ -69,8 +69,6 @@ func NewBot(config BotConfig) (bot *Bot) {
 	//Move this to a secure location
 	//--------------------------------
 	bot = &Bot{}
-	//bot.key = "F134mPlpJqDM2JbMOVkzwy4vnvs"
-	//bot.secret = "XZtV12SRcO2HQb2JOz6Vm6Bl95Y"
 	bot.key = config.CexioKey
 	bot.secret = config.CexioSecret
 
