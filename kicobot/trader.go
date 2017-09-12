@@ -1,7 +1,7 @@
 package kicobot
 
 import (
-	cexioapi "github.com/lagarciag/cexio-websocket-api"
+	cexioapi "github.com/lagarciag/cexioapi"
 	log "github.com/sirupsen/logrus"
 
 	"fmt"
