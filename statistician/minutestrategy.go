@@ -87,7 +87,7 @@ func NewMinuteStrategy(minuteWindowSize uint, stdLimit float64, doLog bool) *Min
 		panic(err)
 	}
 
-	f.WriteString("time,Count,VAL,SMA,STD,STDP,EMA,ELP,N,H,T,EMUP,MAC,Md9,MDI,MBUL\n")
+	f.WriteString("time,Count,VAL,SMA,STD,STDP,EMA,ELP,N,H,T,EMUP,MAC,Md9,MDI,MBUL,ADX,mDI,pDI,BUY\n")
 
 	log := logrus.New()
 	formatter := &logrus.TextFormatter{}
@@ -267,16 +267,20 @@ func (ms *MinuteStrategy) PrintCsv() string {
 	stdDevPercentage := ms.StdDevPercentage()
 	//stdDevBuy := ms.StdDevBuy()
 
+	adx := ms.movingStats.Adx()
+	mDI := ms.movingStats.MinusDI()
+	pDI := ms.movingStats.PlusDI()
+
 	md9 := ms.movingStats.EmaMacd9()
 	buy := ms.Buy()
-	encode := `%s,%-10d,%-4.2f,%-4.2f,%-4.2f,%-4.2f,%-4.2f,%+4.2f,%4.2f,%4.2f,%4.2f,%-4v,%4.2f,%4.2f,%-4.2f,%t, %t`
+	encode := `%s,%-10d,%-4.2f,%-4.2f,%-4.2f,%-4.2f,%-4.2f,%+4.2f,%4.2f,%4.2f,%4.2f,%-4v,%4.2f,%4.2f,%-4.2f,%t,%4.2f,%4.2f,%4.2f,%t`
 
 	toPrint := fmt.Sprintf(encode, time.Now().String(),
 		ms.currentSampleCount, lastValue,
 		sma, stdDev, stdDevPercentage,
 		ema, slope, ms.movingStats.HistNow, ms.movingStats.HistMostRecent,
 		ms.movingStats.HistOldest, emaUup, macd,
-		md9, macdDiv, macdBull, buy)
+		md9, macdDiv, macdBull, adx, mDI, pDI, buy)
 
 	return toPrint
 
