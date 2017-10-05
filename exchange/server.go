@@ -1,7 +1,7 @@
 package exchange
 
 import (
-	"github.com/lagarciag/kico/exchange/cexio"
+	"github.com/lagarciag/tayni/exchange/cexio"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )

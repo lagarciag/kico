@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"fmt"
@@ -10,22 +10,22 @@ import (
 
 	"runtime/pprof"
 
-	"github.com/lagarciag/kico/kicobot"
+	"net/http"
+
+	"github.com/lagarciag/tayni/taynibot"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
 var logInFile bool
 
-func main() {
+func Serve() {
 
-	/*
-		go func() {
-			log.Println(http.ListenAndServe("localhost:6060", nil))
-		}()
-	*/
+	go func() {
+		log.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
 
-	var cpuprofile = "kico.prof" //flag.String("cpuprofile", "", "write cpu profile to file")
+	var cpuprofile = "tayni.prof" //flag.String("cpuprofile", "", "write cpu profile to file")
 	//var memprofile = "memprofile"
 
 	f, err := os.Create(cpuprofile)
@@ -44,9 +44,9 @@ func main() {
 	// Set up Viper configuration
 	// ----------------------------
 
-	viper.SetConfigName("kico")        // name of config file (without extension)
-	viper.AddConfigPath("/etc/kico/")  // path to look for the config file in
-	viper.AddConfigPath("$HOME/.kico") // call multiple times to add many search paths
+	viper.SetConfigName("tayni")        // name of config file (without extension)
+	viper.AddConfigPath("/etc/tayni/")  // path to look for the config file in
+	viper.AddConfigPath("$HOME/.tayni") // call multiple times to add many search paths
 	viper.AddConfigPath(".")           // optionally look for config in the working directory
 	err = viper.ReadInConfig()         // Find and read the config file
 	if err != nil {                    // Handle errors reading the config file
@@ -92,23 +92,6 @@ func main() {
 		}
 	}
 
-	// ------------------------------
-	// Load security configuration
-	// ------------------------------
-	securityMap := viper.Get("security").(map[string]interface{})
-	securityCexio := securityMap["cexio"].(map[string]interface{})
-
-	// ---------------------------
-	// Set up bot configuration
-	// -------------------------
-	botConfig := kicobot.BotConfig{}
-	botConfig.CexioKey = securityCexio["key"].(string)
-	botConfig.CexioSecret = securityCexio["secret"].(string)
-
-	bot := kicobot.NewBot(botConfig)
-	bot.Start()
-
-	time.Sleep(time.Minute * 2)
 
 	pprof.StopCPUProfile()
 

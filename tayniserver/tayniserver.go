@@ -20,7 +20,7 @@ import (
 
 	"os"
 
-	"github.com/lagarciag/kico/hawaserver/cmd"
+	"github.com/lagarciag/tayni/tayniserver/cmd"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
@@ -33,9 +33,9 @@ func main() {
 	// Set up Viper configuration
 	// ----------------------------
 
-	viper.SetConfigName("kico")        // name of config file (without extension)
-	viper.AddConfigPath("/etc/kico/")  // path to look for the config file in
-	viper.AddConfigPath("$HOME/.kico") // call multiple times to add many search paths
+	viper.SetConfigName("tayni")        // name of config file (without extension)
+	viper.AddConfigPath("/etc/tayni/")  // path to look for the config file in
+	viper.AddConfigPath("$HOME/.tayni") // call multiple times to add many search paths
 	viper.AddConfigPath(".")           // optionally look for config in the working directory
 	err := viper.ReadInConfig()        // Find and read the config file
 	if err != nil {                    // Handle errors reading the config file

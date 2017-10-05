@@ -10,7 +10,7 @@ import (
 
 	"fmt"
 
-	"github.com/lagarciag/kico/statistician"
+	"github.com/lagarciag/tayni/statistician"
 )
 
 func TestMain(m *testing.M) {

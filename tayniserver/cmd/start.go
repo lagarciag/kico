@@ -15,14 +15,14 @@
 package cmd
 
 import (
-	"github.com/lagarciag/kico/exchange"
+	"github.com/lagarciag/tayni/exchange"
 	"github.com/spf13/cobra"
 )
 
 // startCmd represents the start command
 var startCmd = &cobra.Command{
 	Use:   "start",
-	Short: "Starts hawaserver",
+	Short: "Starts tayniserver",
 	Long:  `Start hawa server`,
 	Run: func(cmd *cobra.Command, args []string) {
 		exchange.Start()

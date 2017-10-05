@@ -10,7 +10,7 @@ import (
 
 	"fmt"
 
-	"github.com/lagarciag/kico/kredis"
+	"github.com/lagarciag/tayni/kredis"
 )
 
 const (

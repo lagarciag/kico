@@ -1,4 +1,4 @@
-package kicobot
+package taynibot
 
 import (
 	log "github.com/sirupsen/logrus"

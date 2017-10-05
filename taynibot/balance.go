@@ -1,4 +1,4 @@
-package kicobot
+package taynibot
 
 import "sync"
 

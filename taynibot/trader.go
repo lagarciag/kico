@@ -1,4 +1,4 @@
-package kicobot
+package taynibot
 
 import (
 	cexioapi "github.com/lagarciag/cexioapi"
@@ -9,7 +9,7 @@ import (
 
 	"sync"
 
-	"github.com/lagarciag/kico/statistician"
+	"github.com/lagarciag/tayni/statistician"
 
 	"github.com/looplab/fsm"
 )
