@@ -84,8 +84,10 @@ func (bot *Bot) errorMonitor() {
 		select {
 		case err := <-bot.apiError:
 			{
-				log.Error("API Error detected: ", err.Error())
-				bot.PublicRestart()
+				if bot.apiOnline {
+					log.Error("API Error detected: ", err.Error())
+					bot.PublicRestart()
+				}
 				continue
 			}
 
