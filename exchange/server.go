@@ -8,7 +8,7 @@ import (
 
 func Start() error {
 
-	log.Info("Starting server hawa services")
+	log.Info("Starting server tayni services")
 
 	log.Info("Loading CEXIO service")
 	// ------------------------------

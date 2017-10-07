@@ -59,7 +59,7 @@ func (kr *Kredis) GetCounter(exchange, pair string) (int, error) {
 
 	key := fmt.Sprintf("%s_%s", exchange, pair)
 
-	log.Debugf("GetCounter %s", key)
+	//log.Debugf("GetCounter %s", key)
 
 	kr.mu.Lock()
 	countUntype, err := kr.conn.Do("LLEN", key)
@@ -165,7 +165,7 @@ func (kr *Kredis) AddString(exchange, pair string, value interface{}) error {
 		return err
 	}
 
-	log.Debug("LPUSH to key: ", key)
+	//log.Debug("LPUSH to key: ", key)
 
 	return err
 }
@@ -190,7 +190,7 @@ func (kr *Kredis) Update(exchange, pair string, value string) error {
 func (kr *Kredis) UpdateList(exchange, pair string) error {
 
 	currentKey := fmt.Sprintf("PRICE_%s_%s", exchange, pair)
-	log.Debug("update list: ", currentKey)
+	//log.Debug("update list: ", currentKey)
 
 	kr.mu.Lock()
 	currentValue, err := kr.connUpdateList.Do("GET", currentKey)

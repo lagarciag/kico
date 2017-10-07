@@ -151,7 +151,7 @@ func (bot *Bot) Start() {
 func (bot *Bot) exchangeConnect() {
 	log.Info("ExchangeConnect running")
 	err := bot.api.Connect()
-
+	log.Debug("Connect completed, checking error...")
 	if err != nil {
 		log.Fatal("Could not connect to CEXIO websocket service: ", err.Error())
 	}

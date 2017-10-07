@@ -36,9 +36,9 @@ func main() {
 	viper.SetConfigName("tayni")        // name of config file (without extension)
 	viper.AddConfigPath("/etc/tayni/")  // path to look for the config file in
 	viper.AddConfigPath("$HOME/.tayni") // call multiple times to add many search paths
-	viper.AddConfigPath(".")           // optionally look for config in the working directory
-	err := viper.ReadInConfig()        // Find and read the config file
-	if err != nil {                    // Handle errors reading the config file
+	viper.AddConfigPath(".")            // optionally look for config in the working directory
+	err := viper.ReadInConfig()         // Find and read the config file
+	if err != nil {                     // Handle errors reading the config file
 		panic(fmt.Errorf("Fatal error config file: %s \n", err))
 	}
 
@@ -64,7 +64,8 @@ func main() {
 	if logMap["log_in_file"].(string) == "true" {
 		logInFile = true
 		logPath := logMap["log_path"].(string)
-		filePath = fmt.Sprintf("%s/bot_%d_%d_%d", logPath, hour, minute, sec)
+		filePath = fmt.Sprintf("%s/bot_%d_%d_%d.log", logPath, hour, minute, sec)
+		fmt.Println("logfile: ", filePath)
 	} else {
 		log.Info("log on file disabled")
 	}
