@@ -52,7 +52,7 @@ func LoadConfig(name string) {
 	if err := viper.ReadInConfig(); err == nil {
 		log.Info("Using config file:", viper.ConfigFileUsed())
 	} else {
-		log.Error("Error loading configfile")
+		log.Error("Error loading configfile", err.Error())
 		os.Exit(1)
 	}
 
