@@ -15,7 +15,7 @@
 package main
 
 import (
-	"github.com/lagarciag/tayni/tayniserver/cmd"
+	"github.com/lagarciag/tayni/taynireporter/cmd"
 )
 
 func main() {

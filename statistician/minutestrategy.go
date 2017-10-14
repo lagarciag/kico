@@ -8,14 +8,48 @@ import (
 
 	"time"
 
+	"encoding/json"
+
+	"math"
+
 	"github.com/lagarciag/movingstats"
+	"github.com/lagarciag/tayni/kredis"
 	"github.com/sirupsen/logrus"
 )
 
+type Indicators struct {
+	name      string  `json:"name"`
+	LastValue float64 `json:"last_value"`
+	Sma       float64 `json:"sma"`
+	Ema       float64 `json:"ema"`
+	EmaUp     bool    `json:"ema_up"`
+	Slope     float64 `json:"slope"`
+	MacdDiv   float64 `json:"macd_div"`
+	MacdBull  bool    `json:"macd_bull"`
+	Macd      float64 `json:"macd"`
+
+	StdDev           float64 `json:"std_dev"`
+	StdDevPercentage float64 `json:"std_dev_percentage"`
+	//stdDevBuy := ms.StdDevBuy()
+
+	Adx float64 `json:"adx"`
+	MDI float64 `json:"m_di"`
+	PDI float64 `json:"p_di"`
+
+	Md9 float64 `json:"md_9"`
+	Buy bool    `json:"buy"`
+}
+
 type MinuteStrategy struct {
+	ID string
+
+	indicators Indicators
+
+	kr *kredis.Kredis
+
 	mu *sync.Mutex
 
-	latestValue float64
+	LatestValue float64
 
 	sampleRate int
 
@@ -55,15 +89,19 @@ type MinuteStrategy struct {
 
 	log *logrus.Logger
 	fh  *os.File
+
+	indicatorsChan chan Indicators
 }
 
-func NewMinuteStrategy(minuteWindowSize uint, stdLimit float64, doLog bool) *MinuteStrategy {
+func NewMinuteStrategy(name string, minuteWindowSize uint, stdLimit float64, doLog bool, kr *kredis.Kredis) *MinuteStrategy {
+
+	ID := fmt.Sprintf("%s_MS_%d", name, minuteWindowSize)
 
 	// --------------
 	// Setup logging
 	// --------------
-	logName := fmt.Sprintf("/tmp/mintue_strategy_%d.log", minuteWindowSize)
-	csvFile := fmt.Sprintf("/tmp/mintue_strategy_%d.csv", minuteWindowSize)
+	logName := fmt.Sprintf("/tmp/%s.log", ID)
+	csvFile := fmt.Sprintf("/tmp/%s.csv", ID)
 
 	if _, err := os.Stat(logName); !os.IsNotExist(err) {
 		err := os.Remove(logName)
@@ -111,6 +149,10 @@ func NewMinuteStrategy(minuteWindowSize uint, stdLimit float64, doLog bool) *Min
 	// Setup MinutStrategy
 	// --------------------
 	ps := &MinuteStrategy{}
+	ps.ID = ID
+	ps.indicatorsChan = make(chan Indicators, 1300000)
+	ps.indicators = Indicators{}
+	ps.kr = kr
 	ps.fh = f
 	ps.mu = &sync.Mutex{}
 	ps.log = log
@@ -124,6 +166,9 @@ func NewMinuteStrategy(minuteWindowSize uint, stdLimit float64, doLog bool) *Min
 
 	ps.stDevBuyLimit = stdLimit
 	ps.stableCount = sampleRate * minuteWindowSize * 26
+
+	go ps.indicatorsStorer()
+
 	return ps
 
 }
@@ -136,7 +181,7 @@ func (ms *MinuteStrategy) WarmUp(value float64) {
 
 func (ms *MinuteStrategy) Add(value float64) {
 	ms.mu.Lock()
-	ms.latestValue = value
+	ms.LatestValue = value
 	ms.movingStats.Add(value)
 
 	if ms.currentSampleCount == ms.stableCount {
@@ -144,12 +189,10 @@ func (ms *MinuteStrategy) Add(value float64) {
 	}
 	ms.currentSampleCount++
 
-	if ms.currentSampleCount%(30) == 0 {
-		ms.log.Info(ms.Print(), ms.minuteWindowSize, ms.currentSampleCount)
-		ms.fh.WriteString(ms.PrintCsv() + "\n")
-	}
-
+	ms.updateIndicators()
 	ms.mu.Unlock()
+	ms.storeIndicators()
+
 }
 
 func (ms *MinuteStrategy) StdDevPercentage() float64 {
@@ -223,38 +266,112 @@ func (ms *MinuteStrategy) Stable() bool {
 	return ms.stable
 }
 
-func (ms *MinuteStrategy) Print() string {
-	lastValue := ms.latestValue
-	sma := ms.movingStats.SMA1()
-	ema := ms.Ema()
-	emaUup := ms.EmaDirectionUp()
-	slope := ms.EmaSlope()
-	macdDiv := ms.movingStats.MacdDiv()
-	macdBull := ms.MacdBullish()
-	macd := ms.movingStats.Macd()
+func (ms *MinuteStrategy) updateIndicators() {
+	ms.indicators.LastValue = ms.LatestValue
 
-	stdDev := ms.StdDev()
-	stdDevPercentage := ms.StdDevPercentage()
+	ms.indicators.Sma = ms.movingStats.SMA1()
+
+	ms.indicators.Ema = ms.Ema()
+
+	ms.indicators.EmaUp = ms.EmaDirectionUp()
+
+	ms.indicators.Slope = ms.EmaSlope()
+
+	ms.indicators.MacdDiv = ms.movingStats.MacdDiv()
+
+	ms.indicators.MacdBull = ms.MacdBullish()
+	ms.indicators.Macd = ms.movingStats.Macd()
+
+	stDev := ms.StdDev()
+	if math.IsNaN(stDev) {
+		ms.indicators.StdDev = 0
+	} else {
+		ms.indicators.StdDev = ms.StdDev()
+	}
+
+	stDevP := ms.StdDevPercentage()
+	if math.IsNaN(stDevP) {
+		ms.indicators.StdDevPercentage = 0
+	} else {
+		ms.indicators.StdDev = ms.StdDevPercentage()
+	}
+
 	//stdDevBuy := ms.StdDevBuy()
+	adx := ms.movingStats.Adx()
 
-	md9 := ms.movingStats.EmaMacd9()
-	buy := ms.Buy()
+	if math.IsNaN(adx) {
+		ms.indicators.Adx = 0
+	} else {
+		ms.indicators.Adx = adx
+	}
+
+	MDI := ms.movingStats.MinusDI()
+
+	if math.IsNaN(MDI) {
+		ms.indicators.MDI = 0
+	} else {
+		ms.indicators.MDI = MDI
+	}
+
+	PDI := ms.movingStats.PlusDI()
+
+	if math.IsNaN(PDI) {
+		ms.indicators.PDI = 0
+	} else {
+		ms.indicators.PDI = PDI
+	}
+
+	ms.indicators.Md9 = ms.movingStats.EmaMacd9()
+	ms.indicators.Buy = ms.Buy()
+
+}
+
+/*
+func (ms *MinuteStrategy) Print() string {
 
 	encode := `%-10d - VAL : %-4.2f - SMA: %-4.2f - STD: %-4.2f - STDP: %-4.2f - EMA: %-4.2f - ELP: %+4.2f N: %4.2f - H: %4.2f - T: %4.2F - EMUP: %-4v -MAC: %4.2f -Md9: %4.2f MDI: %-4.2f - MdBUL:%t - BUY:%t- `
 
 	toPrint := fmt.Sprintf(encode,
-		ms.currentSampleCount, lastValue,
-		sma, stdDev, stdDevPercentage,
-		ema, slope, ms.movingStats.HistNow, ms.movingStats.HistMostRecent,
+		ms.currentSampleCount, ms.indicators.LastValue,
+		ms.indicators.Sma, ms.indicators.StdDev, ms.indicators.StdDevPercentage,
+		ms.indicators.Ema, ms.indicators.Slope, ms.movingStats.HistNow, ms.movingStats.HistMostRecent,
 		ms.movingStats.HistOldest, emaUup, macd,
 		md9, macdDiv, macdBull, buy)
 
 	return toPrint
 
 }
+*/
+
+func (ms *MinuteStrategy) storeIndicators() {
+
+	ms.indicatorsChan <- ms.indicators
+
+}
+
+func (ms *MinuteStrategy) indicatorsStorer() {
+	for indicator := range ms.indicatorsChan {
+		//logrus.Info("Store indicator: ", indicator)
+		indicatorsJSON, err := json.Marshal(indicator)
+		if err != nil {
+			logrus.Error("indicators marshall: ", err.Error())
+		}
+		//logrus.Infof("STORE: %s , %f", ms.ID, indicator.LastValue)
+
+		err = ms.kr.AddStringLong(ms.ID, "INDICATORS", indicatorsJSON)
+
+		if err != nil {
+			logrus.Fatal("AddString :", err.Error())
+
+		}
+
+		//logrus.Infof("STORE DONE: %s , %f", ms.ID, indicator.LastValue)
+	}
+
+}
 
 func (ms *MinuteStrategy) PrintCsv() string {
-	lastValue := ms.latestValue
+	lastValue := ms.LatestValue
 	sma := ms.movingStats.SMA1()
 	ema := ms.Ema()
 	emaUup := ms.EmaDirectionUp()

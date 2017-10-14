@@ -81,6 +81,10 @@ func (kr *Kredis) GetCounter(exchange, pair string) (int, error) {
 		}
 		return int(countInt), nil
 
+	case []interface{}:
+		log.Info("Initializing...")
+		return 0, nil
+
 	default:
 		thisError := fmt.Errorf("BAD GETCOUNTER TYPE: %T!\n", v)
 		return 0, thisError
@@ -165,7 +169,36 @@ func (kr *Kredis) AddString(exchange, pair string, value interface{}) error {
 		return err
 	}
 
+	kr.mu.Lock()
+	_, err = kr.connUpdateList.Do("PUBLISH", key, value)
+	kr.mu.Unlock()
+	if err != nil {
+		return err
+	}
+
 	//log.Debug("LPUSH to key: ", key)
+
+	return err
+}
+
+func (kr *Kredis) AddStringLong(exchange, pair string, value interface{}) error {
+
+	key := fmt.Sprintf("%s_%s", exchange, pair)
+
+	kr.mu.Lock()
+	//log.Info("LPUSH: ", key, value)
+	_, err := kr.connUpdateList.Do("LPUSH", key, value)
+	kr.mu.Unlock()
+	if err != nil {
+		return err
+	}
+
+	kr.mu.Lock()
+	_, err = kr.connUpdateList.Do("PUBLISH", key, value)
+	kr.mu.Unlock()
+	if err != nil {
+		return err
+	}
 
 	return err
 }
@@ -238,7 +271,6 @@ func (kr *Kredis) GetList(exchange, pair string) (retList []float64, err error) 
 	}
 
 	retList = make([]float64, size)
-
 	kr.mu.Lock()
 	rawList, err := kr.conn.Do("LRANGE", key, 0, -1)
 	kr.mu.Unlock()
@@ -259,4 +291,35 @@ func (kr *Kredis) GetList(exchange, pair string) (retList []float64, err error) 
 
 	}
 	return retList, err
+}
+
+func (kr *Kredis) Subscribe(chanName string, foo func(value float64)) interface{} {
+	kr.mu.Lock()
+	psc := redis.PubSubConn{Conn: kr.conn}
+	psc.Subscribe(chanName)
+	kr.mu.Unlock()
+
+	for {
+
+		log.Info("RECIEVE")
+
+		switch v := psc.Receive().(type) {
+
+		case redis.Message:
+			fmt.Printf("%s: message: %s\n", v.Channel, v.Data)
+			valueString := string(v.Data)
+			value, err := strconv.ParseFloat(valueString, 64)
+			if err != nil {
+				log.Error(err.Error())
+			}
+			foo(value)
+			log.Info("END FOO")
+		case redis.Subscription:
+			log.Infof("Subscribed to price updates for : %s", v.Channel)
+			//fmt.Printf("%s: %s %d\n", v.Channel, v.Kind, v.Count)
+		case error:
+			return v
+		}
+	}
+
 }

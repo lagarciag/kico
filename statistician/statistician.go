@@ -2,7 +2,20 @@ package statistician
 
 import (
 	"fmt"
+
+	"strings"
+
+	"time"
+
+	"sync"
+
+	"github.com/lagarciag/tayni/kredis"
+	log "github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
 )
+
+var lifeCond *sync.Cond
+var Run bool
 
 const feeCharge = 0.2
 
@@ -46,35 +59,46 @@ type Statistician struct {
 	minuteStrategies []uint
 
 	tickCounter int
+
+	exchange string
+	pair     string
+	key      string
+
+	kr *kredis.Kredis
 }
 
-func NewStatistician(warmUp bool) *Statistician {
+func NewStatistician(exchange, pair string, kr *kredis.Kredis, warmUp bool) *Statistician {
 
 	stdLimitList := []float64{MinuteStdLimit, Minute5StdLimit, Minute10StdLimit, Minute30StdLimit,
 		Hour1StdLimit, Hour2StdLimit, Hour4StdLimit, Hour12StdLimit, Hour24StdLimit}
 
 	statistician := &Statistician{}
+	statistician.exchange = exchange
+	statistician.pair = pair
 	statistician.warmUp = warmUp
-
+	statistician.key = fmt.Sprintf("%s_%s", exchange, pair)
 	statistician.minuteStrategies = []uint{Minute, Minute5, Minute10, Minute30, Hour1, Hour2, Hour4, Hour12, Hour24}
+	statistician.kr = kr
 
 	statistician.statsHash = make(map[uint]*MinuteStrategy)
 
 	for ID, pstat := range statistician.minuteStrategies {
-		statistician.statsHash[pstat] = NewMinuteStrategy(pstat, stdLimitList[ID], true)
+		//log.Info("MinuteStrategy : ", statistician.key, pstat)
+		ms := NewMinuteStrategy(statistician.key, pstat, stdLimitList[ID], true, kr)
+		statistician.statsHash[pstat] = ms
+
 	}
 
 	return statistician
 }
 
 func (st *Statistician) Add(val float64) {
-
 	for key := range st.statsHash {
 		tStat := st.statsHash[key]
 		tStat.Add(val)
-		if st.warmUp && st.tickCounter == 0 {
+		/*if st.warmUp && st.tickCounter == 0 {
 			go tStat.WarmUp(val)
-		}
+		}*/
 
 	}
 	st.tickCounter++
@@ -128,4 +152,117 @@ func (st *Statistician) Stable(size uint) (bool, error) {
 		return aStat.stable, nil
 	}
 	return false, fmt.Errorf("Invalid size request")
+}
+
+func Start() {
+	lifeCond = sync.NewCond(&sync.Mutex{})
+	Run = true
+	kr := kredis.NewKredis(1300000)
+	kr.Start()
+	exchanges := viper.Get("exchange").(map[string]interface{})
+
+	exchangesCount := len(exchanges)
+
+	statsMap := make(map[string]*Statistician)
+
+	log.Info("Configured exchanges: ", exchangesCount)
+
+	for key := range exchanges {
+		exchangeName := strings.ToUpper(key)
+		log.Info("Exchange: ", key)
+
+		// ---------------------------
+		// Set up bot configuration
+		// -------------------------
+		pairsIntMap := exchanges[key].(map[string]interface{})
+		pairsIntList := pairsIntMap["pairs"].([]interface{})
+
+		pairs := make([]string, len(pairsIntList))
+
+		for i, pair := range pairsIntList {
+
+			statsKey := fmt.Sprintf("%s_%s", exchangeName, pair.(string))
+			statsMap[statsKey] = NewStatistician(exchangeName, pair.(string), kr, true)
+
+			pairs[i] = pair.(string)
+			log.Infof("Getting list for exchange: %s, pair: %s ", exchangeName, pair)
+
+			priceHistory, err := kr.GetList(exchangeName, pair.(string))
+
+			if err != nil {
+				log.Fatal("Error:", err.Error())
+			}
+
+			/*
+				for _, price := range priceHistory {
+
+					statsMap[statsKey].Add(price)
+
+				}
+			*/
+
+			log.Info("Loaded :", len(priceHistory))
+
+		}
+
+		log.Info("Pairs: ", pairs)
+
+	}
+
+	log.Info("Statistician starting...")
+
+	for key := range exchanges {
+		exchangeName := strings.ToUpper(key)
+		log.Info("Exchange subscription: ", key)
+
+		// ---------------------------
+		// Set up bot configuration
+		// -------------------------
+		pairsIntMap := exchanges[key].(map[string]interface{})
+		pairsIntList := pairsIntMap["pairs"].([]interface{})
+		go trackExchange(exchangeName, pairsIntList, statsMap, kr)
+
+	}
+
+	for {
+		lifeCond.L.Lock()
+		lifeCond.Wait()
+		lifeCond.L.Unlock()
+	}
+
+}
+
+func trackExchange(exchangeName string,
+	pairsIntList []interface{},
+	statsMap map[string]*Statistician,
+	kr *kredis.Kredis) {
+	counter := 0
+	for Run {
+		now := time.Now()
+		for _, pair := range pairsIntList {
+
+			statsKey := fmt.Sprintf("%s_%s", exchangeName, pair.(string))
+
+			value, err := kr.GetLatest(exchangeName, pair.(string))
+
+			if err != nil {
+				log.Fatal("GetLatest: ", err.Error())
+			}
+
+			statsMap[statsKey].Add(value)
+			elapsed := time.Since(now)
+			if counter%(60*5) == 0 {
+				log.Debugf("TrackExchange: %s - %s - %f - Elapsed: %f", exchangeName, pair.(string), value, elapsed.Seconds())
+			}
+		}
+
+		counter++
+		time.Sleep(time.Second * 2)
+	}
+
+}
+
+func foo(value float64) {
+	//log.Info("Adding value:", value)
+
 }
