@@ -358,7 +358,7 @@ func (ms *MinuteStrategy) indicatorsStorer() {
 		}
 		//logrus.Infof("STORE: %s , %f", ms.ID, indicator.LastValue)
 
-		err = ms.kr.AddStringLong(ms.ID, "INDICATORS", indicatorsJSON)
+		err = ms.kr.AddString(ms.ID, "INDICATORS", indicatorsJSON)
 
 		if err != nil {
 			logrus.Fatal("AddString :", err.Error())

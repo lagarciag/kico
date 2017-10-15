@@ -17,6 +17,7 @@ package cmd
 import (
 	"github.com/lagarciag/tayni/exchange"
 	"github.com/spf13/cobra"
+	"sync"
 )
 
 // startCmd represents the start command
@@ -25,7 +26,7 @@ var startCmd = &cobra.Command{
 	Short: "Starts tayniserver",
 	Long:  `Start hawa server`,
 	Run: func(cmd *cobra.Command, args []string) {
-		exchange.Start()
+		start()
 	},
 }
 
@@ -41,4 +42,10 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	// startCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+}
+
+func start() {
+	cond := sync.NewCond(&sync.Mutex{})
+	exchange.Start(cond)
+
 }

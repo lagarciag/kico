@@ -68,7 +68,7 @@ type Statistician struct {
 }
 
 func NewStatistician(exchange, pair string, kr *kredis.Kredis, warmUp bool) *Statistician {
-
+	log.Debugf("Creating statistician for exchange : %s, pair : %s", exchange, pair)
 	stdLimitList := []float64{MinuteStdLimit, Minute5StdLimit, Minute10StdLimit, Minute30StdLimit,
 		Hour1StdLimit, Hour2StdLimit, Hour4StdLimit, Hour12StdLimit, Hour24StdLimit}
 
@@ -84,7 +84,7 @@ func NewStatistician(exchange, pair string, kr *kredis.Kredis, warmUp bool) *Sta
 
 	for ID, pstat := range statistician.minuteStrategies {
 		//log.Info("MinuteStrategy : ", statistician.key, pstat)
-		ms := NewMinuteStrategy(statistician.key, pstat, stdLimitList[ID], true, kr)
+		ms := NewMinuteStrategy(statistician.key, pstat, stdLimitList[ID], false, kr)
 		statistician.statsHash[pstat] = ms
 
 	}

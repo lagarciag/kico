@@ -10,28 +10,30 @@ import (
 
 	"fmt"
 
+	"github.com/lagarciag/tayni/kredis"
 	"github.com/lagarciag/tayni/statistician"
 )
+
+var kr *kredis.Kredis
 
 func TestMain(m *testing.M) {
 	// call flag.Parse() here if TestMain uses flags
 	seed := time.Now().UTC().UnixNano()
 	rand.Seed(seed)
 	fmt.Println("SEED:", seed)
+	kr = kredis.NewKredis(1300000)
+	kr.Start()
+
 	os.Exit(m.Run())
 }
 
 func BenchmarkAddValues(b *testing.B) {
 
-	stat := statistician.NewStatistician(false)
-
-	for i := 0; i < 100000; i++ {
-		stat.Add(float64(i))
-	}
-
+	stat := statistician.NewStatistician("TEST", "TEST_PAIR", kr, false)
 	// run the Fib function b.N times
+	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
-		stat.Add(float64(10.2))
+		stat.Add(float64(100000000))
 	}
 }
 
@@ -44,7 +46,7 @@ func TestStatistitianAdd(t *testing.T) {
 
 	for _, window := range minuteStrategies {
 
-		stat := statistician.NewStatistician(false)
+		stat := statistician.NewStatistician("TEST", "TEST_PAIR", kr, false)
 
 		for count := 0; count < (int(window)*stablePeriodsCount)+1; count++ {
 			value := float64(rand.Intn(10000))
@@ -78,7 +80,7 @@ func TestStatistitianAddWarmUp(t *testing.T) {
 
 	for _, window := range minuteStrategies {
 
-		stat := statistician.NewStatistician(true)
+		stat := statistician.NewStatistician("TEST", "TEST_PAIR", kr, false)
 
 		for count := 0; count < 1; count++ {
 			value := float64(rand.Intn(10000))
@@ -102,8 +104,8 @@ func TestStatistitianAddWarmUp(t *testing.T) {
 }
 
 func TestNewStatistician(t *testing.T) {
-
-	ms := statistician.NewMinuteStrategy(statistician.Minute5, 0.5, true)
+	//name string, minuteWindowSize uint, stdLimit float64, doLog bool, kr *kredis.Kredis
+	ms := statistician.NewMinuteStrategy("NAME", statistician.Minute5, 0.5, true, kr)
 
 	for n := 0; n < 10000; n++ {
 		value := float64(rand.Intn(10000))
@@ -115,7 +117,7 @@ func TestNewStatistician(t *testing.T) {
 		value := float64(rand.Intn(10000))
 		ms.Add(value)
 
-		t.Log(ms.Print())
+		//t.Log(ms.Print())
 
 	}
 

@@ -1,4 +1,15 @@
+// +build deprecated
+
 package taynibot
+
+import (
+	"fmt"
+	"log"
+	"sync"
+	"time"
+
+	"github.com/lagarciag/tayni/statistician"
+)
 
 import (
 	cexioapi "github.com/lagarciag/cexioapi"

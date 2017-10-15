@@ -1,9 +1,12 @@
+// +build deprecated
+
 package taynibot
 
 import (
-	log "github.com/sirupsen/logrus"
 	"fmt"
+
 	"github.com/looplab/fsm"
+	log "github.com/sirupsen/logrus"
 )
 
 func (bot *Bot) callBackInWarmUpState(e *fsm.Event) {
@@ -80,4 +83,3 @@ func (bot *Bot) runEventManager() {
 	}
 	log.Info("ending event manager...")
 }
-

@@ -18,11 +18,14 @@ import (
 	"fmt"
 	"os"
 
+	"time"
+
 	"github.com/lagarciag/tayni/comonconfig"
 	"github.com/spf13/cobra"
 )
 
 var cfgFile string
+var SecondTicker = time.NewTicker(time.Second * 2)
 
 // RootCmd represents the base command when called without any subcommands
 var RootCmd = &cobra.Command{

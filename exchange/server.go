@@ -1,25 +1,33 @@
 package exchange
 
 import (
+	"sync"
+
 	"github.com/lagarciag/tayni/exchange/cexio"
+	"github.com/lagarciag/tayni/kredis"
+	"github.com/lagarciag/tayni/taynibot"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
-func Start() error {
+func Start(shutdownCond *sync.Cond) {
 
 	log.Info("Starting server tayni services")
 
-	log.Info("Loading CEXIO service")
 	// ------------------------------
 	// Load security configuration
 	// ------------------------------
 	securityMap := viper.Get("security").(map[string]interface{})
 	exchanges := viper.Get("exchange").(map[string]interface{})
 
-	for key := range exchanges {
+	//TODO: Complete the following to enable multipe exchanges
+	exchangesBots := make(map[string]taynibot.Automata)
+	//exchangesSecurity := make(map[string]string)
 
-		log.Info(key)
+	kr := kredis.NewKredis(1300000)
+
+	for key := range exchanges {
+		log.Infof("Loading %s service", key)
 		securityCexio := securityMap[key].(map[string]interface{})
 
 		// ---------------------------
@@ -40,10 +48,30 @@ func Start() error {
 		botConfig.CexioKey = securityCexio["key"].(string)
 		botConfig.CexioSecret = securityCexio["secret"].(string)
 
-		bot := cexio.NewBot(botConfig)
-		bot.PublicStart()
+		//TODO: kredis instance should be externally specified for the bot
+
+		exchangesBots[key] = cexio.NewBot(botConfig, kr)
+
+		//TODO: This should run in it's own independent routine.
+		exchangesBots[key].PublicStart()
 
 	}
 
-	return nil
+	//TODO:
+	shutdownCond.L.Lock()
+	shutdownCond.Wait()
+	shutdownCond.L.Unlock()
+
+	for key := range exchangesBots {
+		log.Info("Shutting down :", key)
+		exchangesBots[key].Stop()
+	}
+
+	log.Info("Server shutdown complete")
+
+}
+
+func Stop(cond *sync.Cond) {
+	log.Info("Starting server shutdown")
+	cond.Broadcast()
 }

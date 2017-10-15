@@ -206,8 +206,6 @@ func (kr *Kredis) AddStringLong(exchange, pair string, value interface{}) error 
 func (kr *Kredis) Update(exchange, pair string, value string) error {
 
 	key := fmt.Sprintf("PRICE_%s_%s", exchange, pair)
-	//keyp := fmt.Sprintf("PUB_%s_%s", exchange, pair)
-	log.Info(key, value)
 	kr.mu.Lock()
 	_, err := kr.conn.Do("SET", key, value)
 	kr.mu.Unlock()
@@ -220,7 +218,7 @@ func (kr *Kredis) Update(exchange, pair string, value string) error {
 	return err
 }
 
-func (kr *Kredis) UpdateList(exchange, pair string) error {
+func (kr *Kredis) UpdateList(exchange, pair string) (valueString string, err error) {
 
 	currentKey := fmt.Sprintf("PRICE_%s_%s", exchange, pair)
 	//log.Debug("update list: ", currentKey)
@@ -238,7 +236,9 @@ func (kr *Kredis) UpdateList(exchange, pair string) error {
 		log.Error("UpdateList on AddString: ", err.Error())
 	}
 
-	return err
+	valueString = string(currentValue.([]uint8))
+
+	return valueString, err
 }
 
 func (kr *Kredis) GetLatest(exchange, pair string) (float64, error) {

@@ -10,31 +10,13 @@ import (
 
 	"fmt"
 
+	"strconv"
+
 	"github.com/lagarciag/tayni/kredis"
+	"github.com/lagarciag/tayni/statistician"
 )
-
-const (
-	startState      = "Start"
-	restartState    = "restart"
-	initializeState = "Initialize"
-	warmUpState     = "WarmUp"
-	watchState      = "Watch"
-)
-
-const (
-	startEventName          = "start"
-	restartEventName        = "restart"
-	warmUpEventName         = "warmUp"
-	warmUpCompleteEventName = "warmUpComplete"
-)
-
-/*
-2017/08/29 06:05:58 websocket: close 1006 (abnormal closure): unexpected EOF
-2017/08/29 07:26:34 websocket: close 1001 (going away): CloudFlare WebSocket proxy restarting
-*/
 
 const minuteTicks = 30
-const warmUpCycles = (60 * 60 * 24 * 26) / 2
 
 type CollectorConfig struct {
 	CexioKey    string
@@ -43,43 +25,71 @@ type CollectorConfig struct {
 }
 
 type Bot struct {
-	name           string
-	key            string
-	secret         string
-	pairs          []string
-	api            *cexioapi.API
-	apiError       chan error
-	apiLock        *sync.Mutex
-	kr             *kredis.Kredis
-	tickerSub      chan cexioapi.ResponseTickerSubData
+	name   string
+	key    string
+	secret string
+	pairs  []string
+	api    *cexioapi.API
+
+	apiLock *sync.Mutex
+	kr      *kredis.Kredis
+
 	ticksPerMinute int
 	btcUsdBase     float64
-	stop           chan bool
-	apiStop        chan bool
-	apiOnline      bool
+
+	tickerSub chan cexioapi.ResponseTickerSubData
+
+	stats map[string]*statistician.Statistician
+
+	// --------------------
+	// Control Structures
+	// --------------------
+	priceUpdateTimer *time.Ticker
+	shutdownCond     *sync.Cond
+	apiError         chan error
+	stop             chan bool
+	apiStop          chan bool
+	apiOnline        bool
 }
 
-func NewBot(config CollectorConfig) (bot *Bot) {
+func NewBot(config CollectorConfig, kr *kredis.Kredis) (bot *Bot) {
 
 	//--------------------------------
 	//Move this to a secure location
 	//--------------------------------
 	bot = &Bot{}
+
 	bot.name = "CEXIO"
 	bot.key = config.CexioKey
 	bot.pairs = config.Pairs
 	bot.secret = config.CexioSecret
-	bot.kr = kredis.NewKredis(1300000)
+	bot.kr = kr
 	bot.ticksPerMinute = minuteTicks
 	bot.api, bot.apiError = cexioapi.NewPublicAPI()
+
 	bot.tickerSub = make(chan cexioapi.ResponseTickerSubData)
+
+	bot.shutdownCond = sync.NewCond(&sync.Mutex{})
 	bot.apiStop = make(chan bool)
+	bot.stop = make(chan bool)
+	// -----------------------
+	// Start Error monitoring
+	// -----------------------
+	go bot.errorMonitor()
+
+	bot.stats = make(map[string]*statistician.Statistician)
+
+	cID := 0
+	for _, pairName := range bot.pairs {
+		bot.stats[pairName] = statistician.NewStatistician(bot.name, bot.pairs[cID], bot.kr, false)
+		cID++
+	}
 
 	return bot
 }
 
 func (bot *Bot) errorMonitor() {
-
+	log.Info("Starting error monitor service for exchange : ", bot.name)
 	for {
 		select {
 		case err := <-bot.apiError:
@@ -100,21 +110,43 @@ func (bot *Bot) errorMonitor() {
 	}
 }
 
+//pStart are commong Start functionality
+func (bot *Bot) pStart() {
+	log.Info("Starting Public CEXIO collector")
+	bot.kr.Start()
+	bot.priceUpdateTimer = time.NewTicker(time.Second * 2)
+	go bot.exchangeConnect()
+
+}
+
+func (bot *Bot) PublicStart() {
+	go bot.pStart()
+}
+
 func (bot *Bot) PublicRestart() {
 	log.Info("Restarting public api connection...")
 	bot.api.Close("BOT")
 	bot.apiOnline = false
+
+	//--------------------------
+	// Stop price update timer
+	//--------------------------
+	bot.priceUpdateTimer.Stop()
 	close(bot.apiStop)
-	log.Info("Post close...")
 	time.Sleep(time.Second * 2)
 	log.Info("All conections closed, restarting...")
+
 	bot.apiStop = make(chan bool)
 	log.Info("Restarting exchangeConnect...")
-	bot.kr.Start()
-	go bot.exchangeConnect()
-	log.Debug("PublicRestart Complete...")
+
+	// ------------------------
+	// Start common routines
+	// ------------------------
+	go bot.pStart()
+
 }
 
+//Deprecated
 func (bot *Bot) Start() {
 	log.Info("Starting CEXIO collector")
 
@@ -209,32 +241,33 @@ func (bot *Bot) MonitorPrice() {
 	}
 }
 
-func (bot *Bot) PublicStart() {
-	log.Info("Starting Public CEXIO collector")
-	bot.kr.Start()
-	go bot.errorMonitor()
-	go bot.exchangeConnect()
-
-	<-bot.stop
-
-	log.Info("PublicStart finished")
-
-}
-
 func (bot *Bot) UpdatePriceLists(exchange, pair string) {
 	log.Debugf("Starting price update routine for : %s_%s ", exchange, pair)
-	for bot.apiOnline {
-		bot.kr.UpdateList(exchange, pair)
-		time.Sleep(time.Second * 2)
+	counter := 0
+	for _ = range bot.priceUpdateTimer.C {
+		valueStr, err := bot.kr.UpdateList(exchange, pair)
+
+		if err != nil {
+			log.Fatal("error updating list: ", err.Error())
+		}
+		value, err := strconv.ParseFloat(valueStr, 64)
+		bot.stats[pair].Add(value)
+
+		if counter%(60*5) == 0 {
+			log.Infof("Saving value, exchange: %s , pair %s , value :%f", exchange, pair, value)
+		}
+		counter++
 	}
+	log.Info("UpdatePriceLists exiting...")
 }
 
 func (bot *Bot) Stop() {
+	bot.priceUpdateTimer.Stop()
 	err := bot.api.Close("MainStop")
 	if err != nil {
 		log.Fatal("error while stoping bot:", err.Error())
 	}
-
+	close(bot.stop)
 	log.Info("Bot is down")
 }
 
