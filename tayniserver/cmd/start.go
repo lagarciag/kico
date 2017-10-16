@@ -15,9 +15,15 @@
 package cmd
 
 import (
-	"github.com/lagarciag/tayni/exchange"
-	"github.com/spf13/cobra"
+	"os"
 	"sync"
+
+	"os/signal"
+	"syscall"
+
+	"github.com/lagarciag/tayni/exchange"
+	log "github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
 )
 
 // startCmd represents the start command
@@ -44,8 +50,28 @@ func init() {
 	// startCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
 
-func start() {
-	cond := sync.NewCond(&sync.Mutex{})
-	exchange.Start(cond)
+var osSignals chan os.Signal
+var shutDownCond *sync.Cond
 
+func start() {
+
+	// ---------------------------------------
+	// Register channel for signal detection
+	// ---------------------------------------
+
+	osSignals = make(chan os.Signal, 1)
+	signal.Notify(osSignals, syscall.SIGINT, syscall.SIGTERM, os.Interrupt, os.Kill)
+
+	shutDownCond = sync.NewCond(&sync.Mutex{})
+	go shutdownControl()
+	exchange.Start(shutDownCond)
+
+}
+
+func shutdownControl() {
+	for range osSignals {
+		log.Info("Sending shutdown signal...")
+		shutDownCond.Broadcast()
+		return
+	}
 }

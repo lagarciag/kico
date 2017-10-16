@@ -12,6 +12,7 @@ import (
 
 	"strconv"
 
+	"github.com/coreos/go-systemd/daemon"
 	"github.com/lagarciag/tayni/kredis"
 	"github.com/lagarciag/tayni/statistician"
 )
@@ -257,6 +258,7 @@ func (bot *Bot) UpdatePriceLists(exchange, pair string) {
 			log.Infof("Saving value, exchange: %s , pair %s , value :%f", exchange, pair, value)
 		}
 		counter++
+		daemon.SdNotify(false, "WATCHDOG=1")
 	}
 	log.Info("UpdatePriceLists exiting...")
 }

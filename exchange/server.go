@@ -3,6 +3,9 @@ package exchange
 import (
 	"sync"
 
+	"time"
+
+	"github.com/coreos/go-systemd/daemon"
 	"github.com/lagarciag/tayni/exchange/cexio"
 	"github.com/lagarciag/tayni/kredis"
 	"github.com/lagarciag/tayni/taynibot"
@@ -59,6 +62,8 @@ func Start(shutdownCond *sync.Cond) {
 
 	//TODO:
 	shutdownCond.L.Lock()
+	log.Info("SystemD notify READY=1")
+	daemon.SdNotify(false, "READY=1")
 	shutdownCond.Wait()
 	shutdownCond.L.Unlock()
 
@@ -66,7 +71,7 @@ func Start(shutdownCond *sync.Cond) {
 		log.Info("Shutting down :", key)
 		exchangesBots[key].Stop()
 	}
-
+	time.Sleep(time.Second)
 	log.Info("Server shutdown complete")
 
 }
