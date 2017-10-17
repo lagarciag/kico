@@ -18,19 +18,27 @@ import (
 	"fmt"
 	"os"
 
+	"os/signal"
+	"sync"
+	"syscall"
+
 	"github.com/lagarciag/tayni/comonconfig"
-	"github.com/spf13/cobra"
 	"github.com/lagarciag/tayni/taynireporter/reporter"
+	"github.com/spf13/cobra"
+
+	log "github.com/sirupsen/logrus"
 )
 
 var cfgFile string
+var osSignals chan os.Signal
+var shutDownCond *sync.Cond
 
 // RootCmd represents the base command when called without any subcommands
 var RootCmd = &cobra.Command{
-	Use:   "taynimath",
+	Use:   "taynireporter",
 	Short: "starts the taynimath services",
 	Long:  `starts the taynimath services.`,
-	Run:   func(cmd *cobra.Command, args []string) { reporter.Start() },
+	Run:   func(cmd *cobra.Command, args []string) { start() },
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -58,5 +66,34 @@ func init() {
 
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
-	comonconfig.LoadConfig("taynimath")
+	comonconfig.LoadConfig("taynireporter")
+}
+
+func start() {
+
+	// ---------------------------------------
+	// Register channel for signal detection
+	// ---------------------------------------
+
+	osSignals = make(chan os.Signal, 1)
+	signal.Notify(osSignals, syscall.SIGINT, syscall.SIGTERM, os.Interrupt, os.Kill)
+
+	shutDownCond = sync.NewCond(&sync.Mutex{})
+	go shutdownControl()
+	reporter.Start()
+
+	shutDownCond.L.Lock()
+	shutDownCond.Wait()
+	shutDownCond.L.Unlock()
+
+	log.Info("Taynireporter shutdown...")
+
+}
+
+func shutdownControl() {
+	for range osSignals {
+		log.Info("Sending shutdown signal...")
+		shutDownCond.Broadcast()
+		return
+	}
 }

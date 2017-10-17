@@ -6,11 +6,24 @@ import (
 	"fmt"
 	//"time"
 	"strings"
-	"time"
 
 	"github.com/lagarciag/tayni/kredis"
 	"github.com/spf13/viper"
 )
+
+type reporter struct {
+	kr         *kredis.Kredis
+	lookupName string
+}
+
+func NewReporter(kr *kredis.Kredis, lookupName string) *reporter {
+
+	rep := &reporter{}
+	rep.kr = kr
+	rep.lookupName = lookupName
+	log.Debug("Reporter lookupName: ", rep.lookupName)
+	return rep
+}
 
 func Start() {
 	log.Info("Hello world")
@@ -45,23 +58,14 @@ func Start() {
 
 		for _, pair := range pairsIntList {
 
-			for _ , minute := range minuteStrategies {
-
+			for _, minute := range minuteStrategies {
 				statsKey := fmt.Sprintf("%s_%s_MS_%d", exchangeName, pair.(string), minute)
 
-				log.Info("Subscribe: ", statsKey)
-				//go kr.Subscribe(statsKey, statsMap[statsKey].Add)
+				_ = NewReporter(kr, statsKey)
 
 			}
-
-
 
 		}
 
 	}
-
-	for {
-		time.Sleep(time.Minute * 2)
-	}
-
 }
