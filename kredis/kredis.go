@@ -16,12 +16,14 @@ var ExchangePairListMap = map[string][]string{"CEXIO": {"BTCUSD"}}
 
 type Kredis struct {
 	conn           redis.Conn
+	psc            redis.PubSubConn
 	connUpdateList redis.Conn
 	server         string
 	validKeys      map[string]bool
 	size           int
 	count          uint
 	mu             *sync.Mutex
+	subsChan       chan []string
 }
 
 func NewKredis(size int) *Kredis {
@@ -31,6 +33,7 @@ func NewKredis(size int) *Kredis {
 	kr.mu = &sync.Mutex{}
 	kr.validKeys = make(map[string]bool)
 	kr.validKeys["CEXIO_BTCUSD"] = true
+	kr.subsChan = make(chan []string,1000)
 
 	return kr
 
@@ -48,6 +51,8 @@ func (kr *Kredis) dial() {
 	if err != nil {
 		log.Fatal("Could not dial redis: ", err.Error())
 	}
+
+	kr.psc = redis.PubSubConn{kr.conn}
 
 }
 
@@ -319,6 +324,41 @@ func (kr *Kredis) Subscribe(chanName string, foo func(value float64)) interface{
 			//fmt.Printf("%s: %s %d\n", v.Channel, v.Kind, v.Count)
 		case error:
 			return v
+		}
+	}
+
+}
+
+func (kr *Kredis) SubscribeLookup(chanName string) {
+	kr.mu.Lock()
+	kr.psc.Subscribe(chanName)
+	kr.mu.Unlock()
+}
+
+func (kr *Kredis) SubscriberChann() chan []string {
+	return kr.subsChan
+}
+
+func (kr *Kredis) SubscriberMonitor() {
+
+	for {
+
+		switch v := kr.psc.Receive().(type) {
+
+		case redis.Message:
+			//fmt.Printf("%s: message: %s\n", v.Channel, v.Data)
+			//log.Infof("REDIS CHAN RECIEVE: %s , %s", string(v.Channel), string(v.Data))
+			resp := make([]string, 2)
+			resp[0] = string(v.Channel)
+			resp[1] = string(v.Data)
+			kr.subsChan <- resp
+			//log.Info("END FOO")
+		case redis.Subscription:
+			log.Infof("Subscribed to data updates for : %s", v.Channel)
+			//fmt.Printf("%s: %s %d\n", v.Channel, v.Kind, v.Count)
+		case error:
+			log.Error("SubscriberMonitor Error")
+			return
 		}
 	}
 
