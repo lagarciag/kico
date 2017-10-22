@@ -197,8 +197,12 @@ func (ms *MinuteStrategy) Add(value float64) {
 
 func (ms *MinuteStrategy) StdDevPercentage() float64 {
 	stDev := ms.movingStats.StdDevLong()
+	stDev100 := stDev * float64(100)
+
 	sma := ms.movingStats.SMA1()
-	return (stDev / sma) * 100
+	//logrus.Debugf("STDEV * 100: %f , SMA: %f , PER: %f", stDev100, sma, stDev100/sma)
+
+	return stDev100 / sma
 }
 
 func (ms *MinuteStrategy) StdDev() float64 {
