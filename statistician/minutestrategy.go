@@ -32,9 +32,17 @@ type Indicators struct {
 	StdDevPercentage float64 `json:"std_dev_percentage"`
 	//stdDevBuy := ms.StdDevBuy()
 
-	Adx float64 `json:"adx"`
-	MDI float64 `json:"m_di"`
-	PDI float64 `json:"p_di"`
+	CHigh float64 `json:"c_high"`
+	CLow  float64 `json:"c_low"`
+	PHigh float64 `json:"p_high"`
+	PLow  float64 `json:"p_low"`
+	MDM   float64 `json:"mdm"`
+	PDM   float64 `json:"pdm"`
+	Adx   float64 `json:"adx"`
+	MDI   float64 `json:"m_di"`
+	PDI   float64 `json:"p_di"`
+
+	TR float64 `json:"tr"`
 
 	Md9 float64 `json:"md_9"`
 	Buy bool    `json:"buy"`
@@ -42,6 +50,14 @@ type Indicators struct {
 
 type MinuteStrategy struct {
 	ID string
+
+	init bool
+
+	addChannel chan float64
+
+	warmAppLock *sync.Cond
+
+	warmUpComplete bool
 
 	indicators Indicators
 
@@ -100,67 +116,72 @@ func NewMinuteStrategy(name string, minuteWindowSize uint, stdLimit float64, doL
 	// --------------
 	// Setup logging
 	// --------------
-	logName := fmt.Sprintf("/tmp/%s.log", ID)
-	csvFile := fmt.Sprintf("/tmp/%s.csv", ID)
+	//logName := fmt.Sprintf("/tmp/%s.log", ID)
+	//csvFile := fmt.Sprintf("/tmp/%s.csv", ID)
 
-	if _, err := os.Stat(logName); !os.IsNotExist(err) {
-		err := os.Remove(logName)
+	/*
+		if _, err := os.Stat(logName); !os.IsNotExist(err) {
+			err := os.Remove(logName)
+			if err != nil {
+				fmt.Println(err)
+				panic("Could not delete file")
+			}
+		}
+
+		if _, err := os.Stat(csvFile); !os.IsNotExist(err) {
+			err := os.Remove(csvFile)
+			if err != nil {
+				fmt.Println(err)
+				panic("Could not delete file")
+			}
+		}
+
+		f, err := os.Create(csvFile)
+
 		if err != nil {
-			fmt.Println(err)
-			panic("Could not delete file")
+			panic(err)
 		}
-	}
 
-	if _, err := os.Stat(csvFile); !os.IsNotExist(err) {
-		err := os.Remove(csvFile)
-		if err != nil {
-			fmt.Println(err)
-			panic("Could not delete file")
+		f.WriteString("time,Count,VAL,SMA,STD,STDP,EMA,ELP,N,H,T,EMUP,MAC,Md9,MDI,MBUL,ADX,mDI,pDI,BUY\n")
+
+		log := logrus.New()
+		formatter := &logrus.TextFormatter{}
+		formatter.FullTimestamp = true
+		formatter.ForceColors = true
+		log.Level = logrus.DebugLevel
+		log.Formatter = formatter
+
+		if doLog {
+			filePath := logName
+			log.Info("Log file path:", filePath)
+			file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, 0666)
+			if err == nil {
+				log.Out = file
+			} else {
+				log.Info("Failed to log to file, using default stderr")
+			}
 		}
-	}
-
-	f, err := os.Create(csvFile)
-
-	if err != nil {
-		panic(err)
-	}
-
-	f.WriteString("time,Count,VAL,SMA,STD,STDP,EMA,ELP,N,H,T,EMUP,MAC,Md9,MDI,MBUL,ADX,mDI,pDI,BUY\n")
-
-	log := logrus.New()
-	formatter := &logrus.TextFormatter{}
-	formatter.FullTimestamp = true
-	formatter.ForceColors = true
-	log.Level = logrus.DebugLevel
-	log.Formatter = formatter
-
-	if doLog {
-		filePath := logName
-		log.Info("Log file path:", filePath)
-		file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, 0666)
-		if err == nil {
-			log.Out = file
-		} else {
-			log.Info("Failed to log to file, using default stderr")
-		}
-	}
-
+	*/
 	// -------------------
 	// Setup MinutStrategy
 	// --------------------
 	ps := &MinuteStrategy{}
 	ps.ID = ID
+
+	ps.init = true
 	ps.indicatorsChan = make(chan Indicators, 1300000)
 	ps.indicators = Indicators{}
 	ps.kr = kr
-	ps.fh = f
+	//ps.fh = f
 	ps.mu = &sync.Mutex{}
-	ps.log = log
+	ps.warmAppLock = sync.NewCond(&sync.Mutex{})
+	//ps.log = log
 	ps.sampleRate = sampleRate
 
 	ps.minuteWindowSize = minuteWindowSize
 	ps.movingSampleWindowSize = minuteWindowSize * sampleRate
 	ps.movingStats = movingstats.NewMovingStats(int(ps.movingSampleWindowSize))
+	ps.addChannel = make(chan float64, ps.movingSampleWindowSize)
 
 	ps.stable = false
 
@@ -174,12 +195,30 @@ func NewMinuteStrategy(name string, minuteWindowSize uint, stdLimit float64, doL
 }
 
 func (ms *MinuteStrategy) WarmUp(value float64) {
-	for n := 0; n < int(ms.stableCount); n++ {
-		ms.Add(value)
+	for n := 0; n < int(ms.stableCount*2); n++ {
+		ms.add(value)
 	}
+	ms.init = false
+	ms.warmUpComplete = true
+	ms.warmAppLock.Broadcast()
+	logrus.Info("Warm up Complete -> ", ms.ID)
 }
 
 func (ms *MinuteStrategy) Add(value float64) {
+	if ms.init {
+		ms.init = false
+		go ms.addWorker()
+		time.Sleep(time.Millisecond * 500)
+		go ms.WarmUp(value)
+
+	} else {
+		ms.addChannel <- value
+	}
+
+}
+
+func (ms *MinuteStrategy) add(value float64) {
+
 	ms.mu.Lock()
 	ms.LatestValue = value
 	ms.movingStats.Add(value)
@@ -189,10 +228,28 @@ func (ms *MinuteStrategy) Add(value float64) {
 	}
 	ms.currentSampleCount++
 
-	ms.updateIndicators()
-	ms.mu.Unlock()
-	ms.storeIndicators()
+	if ms.warmUpComplete {
+		ms.updateIndicators()
+	}
 
+	ms.mu.Unlock()
+
+	if ms.warmUpComplete {
+		ms.storeIndicators()
+	}
+}
+
+func (ms *MinuteStrategy) addWorker() {
+
+	ms.warmAppLock.L.Lock()
+	ms.warmAppLock.Wait()
+	ms.warmAppLock.L.Unlock()
+
+	logrus.Info("addWorker waken up -> ", ms.ID)
+
+	for value := range ms.addChannel {
+		ms.add(value)
+	}
 }
 
 func (ms *MinuteStrategy) StdDevPercentage() float64 {
@@ -200,7 +257,7 @@ func (ms *MinuteStrategy) StdDevPercentage() float64 {
 	stDev100 := stDev * float64(100)
 
 	sma := ms.movingStats.SMA1()
-	//logrus.Debugf("STDEV * 100: %f , SMA: %f , PER: %f", stDev100, sma, stDev100/sma)
+	//logrus.Debugf("STDEV: %f, STDEV100: %f , SMA: %f , PER: %f", stDev, stDev100, sma, stDev100/sma)
 
 	return stDev100 / sma
 }
@@ -290,14 +347,15 @@ func (ms *MinuteStrategy) updateIndicators() {
 	if math.IsNaN(stDev) {
 		ms.indicators.StdDev = 0
 	} else {
-		ms.indicators.StdDev = ms.StdDev()
+		ms.indicators.StdDev = stDev
 	}
 
 	stDevP := ms.StdDevPercentage()
+
 	if math.IsNaN(stDevP) {
 		ms.indicators.StdDevPercentage = 0
 	} else {
-		ms.indicators.StdDev = ms.StdDevPercentage()
+		ms.indicators.StdDevPercentage = stDevP
 	}
 
 	//stdDevBuy := ms.StdDevBuy()
@@ -327,6 +385,16 @@ func (ms *MinuteStrategy) updateIndicators() {
 
 	ms.indicators.Md9 = ms.movingStats.EmaMacd9()
 	ms.indicators.Buy = ms.Buy()
+
+	ms.indicators.CHigh = ms.movingStats.CHigh()
+	ms.indicators.PHigh = ms.movingStats.PHigh()
+	ms.indicators.CLow = ms.movingStats.CLow()
+	ms.indicators.PLow = ms.movingStats.PLow()
+
+	ms.indicators.MDM = ms.movingStats.MinusDM()
+	ms.indicators.PDM = ms.movingStats.PlusDM()
+
+	ms.indicators.TR = ms.movingStats.TrueRange()
 
 }
 
