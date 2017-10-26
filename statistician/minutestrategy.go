@@ -205,6 +205,7 @@ func (ms *MinuteStrategy) WarmUp(value float64) {
 }
 
 func (ms *MinuteStrategy) Add(value float64) {
+
 	if ms.init {
 		ms.init = false
 		go ms.addWorker()
@@ -313,7 +314,35 @@ func (ms *MinuteStrategy) EmaDirectionUp() bool {
 }
 
 func (ms *MinuteStrategy) Buy() bool {
-	if ms.StdDevBuy() && ms.MacdBullish() && ms.EmaDirectionUp() {
+
+	adx := ms.movingStats.Adx()
+	mDI := ms.movingStats.MinusDI()
+	pDI := ms.movingStats.PlusDI()
+
+	directionalBull := false
+	adxBull := false
+	pDIBull := false
+	diBull := false
+
+	if adx > 25 {
+		adxBull = true
+	}
+
+	if pDI > 25 {
+		pDIBull = true
+	}
+
+	if pDI > mDI {
+		diBull = false
+	}
+
+	if diBull && (pDIBull || adxBull) {
+		directionalBull = true
+	} else {
+		directionalBull = false
+	}
+
+	if directionalBull && ms.MacdBullish() && ms.EmaDirectionUp() {
 		return true
 	}
 	return false

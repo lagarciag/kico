@@ -1,0 +1,12 @@
+[Unit]
+Description=tayinireporter
+
+[Service]
+Type=notify
+ExecStart=/usr/local/bin/taynireporter start 
+WatchdogSec=30s
+Restart=on-failure
+User=galuisal
+
+[Install]
+WantedBy=multi-user.target

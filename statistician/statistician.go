@@ -77,7 +77,15 @@ func NewStatistician(exchange, pair string, kr *kredis.Kredis, warmUp bool) *Sta
 	statistician.pair = pair
 	statistician.warmUp = warmUp
 	statistician.key = fmt.Sprintf("%s_%s", exchange, pair)
-	statistician.minuteStrategies = []uint{Minute, Minute5, Minute10, Minute30, Hour1, Hour2, Hour4, Hour12, Hour24}
+	//statistician.minuteStrategies = []uint{Minute, Minute5, Minute10, Minute30, Hour1, Hour2, Hour4, Hour12, Hour24}
+
+	minuteStrategiesInterface := viper.Get("minute_strategies").([]interface{})
+	statistician.minuteStrategies = make([]uint, len(minuteStrategiesInterface))
+
+	for ID, minutes := range minuteStrategiesInterface {
+		statistician.minuteStrategies[ID] = uint(minutes.(int64))
+	}
+
 	statistician.kr = kr
 
 	statistician.statsHash = make(map[uint]*MinuteStrategy)
