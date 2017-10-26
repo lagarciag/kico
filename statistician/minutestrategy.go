@@ -14,11 +14,13 @@ import (
 
 	"github.com/lagarciag/movingstats"
 	"github.com/lagarciag/tayni/kredis"
+	"github.com/metakeule/fmtdate"
 	"github.com/sirupsen/logrus"
 )
 
 type Indicators struct {
 	name      string  `json:"name"`
+	Date      string  `json:"date"`
 	LastValue float64 `json:"last_value"`
 	Sma       float64 `json:"sma"`
 	Ema       float64 `json:"ema"`
@@ -42,7 +44,8 @@ type Indicators struct {
 	MDI   float64 `json:"m_di"`
 	PDI   float64 `json:"p_di"`
 
-	TR float64 `json:"tr"`
+	TR  float64 `json:"tr"`
+	ATR float64 `json:"atr"`
 
 	Md9 float64 `json:"md_9"`
 	Buy bool    `json:"buy"`
@@ -180,6 +183,9 @@ func NewMinuteStrategy(name string, minuteWindowSize uint, stdLimit float64, doL
 
 	ps.minuteWindowSize = minuteWindowSize
 	ps.movingSampleWindowSize = minuteWindowSize * sampleRate
+
+
+
 	ps.movingStats = movingstats.NewMovingStats(int(ps.movingSampleWindowSize))
 	ps.addChannel = make(chan float64, ps.movingSampleWindowSize)
 
@@ -424,6 +430,19 @@ func (ms *MinuteStrategy) updateIndicators() {
 	ms.indicators.PDM = ms.movingStats.PlusDM()
 
 	ms.indicators.TR = ms.movingStats.TrueRange()
+	ms.indicators.ATR = ms.movingStats.Atr()
+
+	//--------------------
+	//Calculate UTC time
+	//--------------------
+
+	stringOffset := "+06.00h"
+
+	offSet, err := time.ParseDuration(stringOffset)
+	if err != nil {
+		panic(err)
+	}
+	ms.indicators.Date = fmtdate.Format("MM/DD/YYYY hh:mm:ss", time.Now().Add(offSet))
 
 }
 
