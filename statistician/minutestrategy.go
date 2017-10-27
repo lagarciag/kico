@@ -19,7 +19,7 @@ import (
 )
 
 type Indicators struct {
-	name      string  `json:"name"`
+	Name      string  `json:"name"`
 	Date      string  `json:"date"`
 	LastValue float64 `json:"last_value"`
 	Sma       float64 `json:"sma"`
@@ -184,8 +184,6 @@ func NewMinuteStrategy(name string, minuteWindowSize uint, stdLimit float64, doL
 	ps.minuteWindowSize = minuteWindowSize
 	ps.movingSampleWindowSize = minuteWindowSize * sampleRate
 
-
-
 	ps.movingStats = movingstats.NewMovingStats(int(ps.movingSampleWindowSize))
 	ps.addChannel = make(chan float64, ps.movingSampleWindowSize)
 
@@ -330,11 +328,11 @@ func (ms *MinuteStrategy) Buy() bool {
 	pDIBull := false
 	diBull := false
 
-	if adx > 25 {
+	if adx > float64(25) {
 		adxBull = true
 	}
 
-	if pDI > 25 {
+	if pDI > float64(25) {
 		pDIBull = true
 	}
 

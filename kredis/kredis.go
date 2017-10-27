@@ -33,7 +33,7 @@ func NewKredis(size int) *Kredis {
 	kr.mu = &sync.Mutex{}
 	kr.validKeys = make(map[string]bool)
 	kr.validKeys["CEXIO_BTCUSD"] = true
-	kr.subsChan = make(chan []string,1000)
+	kr.subsChan = make(chan []string, 1000)
 
 	return kr
 
@@ -266,6 +266,58 @@ func (kr *Kredis) GetLatest(exchange, pair string) (float64, error) {
 
 }
 
+func (kr *Kredis) GetLatestValue(key string) (string, error) {
+	kr.mu.Lock()
+	valueInt, err := kr.conn.Do("LINDEX", key, 0)
+	kr.mu.Unlock()
+
+	if err != nil {
+		err = fmt.Errorf("while getting value:", err.Error())
+	}
+
+	valueStr := string(valueInt.([]uint8))
+
+	return valueStr, err
+}
+
+func (kr *Kredis) GetRange(key string, size int) (retList []string, err error) {
+
+	kr.mu.Lock()
+	countUntype, err := kr.conn.Do("LLEN", key)
+	kr.mu.Unlock()
+	if err != nil {
+		return []string{}, err
+	}
+
+	countInt := int(countUntype.(int64))
+
+	getSize := size
+
+	if countInt < getSize {
+		getSize = countInt
+	}
+
+	retList = make([]string, getSize)
+
+	kr.mu.Lock()
+	rawList, err := kr.conn.Do("LRANGE", key, 0, getSize-1)
+	kr.mu.Unlock()
+
+	if err != nil {
+		err = fmt.Errorf("while getting value:", err.Error())
+	}
+
+	for ID, element := range rawList.([]interface{}) {
+		valueStr := string(element.([]uint8))
+		if err != nil {
+			return retList, err
+		}
+		retList[ID] = valueStr
+	}
+
+	return retList, err
+}
+
 func (kr *Kredis) GetList(exchange, pair string) (retList []float64, err error) {
 
 	key := fmt.Sprintf("%s_%s", exchange, pair)
@@ -340,7 +392,7 @@ func (kr *Kredis) SubscriberChann() chan []string {
 }
 
 func (kr *Kredis) SubscriberMonitor() {
-
+	return
 	for {
 
 		switch v := kr.psc.Receive().(type) {

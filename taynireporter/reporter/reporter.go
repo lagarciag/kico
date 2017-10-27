@@ -7,11 +7,14 @@ import (
 	//"time"
 	"strings"
 
-	"encoding/json"
-
 	"os"
 
+	"time"
+
+	"encoding/json"
 	"reflect"
+
+	"sync"
 
 	"github.com/lagarciag/tayni/kredis"
 	"github.com/lagarciag/tayni/statistician"
@@ -24,6 +27,11 @@ type reporter struct {
 	lookupName string
 }
 
+type writterMesg struct {
+	value string
+	file  *os.File
+}
+
 func NewReporter(kr *kredis.Kredis, lookupName string) *reporter {
 
 	rep := &reporter{}
@@ -34,7 +42,6 @@ func NewReporter(kr *kredis.Kredis, lookupName string) *reporter {
 }
 
 func Start() {
-	log.Info("Hello world")
 
 	kr := kredis.NewKredis(1300000)
 	kr.Start()
@@ -42,10 +49,7 @@ func Start() {
 	// ----------------------
 	// Monitor subscriptions
 	// ----------------------
-	go kr.SubscriberMonitor()
-
-	csvMap := make(map[string]*os.File)
-	go Monitor(kr, csvMap)
+	//go kr.SubscriberMonitor()
 
 	exchanges := viper.Get("exchange").(map[string]interface{})
 
@@ -102,9 +106,7 @@ func Start() {
 					log.Fatal("Error wirting file", err.Error())
 				}
 
-				csvMap[statsKey] = file
-
-				kr.SubscribeLookup(statsKey)
+				go Monitor(kr, statsKey, file)
 
 			}
 
@@ -113,55 +115,105 @@ func Start() {
 	}
 }
 
-func Monitor(kr *kredis.Kredis, csvMap map[string]*os.File) {
-	var indicator statistician.Indicators
+func Monitor(kr *kredis.Kredis, key string, file *os.File) {
 
-	subChan := kr.SubscriberChann()
-	csvHeadDone := make(map[string]bool)
+	readerTicker := time.NewTicker(time.Second * 5)
+	writerChan := make(chan string, 100000)
+	headDone := false
 
-	for data := range subChan {
-		key := data[0]
-		data := data[1]
-		err := json.Unmarshal([]byte(data), &indicator)
+	condLock := sync.NewCond(&sync.Mutex{})
 
-		if err != nil {
-			log.Fatal("Could not unmarshal: ", key)
+	go dbReader(key, readerTicker, kr, writerChan)
+
+	time.Sleep(time.Second)
+
+	go writerRoutine(key, file, headDone, writerChan, kr, condLock)
+
+	log.Info("geting data from redis, ", key)
+
+	rows, err := kr.GetRange(key, 30000)
+
+	if err != nil {
+		log.Fatal("error: ", err.Error())
+	}
+
+	for ID, row := range rows {
+
+		if ID%100 == 0 {
+			log.Infof("%30s : %5d", key, ID)
 		}
 
-		headDone := false
-		headDone, _ =  csvHeadDone[key]
+		headDone = writer(key, row, file, headDone)
+	}
+	log.Info("DONE reading db:", key)
 
-		v := reflect.ValueOf(indicator)
+	condLock.Broadcast()
 
+}
 
-		row := ""
-		head := ""
+func writerRoutine(key string, file *os.File, headDone bool, writerChan chan string, kr *kredis.Kredis, cond *sync.Cond) {
 
-		for i := 0; i < v.NumField(); i++ {
-			//log.Infof("F: %s %s ", v.Field(i), v.Type().Field(i).Name)
-			a := fmt.Sprintf("%v,", v.Field(i))
-			b := fmt.Sprintf("%v,",v.Type().Field(i).Name)
-			row = row + a
-			head = head + b
-		}
+	cond.L.Lock()
+	cond.Wait()
+	cond.L.Unlock()
 
-		log.Info(key, row)
-		file := csvMap[key]
-		if !headDone {
-			writeCsv(key,head,file)
-			csvHeadDone[key] = true
-		}
-
-		writeCsv(key, row, file)
-
+	for value := range writerChan {
+		headDone = writer(key, value, file, headDone)
 	}
 
 }
 
-func writeCsv(name string, value string, file *os.File) {
+func dbReader(key string, readerTicker *time.Ticker, kr *kredis.Kredis, writerChan chan string) {
 
-	path := fmt.Sprintf("/tmp/%s.csv", name)
-	log.Info("Writing: ", path)
+	for _ = range readerTicker.C {
+		value, err := kr.GetLatestValue(key)
+		if err != nil {
+			log.Error("Could not get latest value: ", err.Error())
+		}
+		writerChan <- value
+	}
+
+}
+
+func writer(key string, value string, file *os.File, headDone bool) bool {
+
+	var indicator statistician.Indicators
+	err := json.Unmarshal([]byte(value), &indicator)
+
+	if err != nil {
+		log.Fatal("Could not unmarshal: ", key)
+	}
+
+	indicator.Name = key
+
+	v := reflect.ValueOf(indicator)
+
+	row := ""
+	head := ""
+
+	for i := 0; i < v.NumField(); i++ {
+		//log.Infof("F: %s %s ", v.Field(i), v.Type().Field(i).Name)
+		a := fmt.Sprintf("%v,", v.Field(i))
+		b := fmt.Sprintf("%v,", v.Type().Field(i).Name)
+		row = row + a
+		head = head + b
+	}
+
+	if !headDone {
+		writeCsv(head, file)
+		writeCsv(row, file)
+		headDone = true
+	} else {
+		writeCsv(row, file)
+	}
+
+	return headDone
+
+}
+
+func writeCsv(value string, file *os.File) {
+	//path := fmt.Sprintf("/tmp/%s.csv", file.Name())
+	//log.Info("Writing: ", path)
 
 	// write some text line-by-line to file
 	_, err := file.WriteString(value + "\n")
@@ -169,13 +221,12 @@ func writeCsv(name string, value string, file *os.File) {
 		log.Fatal("Error wirting file")
 	}
 
-	/*
-		// save changes
-		err = file.Sync()
-		if isError(err) {
-			log.Fatal("Error wirting file")
-		}
-	*/
+	// save changes
+	err = file.Sync()
+	if isError(err) {
+		log.Fatal("Error wirting file")
+	}
+
 }
 
 func isError(err error) bool {
