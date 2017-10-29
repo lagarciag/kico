@@ -52,6 +52,7 @@ func Start() {
 	//go kr.SubscriberMonitor()
 
 	exchanges := viper.Get("exchange").(map[string]interface{})
+	historyCount := int(viper.Get("history").(int64)) / 10
 
 	exchangesCount := len(exchanges)
 
@@ -106,7 +107,7 @@ func Start() {
 					log.Fatal("Error wirting file", err.Error())
 				}
 
-				go Monitor(kr, statsKey, file)
+				go Monitor(kr, statsKey, file, historyCount)
 
 			}
 
@@ -115,9 +116,9 @@ func Start() {
 	}
 }
 
-func Monitor(kr *kredis.Kredis, key string, file *os.File) {
-
-	readerTicker := time.NewTicker(time.Second * 5)
+func Monitor(kr *kredis.Kredis, key string, file *os.File, historyCount int) {
+	sampleRate := int(viper.Get("sample_rate").(int64))
+	readerTicker := time.NewTicker(time.Second * time.Duration(sampleRate))
 	writerChan := make(chan string, 100000)
 	headDone := false
 
@@ -131,7 +132,7 @@ func Monitor(kr *kredis.Kredis, key string, file *os.File) {
 
 	log.Info("geting data from redis, ", key)
 
-	rows, err := kr.GetRange(key, 30000)
+	rows, err := kr.GetRange(key, historyCount)
 
 	if err != nil {
 		log.Fatal("error: ", err.Error())

@@ -246,6 +246,34 @@ func (kr *Kredis) UpdateList(exchange, pair string) (valueString string, err err
 	return valueString, err
 }
 
+func (kr *Kredis) GetPriceValue(exchange, pair string) (valueString interface{}, err error) {
+
+	currentKey := fmt.Sprintf("PRICE_%s_%s", exchange, pair)
+	//log.Debug("update list: ", currentKey)
+
+	kr.mu.Lock()
+	currentValue, err := kr.connUpdateList.Do("GET", currentKey)
+	kr.mu.Unlock()
+	if err != nil {
+		log.Errorf("UpdateList on GET %s: %s ", currentKey, err.Error())
+	}
+
+	return currentValue, err
+
+}
+
+func (kr *Kredis) PushToPriceList(value interface{}, exchange, pair string) (retValue string, err error) {
+	err = kr.AddString(exchange, pair, value)
+
+	if err != nil {
+		log.Error("UpdateList on AddString: ", err.Error())
+	}
+
+	retValue = string(value.([]uint8))
+
+	return retValue, err
+}
+
 func (kr *Kredis) GetLatest(exchange, pair string) (float64, error) {
 
 	key := fmt.Sprintf("%s_%s", exchange, pair)

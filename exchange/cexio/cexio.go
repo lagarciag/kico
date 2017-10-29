@@ -12,25 +12,28 @@ import (
 
 	"strconv"
 
+	"github.com/VividCortex/ewma"
 	"github.com/coreos/go-systemd/daemon"
 	"github.com/lagarciag/tayni/kredis"
 	"github.com/lagarciag/tayni/statistician"
 )
 
-const minuteTicks = 30
-
 type CollectorConfig struct {
-	CexioKey    string
-	CexioSecret string
-	Pairs       []string
+	CexioKey     string
+	CexioSecret  string
+	Pairs        []string
+	SampleRate   int
+	HistoryCount int
 }
 
 type Bot struct {
-	name   string
-	key    string
-	secret string
-	pairs  []string
-	api    *cexioapi.API
+	name         string
+	key          string
+	secret       string
+	pairs        []string
+	sampleRate   int
+	historyCount int
+	api          *cexioapi.API
 
 	apiLock *sync.Mutex
 	kr      *kredis.Kredis
@@ -47,9 +50,11 @@ type Bot struct {
 	// --------------------
 	priceUpdateTimer *time.Ticker
 	shutdownCond     *sync.Cond
+	priceUpdaterCond *sync.Cond
 	apiError         chan error
 	stop             chan bool
 	apiStop          chan bool
+	priceAdderChan   chan float64
 	apiOnline        bool
 }
 
@@ -59,20 +64,22 @@ func NewBot(config CollectorConfig, kr *kredis.Kredis) (bot *Bot) {
 	//Move this to a secure location
 	//--------------------------------
 	bot = &Bot{}
-
+	bot.historyCount = config.HistoryCount
 	bot.name = "CEXIO"
 	bot.key = config.CexioKey
 	bot.pairs = config.Pairs
+	bot.sampleRate = config.SampleRate
 	bot.secret = config.CexioSecret
 	bot.kr = kr
-	bot.ticksPerMinute = minuteTicks
 	bot.api, bot.apiError = cexioapi.NewPublicAPI()
 
 	bot.tickerSub = make(chan cexioapi.ResponseTickerSubData)
 
 	bot.shutdownCond = sync.NewCond(&sync.Mutex{})
+	bot.priceUpdaterCond = sync.NewCond(&sync.Mutex{})
 	bot.apiStop = make(chan bool)
 	bot.stop = make(chan bool)
+	bot.priceAdderChan = make(chan float64, 300000)
 	// -----------------------
 	// Start Error monitoring
 	// -----------------------
@@ -82,7 +89,7 @@ func NewBot(config CollectorConfig, kr *kredis.Kredis) (bot *Bot) {
 
 	cID := 0
 	for _, pairName := range bot.pairs {
-		bot.stats[pairName] = statistician.NewStatistician(bot.name, bot.pairs[cID], bot.kr, false)
+		bot.stats[pairName] = statistician.NewStatistician(bot.name, bot.pairs[cID], bot.kr, false, bot.sampleRate)
 		cID++
 	}
 
@@ -115,7 +122,7 @@ func (bot *Bot) errorMonitor() {
 func (bot *Bot) pStart() {
 	log.Info("Starting Public CEXIO collector")
 	bot.kr.Start()
-	bot.priceUpdateTimer = time.NewTicker(time.Second * 2)
+	bot.priceUpdateTimer = time.NewTicker(time.Second * time.Duration(bot.sampleRate))
 	go bot.exchangeConnect()
 
 }
@@ -160,11 +167,6 @@ func (bot *Bot) Start() {
 
 	for _, pair := range bot.pairs {
 
-		//ccList := pairs.PairsHash[pair]
-
-		//code1 := ccList[0]
-		//code2 := ccList[1]
-
 		statusCount, err := bot.kr.GetCounter(bot.name, pair)
 
 		if err != nil {
@@ -199,11 +201,6 @@ func (bot *Bot) exchangeConnect() {
 
 	for _, pair := range bot.pairs {
 
-		//ccList := pairs.PairsHash[pair]
-
-		//code1 := ccList[0]
-		//code2 := ccList[1]
-
 		statusCount, err := bot.kr.GetCounter(bot.name, pair)
 
 		if err != nil {
@@ -221,22 +218,88 @@ func (bot *Bot) exchangeConnect() {
 }
 
 func (bot *Bot) MonitorPrice() {
+	monTimer := time.NewTicker(time.Second)
+	priceLock := &sync.Mutex{}
+	emaMapLock := &sync.Mutex{}
+
+	priceUpdateMap := make(map[string]cexioapi.ResponseTickerSubData)
+	priceUpdateEmaMap := make(map[string]ewma.MovingAverage)
 
 	go bot.api.TickerSub(bot.tickerSub)
 	log.Info("Waiting for price change...")
 	for {
 		select {
-		case priceUpdate := <-bot.tickerSub:
+		case lPriceUpdate := <-bot.tickerSub:
 			{
-				pair := fmt.Sprintf("%s%s", priceUpdate.Symbol1, priceUpdate.Symbol2)
+				pair := fmt.Sprintf("%s%s", lPriceUpdate.Symbol1, lPriceUpdate.Symbol2)
 				key := fmt.Sprintf("PRICE_%s_%s", bot.name, pair)
-				log.Infof("Price update: %s : %s", key, priceUpdate.Price)
-				bot.kr.Update(bot.name, pair, priceUpdate.Price)
+
+				// -------------
+				// Save price
+				// -------------
+				priceLock.Lock()
+				priceUpdateMap[key] = lPriceUpdate
+				priceLock.Unlock()
+				// -------------------------------
+				// Check if ewma already exists
+				// it not, create it
+				// --------------------------------
+				emaMapLock.Lock()
+				_, ok := priceUpdateEmaMap[key]
+
+				if !ok {
+					priceUpdateEmaMap[key] = ewma.NewMovingAverage(float64(bot.sampleRate))
+					priceFloat, err := strconv.ParseFloat(lPriceUpdate.Price, 64)
+					if err != nil {
+						log.Fatal("converting string to float: ", err.Error())
+					}
+					for i := 0; i < 10; i++ {
+						priceUpdateEmaMap[key].Add(priceFloat)
+					}
+
+				}
+				emaMapLock.Unlock()
+
+				log.Infof("Price update: %s : %s", key, lPriceUpdate.Price)
+				pair = fmt.Sprintf("%s_RAW", pair)
+				bot.kr.Update(bot.name, pair, lPriceUpdate.Price)
 			}
 		case <-bot.apiStop:
 			{
 				log.Info("ApiStop detected, exiting MonitorPrice")
+				//monTimer.Stop()
 				return
+			}
+
+		case <-monTimer.C:
+			{
+
+				for key := range priceUpdateMap {
+
+					priceLock.Lock()
+					xPriceUpdate := priceUpdateMap[key]
+					priceLock.Unlock()
+
+					pair := fmt.Sprintf("%s%s", xPriceUpdate.Symbol1, xPriceUpdate.Symbol2)
+					key := fmt.Sprintf("PRICE_%s_%s", bot.name, pair)
+
+					if pair == "" {
+						log.Info("pair warm up...", key)
+					} else {
+
+						priceFloat, err := strconv.ParseFloat(xPriceUpdate.Price, 64)
+						if err != nil {
+							log.Fatal("converting string to float: ", err.Error())
+						}
+
+						emaMapLock.Lock()
+						priceUpdateEmaMap[key].Add(priceFloat)
+						avgPriceString := fmt.Sprintf("%f", priceUpdateEmaMap[key].Value())
+						emaMapLock.Unlock()
+						//log.Infof("Real Price update: %s : %s, %s", key, avgPriceString, xPriceUpdate.Price)
+						bot.kr.Update(bot.name, pair, avgPriceString)
+					}
+				}
 			}
 		}
 	}
@@ -244,15 +307,73 @@ func (bot *Bot) MonitorPrice() {
 
 func (bot *Bot) UpdatePriceLists(exchange, pair string) {
 	log.Debugf("Starting price update routine for : %s_%s ", exchange, pair)
-	counter := 0
-	for _ = range bot.priceUpdateTimer.C {
-		valueStr, err := bot.kr.UpdateList(exchange, pair)
 
+	// -----------------------------------------------------
+	// Start price updater, it will not update price to db
+	// until recovery is done
+	// -----------------------------------------------------
+	go bot.priceUpdater(exchange, pair)
+
+	// -----------------------------------------------
+	// Get price list to recover prices statistics
+	// -----------------------------------------------
+	key := fmt.Sprintf("%s_%s", exchange, pair)
+	log.Info("Sarting DB recovery for pair: ", pair)
+	list, err := bot.kr.GetRange(key, bot.historyCount)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+
+	// --------------------------------------------------------
+	// Do not allow Db updates by statistician & friends while
+	// recovery is done
+	// --------------------------------------------------------
+	bot.stats[pair].SetDbUpdates(false)
+
+	for _, valueStr := range list {
+		value, err := strconv.ParseFloat(valueStr, 64)
+		if err != nil {
+			log.Fatal(err.Error())
+
+		}
+		bot.stats[pair].Add(value)
+	}
+	// -----------------------------------------------
+	// re-enable Db updates for statistician & friends
+	// -----------------------------------------------
+	bot.stats[pair].SetDbUpdates(true)
+	log.Infof("DB recovery complete , reprocessed %d entries for pair %s : ", len(list), pair)
+	time.Sleep(time.Second)
+
+	// ----------------------------------------
+	// Send broadcast to enable writing to db
+	// by running price collector (priceAdder)
+	// -----------------------------------------
+	bot.priceUpdaterCond.Broadcast()
+}
+
+func (bot *Bot) priceUpdater(exchange, pair string) {
+	go bot.priceAdder(pair)
+	counter := 0
+
+	for _ = range bot.priceUpdateTimer.C {
+		//valueStr, err := bot.kr.UpdateList(exchange, pair)
+
+		valueInterface, err := bot.kr.GetPriceValue(exchange, pair)
+		if err != nil {
+			log.Fatal("error obtaining price value :", bot.pairs)
+		}
+
+		valueStr, err := bot.kr.PushToPriceList(valueInterface, exchange, pair)
 		if err != nil {
 			log.Fatal("error updating list: ", err.Error())
 		}
 		value, err := strconv.ParseFloat(valueStr, 64)
-		bot.stats[pair].Add(value)
+
+		//priceEma.Add(value)
+		//log.Info("update value:", value)
+		bot.priceAdderChan <- value
+		//bot.stats[pair].Add(value)
 
 		if counter%(60*5) == 0 {
 			log.Infof("Saving value, exchange: %s , pair %s , value :%f", exchange, pair, value)
@@ -261,6 +382,33 @@ func (bot *Bot) UpdatePriceLists(exchange, pair string) {
 		daemon.SdNotify(false, "WATCHDOG=1")
 	}
 	log.Info("UpdatePriceLists exiting...")
+
+}
+
+func (bot *Bot) priceAdder(pair string) {
+
+	bot.priceUpdaterCond.L.Lock()
+	log.Info("priceAdder Waiting for pair :", pair)
+	bot.priceUpdaterCond.Wait()
+	bot.priceUpdaterCond.L.Unlock()
+	log.Info("priceAdder waken up for pair :", pair)
+
+	for {
+		select {
+		case value := <-bot.priceAdderChan:
+			{
+
+				log.Info("update value:", value)
+				bot.stats[pair].Add(value)
+			}
+
+		case _ = <-bot.stop:
+			{
+				return
+			}
+
+		}
+	}
 }
 
 func (bot *Bot) Stop() {

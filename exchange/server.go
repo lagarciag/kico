@@ -22,6 +22,10 @@ func Start(shutdownCond *sync.Cond) {
 	// ------------------------------
 	securityMap := viper.Get("security").(map[string]interface{})
 	exchanges := viper.Get("exchange").(map[string]interface{})
+	sampleRate := int(viper.Get("sample_rate").(int64))
+	historyCount := int(viper.Get("history").(int64))
+
+	log.Info("SampleRate: ", sampleRate)
 
 	//TODO: Complete the following to enable multipe exchanges
 	exchangesBots := make(map[string]taynibot.Automata)
@@ -37,6 +41,8 @@ func Start(shutdownCond *sync.Cond) {
 		// Set up bot configuration
 		// -------------------------
 		botConfig := cexio.CollectorConfig{}
+		botConfig.HistoryCount = historyCount
+		botConfig.SampleRate = sampleRate
 		pairsIntMap := exchanges[key].(map[string]interface{})
 		pairsIntList := pairsIntMap["pairs"].([]interface{})
 

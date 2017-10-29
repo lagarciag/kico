@@ -3,18 +3,13 @@ package statistician
 import (
 	"fmt"
 
-	"strings"
-
 	"time"
-
-	"sync"
 
 	"github.com/lagarciag/tayni/kredis"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
-var lifeCond *sync.Cond
 var Run bool
 
 const feeCharge = 0.2
@@ -45,7 +40,7 @@ const (
 )
 
 const (
-	sampleRate = 30 // samples per minute (2 seconds)
+//sampleRate = 30 // samples per minute (2 seconds)
 )
 
 type Statistician struct {
@@ -53,21 +48,22 @@ type Statistician struct {
 
 	latestPrice float64
 
-	statsHash   map[uint]*MinuteStrategy
+	statsHash   map[int]*MinuteStrategy
 	stdLimitMap map[uint]float64
 
-	minuteStrategies []uint
+	minuteStrategies []int
 
 	tickCounter int
 
-	exchange string
-	pair     string
-	key      string
+	exchange   string
+	pair       string
+	key        string
+	sampleRate int
 
 	kr *kredis.Kredis
 }
 
-func NewStatistician(exchange, pair string, kr *kredis.Kredis, warmUp bool) *Statistician {
+func NewStatistician(exchange, pair string, kr *kredis.Kredis, warmUp bool, sampleRate int) *Statistician {
 	log.Debugf("Creating statistician for exchange : %s, pair : %s", exchange, pair)
 	stdLimitList := []float64{MinuteStdLimit, Minute5StdLimit, Minute10StdLimit, Minute30StdLimit,
 		Hour1StdLimit, Hour2StdLimit, Hour4StdLimit, Hour12StdLimit, Hour24StdLimit}
@@ -80,24 +76,30 @@ func NewStatistician(exchange, pair string, kr *kredis.Kredis, warmUp bool) *Sta
 	//statistician.minuteStrategies = []uint{Minute, Minute5, Minute10, Minute30, Hour1, Hour2, Hour4, Hour12, Hour24}
 
 	minuteStrategiesInterface := viper.Get("minute_strategies").([]interface{})
-	statistician.minuteStrategies = make([]uint, len(minuteStrategiesInterface))
+	statistician.minuteStrategies = make([]int, len(minuteStrategiesInterface))
 
 	for ID, minutes := range minuteStrategiesInterface {
-		statistician.minuteStrategies[ID] = uint(minutes.(int64))
+		statistician.minuteStrategies[ID] = int(minutes.(int64))
 	}
 
 	statistician.kr = kr
 
-	statistician.statsHash = make(map[uint]*MinuteStrategy)
+	statistician.statsHash = make(map[int]*MinuteStrategy)
 
 	for ID, pstat := range statistician.minuteStrategies {
 		//log.Info("MinuteStrategy : ", statistician.key, pstat)
-		ms := NewMinuteStrategy(statistician.key, pstat, stdLimitList[ID], false, kr)
+		ms := NewMinuteStrategy(statistician.key, pstat, stdLimitList[ID], false, kr, sampleRate)
 		statistician.statsHash[pstat] = ms
 
 	}
 
 	return statistician
+}
+func (st *Statistician) SetDbUpdates(do bool) {
+	for key := range st.statsHash {
+		tStat := st.statsHash[key]
+		tStat.SetDbUpdate(do)
+	}
 }
 
 func (st *Statistician) Add(val float64) {
@@ -112,7 +114,7 @@ func (st *Statistician) Add(val float64) {
 	st.tickCounter++
 }
 
-func (st *Statistician) EMA(size uint) (val float64, err error) {
+func (st *Statistician) EMA(size int) (val float64, err error) {
 	ema, ok := st.statsHash[size]
 	if ok {
 		return ema.movingStats.Ema1(), nil
@@ -120,7 +122,7 @@ func (st *Statistician) EMA(size uint) (val float64, err error) {
 	return float64(0), fmt.Errorf("Invalid size request")
 }
 
-func (st *Statistician) StdDev(size uint) (val float64, err error) {
+func (st *Statistician) StdDev(size int) (val float64, err error) {
 	aStat, ok := st.statsHash[size]
 	dev := aStat.movingStats.StdDevLong()
 	price := aStat.movingStats.SMA1()
@@ -131,7 +133,7 @@ func (st *Statistician) StdDev(size uint) (val float64, err error) {
 	return float64(percentageDev), fmt.Errorf("Invalid size request")
 }
 
-func (st *Statistician) Sma(size uint) (val float64, err error) {
+func (st *Statistician) Sma(size int) (val float64, err error) {
 	aStat, ok := st.statsHash[size]
 	average := aStat.movingStats.SMA1()
 	if ok {
@@ -140,7 +142,7 @@ func (st *Statistician) Sma(size uint) (val float64, err error) {
 	return float64(average), fmt.Errorf("Invalid size request")
 }
 
-func (st *Statistician) MacdDivBullish(size uint) (bool, error) {
+func (st *Statistician) MacdDivBullish(size int) (bool, error) {
 	aStat, ok := st.statsHash[size]
 
 	if ok {
@@ -154,90 +156,12 @@ func (st *Statistician) MacdDivBullish(size uint) (bool, error) {
 	return false, fmt.Errorf("Invalid size request")
 }
 
-func (st *Statistician) Stable(size uint) (bool, error) {
+func (st *Statistician) Stable(size int) (bool, error) {
 	aStat, ok := st.statsHash[size]
 	if ok {
 		return aStat.stable, nil
 	}
 	return false, fmt.Errorf("Invalid size request")
-}
-
-func Start() {
-	lifeCond = sync.NewCond(&sync.Mutex{})
-	Run = true
-	kr := kredis.NewKredis(1300000)
-	kr.Start()
-	exchanges := viper.Get("exchange").(map[string]interface{})
-
-	exchangesCount := len(exchanges)
-
-	statsMap := make(map[string]*Statistician)
-
-	log.Info("Configured exchanges: ", exchangesCount)
-
-	for key := range exchanges {
-		exchangeName := strings.ToUpper(key)
-		log.Info("Exchange: ", key)
-
-		// ---------------------------
-		// Set up bot configuration
-		// -------------------------
-		pairsIntMap := exchanges[key].(map[string]interface{})
-		pairsIntList := pairsIntMap["pairs"].([]interface{})
-
-		pairs := make([]string, len(pairsIntList))
-
-		for i, pair := range pairsIntList {
-
-			statsKey := fmt.Sprintf("%s_%s", exchangeName, pair.(string))
-			statsMap[statsKey] = NewStatistician(exchangeName, pair.(string), kr, true)
-
-			pairs[i] = pair.(string)
-			log.Infof("Getting list for exchange: %s, pair: %s ", exchangeName, pair)
-
-			priceHistory, err := kr.GetList(exchangeName, pair.(string))
-
-			if err != nil {
-				log.Fatal("Error:", err.Error())
-			}
-
-			/*
-				for _, price := range priceHistory {
-
-					statsMap[statsKey].Add(price)
-
-				}
-			*/
-
-			log.Info("Loaded :", len(priceHistory))
-
-		}
-
-		log.Info("Pairs: ", pairs)
-
-	}
-
-	log.Info("Statistician starting...")
-
-	for key := range exchanges {
-		exchangeName := strings.ToUpper(key)
-		log.Info("Exchange subscription: ", key)
-
-		// ---------------------------
-		// Set up bot configuration
-		// -------------------------
-		pairsIntMap := exchanges[key].(map[string]interface{})
-		pairsIntList := pairsIntMap["pairs"].([]interface{})
-		go trackExchange(exchangeName, pairsIntList, statsMap, kr)
-
-	}
-
-	for {
-		lifeCond.L.Lock()
-		lifeCond.Wait()
-		lifeCond.L.Unlock()
-	}
-
 }
 
 func trackExchange(exchangeName string,
@@ -267,10 +191,5 @@ func trackExchange(exchangeName string,
 		counter++
 		time.Sleep(time.Second * 2)
 	}
-
-}
-
-func foo(value float64) {
-	//log.Info("Adding value:", value)
 
 }

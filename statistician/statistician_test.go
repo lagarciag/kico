@@ -29,7 +29,7 @@ func TestMain(m *testing.M) {
 
 func BenchmarkAddValues(b *testing.B) {
 
-	stat := statistician.NewStatistician("TEST", "TEST_PAIR", kr, false)
+	stat := statistician.NewStatistician("TEST", "TEST_PAIR", kr, false, 10)
 	// run the Fib function b.N times
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
@@ -46,7 +46,7 @@ func TestStatistitianAdd(t *testing.T) {
 
 	for _, window := range minuteStrategies {
 
-		stat := statistician.NewStatistician("TEST", "TEST_PAIR", kr, false)
+		stat := statistician.NewStatistician("TEST", "TEST_PAIR", kr, false, 10)
 
 		for count := 0; count < (int(window)*stablePeriodsCount)+1; count++ {
 			value := float64(rand.Intn(10000))
@@ -80,7 +80,7 @@ func TestStatistitianAddWarmUp(t *testing.T) {
 
 	for _, window := range minuteStrategies {
 
-		stat := statistician.NewStatistician("TEST", "TEST_PAIR", kr, false)
+		stat := statistician.NewStatistician("TEST", "TEST_PAIR", kr, false, 10)
 
 		for count := 0; count < 1; count++ {
 			value := float64(rand.Intn(10000))

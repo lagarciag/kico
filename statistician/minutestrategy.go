@@ -47,8 +47,9 @@ type Indicators struct {
 	TR  float64 `json:"tr"`
 	ATR float64 `json:"atr"`
 
-	Md9 float64 `json:"md_9"`
-	Buy bool    `json:"buy"`
+	Md9  float64 `json:"md_9"`
+	Buy  bool    `json:"buy"`
+	Sell bool    `json:"sell"`
 }
 
 type MinuteStrategy struct {
@@ -72,11 +73,13 @@ type MinuteStrategy struct {
 
 	sampleRate int
 
+	multiplier int
+
 	// Moving windows size in minutes
-	minuteWindowSize uint
+	minuteWindowSize int
 
 	// This is the windows size in number of samples
-	movingSampleWindowSize uint
+	movingSampleWindowSize int
 
 	// True when the samples complete the window size
 	stable bool
@@ -84,10 +87,10 @@ type MinuteStrategy struct {
 	// Number of samples to be taken to consider the strategy stable.
 	// This number is not necesary the movingSampleWindowSize as there could
 	// be data that requires more samples for a correct calculation
-	stableCount uint
+	stableCount int
 
 	// Holds the current count of samples
-	currentSampleCount uint
+	currentSampleCount int
 
 	// This is the object that holds and does the statistical math
 	movingStats *movingstats.MovingStats
@@ -110,61 +113,17 @@ type MinuteStrategy struct {
 	fh  *os.File
 
 	indicatorsChan chan Indicators
+
+	buy  bool
+	sell bool
+
+	doDbUpdate bool
 }
 
-func NewMinuteStrategy(name string, minuteWindowSize uint, stdLimit float64, doLog bool, kr *kredis.Kredis) *MinuteStrategy {
+func NewMinuteStrategy(name string, minuteWindowSize int, stdLimit float64, doLog bool, kr *kredis.Kredis, sampleRate int) *MinuteStrategy {
 
 	ID := fmt.Sprintf("%s_MS_%d", name, minuteWindowSize)
 
-	// --------------
-	// Setup logging
-	// --------------
-	//logName := fmt.Sprintf("/tmp/%s.log", ID)
-	//csvFile := fmt.Sprintf("/tmp/%s.csv", ID)
-
-	/*
-		if _, err := os.Stat(logName); !os.IsNotExist(err) {
-			err := os.Remove(logName)
-			if err != nil {
-				fmt.Println(err)
-				panic("Could not delete file")
-			}
-		}
-
-		if _, err := os.Stat(csvFile); !os.IsNotExist(err) {
-			err := os.Remove(csvFile)
-			if err != nil {
-				fmt.Println(err)
-				panic("Could not delete file")
-			}
-		}
-
-		f, err := os.Create(csvFile)
-
-		if err != nil {
-			panic(err)
-		}
-
-		f.WriteString("time,Count,VAL,SMA,STD,STDP,EMA,ELP,N,H,T,EMUP,MAC,Md9,MDI,MBUL,ADX,mDI,pDI,BUY\n")
-
-		log := logrus.New()
-		formatter := &logrus.TextFormatter{}
-		formatter.FullTimestamp = true
-		formatter.ForceColors = true
-		log.Level = logrus.DebugLevel
-		log.Formatter = formatter
-
-		if doLog {
-			filePath := logName
-			log.Info("Log file path:", filePath)
-			file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, 0666)
-			if err == nil {
-				log.Out = file
-			} else {
-				log.Info("Failed to log to file, using default stderr")
-			}
-		}
-	*/
 	// -------------------
 	// Setup MinutStrategy
 	// --------------------
@@ -174,15 +133,17 @@ func NewMinuteStrategy(name string, minuteWindowSize uint, stdLimit float64, doL
 	ps.init = true
 	ps.indicatorsChan = make(chan Indicators, 1300000)
 	ps.indicators = Indicators{}
+	ps.doDbUpdate = true
 	ps.kr = kr
 	//ps.fh = f
 	ps.mu = &sync.Mutex{}
 	ps.warmAppLock = sync.NewCond(&sync.Mutex{})
 	//ps.log = log
 	ps.sampleRate = sampleRate
+	ps.multiplier = 60 / sampleRate
 
 	ps.minuteWindowSize = minuteWindowSize
-	ps.movingSampleWindowSize = minuteWindowSize * sampleRate
+	ps.movingSampleWindowSize = minuteWindowSize * ps.multiplier
 
 	ps.movingStats = movingstats.NewMovingStats(int(ps.movingSampleWindowSize))
 	ps.addChannel = make(chan float64, ps.movingSampleWindowSize)
@@ -190,12 +151,16 @@ func NewMinuteStrategy(name string, minuteWindowSize uint, stdLimit float64, doL
 	ps.stable = false
 
 	ps.stDevBuyLimit = stdLimit
-	ps.stableCount = sampleRate * minuteWindowSize * 26
+	ps.stableCount = ps.movingSampleWindowSize * 26
 
 	go ps.indicatorsStorer()
 
 	return ps
 
+}
+
+func (ms *MinuteStrategy) SetDbUpdate(do bool) {
+	ms.doDbUpdate = do
 }
 
 func (ms *MinuteStrategy) WarmUp(value float64) {
@@ -232,6 +197,8 @@ func (ms *MinuteStrategy) add(value float64) {
 		ms.stable = true
 	}
 	ms.currentSampleCount++
+
+	ms.buySellUpdate()
 
 	if ms.warmUpComplete {
 		ms.updateIndicators()
@@ -317,16 +284,21 @@ func (ms *MinuteStrategy) EmaDirectionUp() bool {
 	return ms.movingStats.Ema1Up()
 }
 
-func (ms *MinuteStrategy) Buy() bool {
+func (ms *MinuteStrategy) buySellUpdate() {
+
+	ms.buy = false
+	ms.sell = false
 
 	adx := ms.movingStats.Adx()
 	mDI := ms.movingStats.MinusDI()
 	pDI := ms.movingStats.PlusDI()
 
-	directionalBull := false
+	pDirectionalBull := false
+	mDirectionalBear := false
 	adxBull := false
 	pDIBull := false
-	diBull := false
+	mDIBear := false
+	//diBull := false
 
 	if adx > float64(25) {
 		adxBull = true
@@ -336,20 +308,34 @@ func (ms *MinuteStrategy) Buy() bool {
 		pDIBull = true
 	}
 
-	if pDI > mDI {
-		diBull = false
+	if mDI > float64(25) {
+		mDIBear = true
 	}
 
-	if diBull && (pDIBull || adxBull) {
-		directionalBull = true
-	} else {
-		directionalBull = false
+	if pDIBull || adxBull {
+		pDirectionalBull = true
 	}
 
-	if directionalBull && ms.MacdBullish() && ms.EmaDirectionUp() {
-		return true
+	if mDIBear {
+		mDirectionalBear = true
 	}
-	return false
+
+	if pDirectionalBull && ms.MacdBullish() && ms.EmaDirectionUp() {
+		ms.buy = true
+	}
+
+	if mDirectionalBear && !ms.MacdBullish() && !ms.EmaDirectionUp() {
+		ms.sell = true
+	}
+
+}
+
+func (ms *MinuteStrategy) Buy() bool {
+	return ms.buy
+}
+
+func (ms *MinuteStrategy) Sell() bool {
+	return ms.sell
 }
 
 // --------------
@@ -361,110 +347,97 @@ func (ms *MinuteStrategy) Stable() bool {
 }
 
 func (ms *MinuteStrategy) updateIndicators() {
-	ms.indicators.LastValue = ms.LatestValue
 
-	ms.indicators.Sma = ms.movingStats.SMA1()
+	if ms.doDbUpdate {
 
-	ms.indicators.Ema = ms.Ema()
+		ms.indicators.LastValue = ms.LatestValue
 
-	ms.indicators.EmaUp = ms.EmaDirectionUp()
+		ms.indicators.Sma = ms.movingStats.SMA1()
 
-	ms.indicators.Slope = ms.EmaSlope()
+		ms.indicators.Ema = ms.Ema()
 
-	ms.indicators.MacdDiv = ms.movingStats.MacdDiv()
+		ms.indicators.EmaUp = ms.EmaDirectionUp()
 
-	ms.indicators.MacdBull = ms.MacdBullish()
-	ms.indicators.Macd = ms.movingStats.Macd()
+		ms.indicators.Slope = ms.EmaSlope()
 
-	stDev := ms.StdDev()
-	if math.IsNaN(stDev) {
-		ms.indicators.StdDev = 0
-	} else {
-		ms.indicators.StdDev = stDev
+		ms.indicators.MacdDiv = ms.movingStats.MacdDiv()
+
+		ms.indicators.MacdBull = ms.MacdBullish()
+		ms.indicators.Macd = ms.movingStats.Macd()
+
+		stDev := ms.StdDev()
+		if math.IsNaN(stDev) {
+			ms.indicators.StdDev = 0
+		} else {
+			ms.indicators.StdDev = stDev
+		}
+
+		stDevP := ms.StdDevPercentage()
+
+		if math.IsNaN(stDevP) {
+			ms.indicators.StdDevPercentage = 0
+		} else {
+			ms.indicators.StdDevPercentage = stDevP
+		}
+
+		//stdDevBuy := ms.StdDevBuy()
+		adx := ms.movingStats.Adx()
+
+		if math.IsNaN(adx) {
+			ms.indicators.Adx = 0
+		} else {
+			ms.indicators.Adx = adx
+		}
+
+		MDI := ms.movingStats.MinusDI()
+
+		if math.IsNaN(MDI) {
+			ms.indicators.MDI = 0
+		} else {
+			ms.indicators.MDI = MDI
+		}
+
+		PDI := ms.movingStats.PlusDI()
+
+		if math.IsNaN(PDI) {
+			ms.indicators.PDI = 0
+		} else {
+			ms.indicators.PDI = PDI
+		}
+
+		ms.indicators.Md9 = ms.movingStats.EmaMacd9()
+		ms.indicators.Buy = ms.buy
+		ms.indicators.Sell = ms.sell
+
+		ms.indicators.CHigh = ms.movingStats.CHigh()
+		ms.indicators.PHigh = ms.movingStats.PHigh()
+		ms.indicators.CLow = ms.movingStats.CLow()
+		ms.indicators.PLow = ms.movingStats.PLow()
+
+		ms.indicators.MDM = ms.movingStats.MinusDM()
+		ms.indicators.PDM = ms.movingStats.PlusDM()
+
+		ms.indicators.TR = ms.movingStats.TrueRange()
+		ms.indicators.ATR = ms.movingStats.Atr()
+
+		//--------------------
+		//Calculate UTC time
+		//--------------------
+
+		stringOffset := "+06.00h"
+
+		offSet, err := time.ParseDuration(stringOffset)
+		if err != nil {
+			panic(err)
+		}
+		ms.indicators.Date = fmtdate.Format("MM/DD/YYYY hh:mm:ss", time.Now().Add(offSet))
 	}
-
-	stDevP := ms.StdDevPercentage()
-
-	if math.IsNaN(stDevP) {
-		ms.indicators.StdDevPercentage = 0
-	} else {
-		ms.indicators.StdDevPercentage = stDevP
-	}
-
-	//stdDevBuy := ms.StdDevBuy()
-	adx := ms.movingStats.Adx()
-
-	if math.IsNaN(adx) {
-		ms.indicators.Adx = 0
-	} else {
-		ms.indicators.Adx = adx
-	}
-
-	MDI := ms.movingStats.MinusDI()
-
-	if math.IsNaN(MDI) {
-		ms.indicators.MDI = 0
-	} else {
-		ms.indicators.MDI = MDI
-	}
-
-	PDI := ms.movingStats.PlusDI()
-
-	if math.IsNaN(PDI) {
-		ms.indicators.PDI = 0
-	} else {
-		ms.indicators.PDI = PDI
-	}
-
-	ms.indicators.Md9 = ms.movingStats.EmaMacd9()
-	ms.indicators.Buy = ms.Buy()
-
-	ms.indicators.CHigh = ms.movingStats.CHigh()
-	ms.indicators.PHigh = ms.movingStats.PHigh()
-	ms.indicators.CLow = ms.movingStats.CLow()
-	ms.indicators.PLow = ms.movingStats.PLow()
-
-	ms.indicators.MDM = ms.movingStats.MinusDM()
-	ms.indicators.PDM = ms.movingStats.PlusDM()
-
-	ms.indicators.TR = ms.movingStats.TrueRange()
-	ms.indicators.ATR = ms.movingStats.Atr()
-
-	//--------------------
-	//Calculate UTC time
-	//--------------------
-
-	stringOffset := "+06.00h"
-
-	offSet, err := time.ParseDuration(stringOffset)
-	if err != nil {
-		panic(err)
-	}
-	ms.indicators.Date = fmtdate.Format("MM/DD/YYYY hh:mm:ss", time.Now().Add(offSet))
-
 }
-
-/*
-func (ms *MinuteStrategy) Print() string {
-
-	encode := `%-10d - VAL : %-4.2f - SMA: %-4.2f - STD: %-4.2f - STDP: %-4.2f - EMA: %-4.2f - ELP: %+4.2f N: %4.2f - H: %4.2f - T: %4.2F - EMUP: %-4v -MAC: %4.2f -Md9: %4.2f MDI: %-4.2f - MdBUL:%t - BUY:%t- `
-
-	toPrint := fmt.Sprintf(encode,
-		ms.currentSampleCount, ms.indicators.LastValue,
-		ms.indicators.Sma, ms.indicators.StdDev, ms.indicators.StdDevPercentage,
-		ms.indicators.Ema, ms.indicators.Slope, ms.movingStats.HistNow, ms.movingStats.HistMostRecent,
-		ms.movingStats.HistOldest, emaUup, macd,
-		md9, macdDiv, macdBull, buy)
-
-	return toPrint
-
-}
-*/
 
 func (ms *MinuteStrategy) storeIndicators() {
-
-	ms.indicatorsChan <- ms.indicators
-
+	if ms.doDbUpdate {
+		ms.indicatorsChan <- ms.indicators
+	}
 }
 
 func (ms *MinuteStrategy) indicatorsStorer() {
