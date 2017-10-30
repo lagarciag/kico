@@ -52,7 +52,7 @@ func Start() {
 	//go kr.SubscriberMonitor()
 
 	exchanges := viper.Get("exchange").(map[string]interface{})
-	historyCount := int(viper.Get("history").(int64)) / 10
+	historyCount := int(viper.Get("history").(int64)) / 5
 
 	exchangesCount := len(exchanges)
 
