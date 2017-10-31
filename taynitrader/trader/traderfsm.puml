@@ -1,0 +1,53 @@
+@startuml
+[*] --> Idle : startEvent
+
+Idle --> Trading :TradeEvent
+Trading --> [*] : ShutdownEvent
+Trading -->Minute120Buy : Minute120BuyEvent
+
+
+Hold --> [*] : ShutdownEvent
+DoSell --> Trading
+
+Minute120Buy --> Minute60Buy : Minute120BuyEvent
+Minute120Buy --> Trading  : Minute120SellEvent
+Minute120Buy --> Trading  : NotMinute120BuyEvent
+
+Minute60Buy --> Minute120Buy : NotMinute120BuyEvent
+Minute60Buy --> Minute120Buy : Minute60SellEvent
+Minute60Buy --> Minute120Buy : NotMinute60BuyEvent
+Minute60Buy --> Minute30Buy : Minute30BuyEvent
+
+Minute30Buy --> Minute60Buy : NotMinute60BuyEvent
+Minute30Buy --> Minute60Buy : Minute30SellEvent
+Minute30Buy --> Minute60Buy : NotMinute30BuyEvent
+Minute30Buy --> DoBuy : Minute15BuyEvent
+
+
+DoBuy --> Hold
+
+Hold --> Minute120Sell : Minute120SellEvent
+
+Minute120Sell --> Minute60Sell : Minute120SellEvent
+Minute120Sell --> Hold  : Minute120BuyEvent
+Minute120Sell --> Hold  : NotMinute120SellEvent
+
+Minute60Sell --> Minute120Sell : NotMinute120SellEvent
+Minute60Sell --> Minute120Sell : Minute60BuyEvent
+Minute60Sell --> Minute120Sell : NotMinute60SellEvent
+Minute60Sell --> Minute30Sell  : Minute30SellEvent
+
+Minute30Sell --> Minute60Sell : NotMinute60SellEvent
+Minute30Sell --> Minute60Sell : Minute30BuyEvent
+Minute30Sell --> Minute60Sell : NotMinute30SellEvent
+Minute30Sell --> DoSell : Minute15SellEvent
+
+
+
+
+
+}
+
+@enduml
+
+@enduml

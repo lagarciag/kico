@@ -47,6 +47,9 @@ type TradeFsm struct {
 
 func NewTradeFsm() *TradeFsm {
 
+	// UML Diagram
+	//http://www.plantuml.com/plantuml/uml/SoWkIImgAStDuOhMYbNGrRLJy4p9ILMmKW2BkvQbvfLmSO65G78XHOafcNdf2bOWHYf45YO6aWUPOQKGd55Qaf9VdeSXxvBlL5e9L00aeIPpSJcavgK0hGS0
+
 	tFsm := &TradeFsm{}
 
 	// ------------
