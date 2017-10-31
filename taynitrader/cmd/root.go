@@ -18,21 +18,26 @@ import (
 	"fmt"
 	"os"
 
+	"os/signal"
+	"sync"
+	"syscall"
+
 	"github.com/lagarciag/tayni/comonconfig"
-	"github.com/lagarciag/tayni/statistician"
+	"github.com/lagarciag/tayni/taynitrader/trader"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
-var logInFile bool
-
 var cfgFile string
+var osSignals chan os.Signal
+var shutDownCond *sync.Cond
 
 // RootCmd represents the base command when called without any subcommands
 var RootCmd = &cobra.Command{
-	Use:   "taynimath",
-	Short: "starts the taynimath services",
-	Long:  `starts the taynimath services.`,
-	Run:   func(cmd *cobra.Command, args []string) { statistician.Start() },
+	Use:   "taynitrader",
+	Short: "starts the taynitrader services",
+	Long:  `starts the taynitrader services.`,
+	Run:   func(cmd *cobra.Command, args []string) { start() },
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -50,15 +55,42 @@ func init() {
 	// Here you will define your flags and configuration settings.
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
-	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.taynimath.yaml)")
+	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.taynitrader.yaml)")
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
 	RootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
-
 }
 
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
-	comonconfig.LoadConfig("taynimath")
+	comonconfig.LoadConfig("taynireporter")
+}
+
+func start() {
+	// ---------------------------------------
+	// Register channel for signal detection
+	// ---------------------------------------
+
+	osSignals = make(chan os.Signal, 1)
+	signal.Notify(osSignals, syscall.SIGINT, syscall.SIGTERM, os.Interrupt, os.Kill)
+
+	shutDownCond = sync.NewCond(&sync.Mutex{})
+	go shutdownControl()
+	trader.Start()
+
+	shutDownCond.L.Lock()
+	shutDownCond.Wait()
+	shutDownCond.L.Unlock()
+
+	log.Info("Taynireporter shutdown...")
+
+}
+
+func shutdownControl() {
+	for range osSignals {
+		log.Info("Sending shutdown signal...")
+		shutDownCond.Broadcast()
+		return
+	}
 }

@@ -12,7 +12,6 @@ import (
 func (bot *Bot) callBackInWarmUpState(e *fsm.Event) {
 	log.Info("In WarmUp State: " + e.FSM.Current())
 	bot.event <- warmUpCompleteEventName
-
 }
 
 func (bot *Bot) callBackInWatchState(e *fsm.Event) {

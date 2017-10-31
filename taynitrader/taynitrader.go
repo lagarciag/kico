@@ -14,9 +14,7 @@
 
 package main
 
-import (
-	"github.com/lagarciag/tayni/taynimath/cmd"
-)
+import "github.com/lagarciag/tayni/taynitrader/cmd"
 
 func main() {
 	cmd.Execute()
