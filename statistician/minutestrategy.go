@@ -26,9 +26,14 @@ type Indicators struct {
 	Ema       float64 `json:"ema"`
 	EmaUp     bool    `json:"ema_up"`
 	Slope     float64 `json:"slope"`
-	MacdDiv   float64 `json:"macd_div"`
-	MacdBull  bool    `json:"macd_bull"`
-	Macd      float64 `json:"macd"`
+
+	// MACD indicators
+	Macd     float64 `json:"macd"`
+	Md9      float64 `json:"md_9"`
+	Macd12   float64 `json:"macd_12"`
+	Macd26   float64 `json:"macd_26"`
+	MacdDiv  float64 `json:"macd_div"`
+	MacdBull bool    `json:"macd_bull"`
 
 	StdDev           float64 `json:"std_dev"`
 	StdDevPercentage float64 `json:"std_dev_percentage"`
@@ -44,12 +49,14 @@ type Indicators struct {
 	MDI   float64 `json:"m_di"`
 	PDI   float64 `json:"p_di"`
 
+	// --------------
+	// True Range
+	// --------------
 	TR  float64 `json:"tr"`
 	ATR float64 `json:"atr"`
 
-	Md9  float64 `json:"md_9"`
-	Buy  bool    `json:"buy"`
-	Sell bool    `json:"sell"`
+	Buy  bool `json:"buy"`
+	Sell bool `json:"sell"`
 }
 
 type MinuteStrategy struct {
@@ -361,6 +368,9 @@ func (ms *MinuteStrategy) updateIndicators() {
 		ms.indicators.Slope = ms.EmaSlope()
 
 		ms.indicators.MacdDiv = ms.movingStats.MacdDiv()
+
+		ms.indicators.Macd12 = ms.movingStats.MacdEma12()
+		ms.indicators.Macd26 = ms.movingStats.MacdEma26()
 
 		ms.indicators.MacdBull = ms.MacdBullish()
 		ms.indicators.Macd = ms.movingStats.Macd()

@@ -9,7 +9,7 @@ Trading -->Minute120Buy : Minute120BuyEvent
 Hold --> [*] : ShutdownEvent
 DoSell --> Trading
 
-Minute120Buy --> Minute60Buy : Minute120BuyEvent
+Minute120Buy --> Minute60Buy : Minute60BuyEvent
 Minute120Buy --> Trading  : Minute120SellEvent
 Minute120Buy --> Trading  : NotMinute120BuyEvent
 
@@ -47,7 +47,5 @@ Minute30Sell --> DoSell : Minute15SellEvent
 
 
 }
-
-@enduml
 
 @enduml

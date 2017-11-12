@@ -52,7 +52,9 @@ func Start() {
 	//go kr.SubscriberMonitor()
 
 	exchanges := viper.Get("exchange").(map[string]interface{})
-	historyCount := int(viper.Get("history").(int64)) / 5
+	//historyCount := int(viper.Get("history").(int64)) / 100
+
+	historyCount := int(400)
 
 	exchangesCount := len(exchanges)
 
@@ -147,6 +149,8 @@ func Monitor(kr *kredis.Kredis, key string, file *os.File, historyCount int) {
 		headDone = writer(key, row, file, headDone)
 	}
 	log.Info("DONE reading db:", key)
+
+	os.Exit(0)
 
 	condLock.Broadcast()
 
