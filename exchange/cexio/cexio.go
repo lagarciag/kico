@@ -122,7 +122,12 @@ func (bot *Bot) errorMonitor() {
 func (bot *Bot) pStart() {
 	log.Info("Starting Public CEXIO collector")
 	bot.kr.Start()
-	bot.priceUpdateTimer = time.NewTicker(time.Second * time.Duration(bot.sampleRate))
+
+	priceUdateTimer := (time.Second * time.Duration(bot.sampleRate))
+
+	log.Info("Price Update timer set to : ", priceUdateTimer)
+
+	bot.priceUpdateTimer = time.NewTicker(priceUdateTimer)
 	go bot.exchangeConnect()
 
 }
@@ -317,12 +322,16 @@ func (bot *Bot) UpdatePriceLists(exchange, pair string) {
 	// -----------------------------------------------
 	// Get price list to recover prices statistics
 	// -----------------------------------------------
+
 	key := fmt.Sprintf("%s_%s", exchange, pair)
 	log.Info("Sarting DB recovery for pair: ", pair)
 	list, err := bot.kr.GetRange(key, bot.historyCount)
 	if err != nil {
-		log.Fatal(err.Error())
+		log.Fatal("Update Price list: error recovering --> ", err.Error())
 	}
+
+	historySize := len(list)
+	log.Info("History size is: ", historySize)
 
 	// --------------------------------------------------------
 	// Do not allow Db updates by statistician & friends while
@@ -330,13 +339,16 @@ func (bot *Bot) UpdatePriceLists(exchange, pair string) {
 	// --------------------------------------------------------
 	bot.stats[pair].SetDbUpdates(false)
 
-	for _, valueStr := range list {
-		value, err := strconv.ParseFloat(valueStr, 64)
-		if err != nil {
-			log.Fatal(err.Error())
+	if historySize > 1 {
+		for _, valueStr := range list {
+			value, err := strconv.ParseFloat(valueStr, 64)
+			if err != nil {
+				log.Error("Empty value in db: ", err.Error())
 
+			} else {
+				bot.stats[pair].Add(value)
+			}
 		}
-		bot.stats[pair].Add(value)
 	}
 	// -----------------------------------------------
 	// re-enable Db updates for statistician & friends

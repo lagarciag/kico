@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/lagarciag/ringbuffer"
+
 )
 
 type MovingAverage struct {

@@ -3,8 +3,8 @@ package movingstats
 import (
 	"sync"
 
-	"github.com/VividCortex/ewma"
 	"github.com/lagarciag/movingaverage"
+	"github.com/lagarciag/multiema"
 	"github.com/lagarciag/ringbuffer"
 	log "github.com/sirupsen/logrus"
 )
@@ -21,17 +21,17 @@ type MovingStats struct {
 	sma *movingaverage.MovingAverage
 
 	// True Range Average
-	atr ewma.MovingAverage
-
+	//atr ewma.MovingAverage
+	atr *multiema.MultiEma
 	// Directional Movement Index
-	plusDMAvr  ewma.MovingAverage
-	minusDMAvr ewma.MovingAverage
-	adxAvr     ewma.MovingAverage
+	plusDMAvr  *multiema.MultiEma
+	minusDMAvr *multiema.MultiEma
+	adxAvr     *multiema.MultiEma
 
 	smaLong *movingaverage.MovingAverage
 
 	/*
-		sEma        ewma.MovingAverage
+		sEma        *multiema.MultiEma
 		sEmaSlope   float64
 		sEmaUp      bool
 		sEmaHistory *ringbuffer.RingBuffer
@@ -54,10 +54,10 @@ type MovingStats struct {
 	tEma *emaContainer
 
 	//MACD
-	emaMacd9 ewma.MovingAverage
+	emaMacd9 *multiema.MultiEma
 
-	ema12 ewma.MovingAverage
-	ema26 ewma.MovingAverage
+	ema12 *multiema.MultiEma
+	ema26 *multiema.MultiEma
 
 	macd           float64
 	macdDivergence float64
@@ -80,18 +80,18 @@ type MovingStats struct {
 	count          int
 }
 
-const emaPeriod = float64(9)
-const macD9Period = float64(9)
-const mac12Period = float64(12)
-const mac26Period = float64(26)
-const atrPeriod = float64(14)
+const emaPeriod = 9
+const macD9Period = 9
+const mac12Period = 12
+const mac26Period = 26
+const atrPeriod = 14
 const smallSmaPeriod = 20
 
 func NewMovingStats(size int) *MovingStats {
 
 	log.Debug("NewMovingStats Size: ", size)
 
-	window := float64(size)
+	//window := float64(size)
 	ms := &MovingStats{}
 	ms.mu = &sync.Mutex{}
 	ms.windowSize = size
@@ -99,15 +99,15 @@ func NewMovingStats(size int) *MovingStats {
 	ms.lastWindowHistory = ringbuffer.NewBuffer(size, true)
 
 	ms.sma = movingaverage.New(size)
-	ms.atr = ewma.NewMovingAverage(window * atrPeriod)
-	ms.plusDMAvr = ewma.NewMovingAverage(window * atrPeriod)
-	ms.minusDMAvr = ewma.NewMovingAverage(window * atrPeriod)
-	ms.adxAvr = ewma.NewMovingAverage(window * atrPeriod)
+	ms.atr = multiema.NewMultiEma(atrPeriod,size)
+	ms.plusDMAvr = multiema.NewMultiEma(atrPeriod,size)
+	ms.minusDMAvr = multiema.NewMultiEma(atrPeriod,size)
+	ms.adxAvr = multiema.NewMultiEma(atrPeriod,size)
 
 	ms.smaLong = movingaverage.New(size * smallSmaPeriod)
 
 	/*
-		ms.sEma = ewma.NewMovingAverage(window)
+		ms.sEma = ewma.NewMovingAverage(size)
 		ms.sEmaHistory = ringbuffer.NewBuffer(size, false)
 
 		ms.dEma = ewma.NewMovingAverage(window)
@@ -117,14 +117,14 @@ func NewMovingStats(size int) *MovingStats {
 		ms.tEmaHistory = ringbuffer.NewBuffer(size, false)
 	*/
 
-	ms.sEma = newEmaContainer(size*int(emaPeriod), 1)
-	ms.dEma = newEmaContainer(size*int(emaPeriod), 2)
-	ms.tEma = newEmaContainer(size*int(emaPeriod), 3)
+	ms.sEma = newEmaContainer(emaPeriod,size, 1)
+	ms.dEma = newEmaContainer(emaPeriod,size, 2)
+	ms.tEma = newEmaContainer(emaPeriod,size, 3)
 
-	ms.emaMacd9 = ewma.NewMovingAverage(window * macD9Period)
+	ms.emaMacd9 = multiema.NewMultiEma(macD9Period,size)
 
-	ms.ema12 = ewma.NewMovingAverage(window * mac12Period)
-	ms.ema26 = ewma.NewMovingAverage(window * mac26Period)
+	ms.ema12 = multiema.NewMultiEma(mac12Period,size)
+	ms.ema26 = multiema.NewMultiEma(mac26Period,size)
 
 	return ms
 }
@@ -195,7 +195,6 @@ func (ms *MovingStats) TripleEmaUp() bool {
 	return ms.tEma.EmaUp
 }
 
-
 // ------------------
 // Macd indicators
 // ------------------
@@ -219,8 +218,6 @@ func (ms *MovingStats) MacdEma12() float64 {
 func (ms *MovingStats) MacdEma26() float64 {
 	return ms.ema26.Value()
 }
-
-
 
 func (ms *MovingStats) SMA1() float64 {
 	return ms.sma.SimpleMovingAverage()

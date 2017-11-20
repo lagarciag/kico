@@ -108,12 +108,31 @@ type TradeFsm struct {
 	// ------------------
 	// Fsm Callbacks
 	callbacks fsm.Callbacks
+
+	StartEvent    chan bool
+	ShutdownEvent chan bool
+	TradeEvent    chan bool
+
+	// --------------
+	// Buy Events
+	// --------------
+
+	Minute120BuyEvent chan bool
+	Minute60BuyEvent  chan bool
+	Minute30BuyEvent  chan bool
+
+	NotMinute120BuyEvent chan bool
+	NotMinute60BuyEvent  chan bool
+	NotMinute30BuyEvent  chan bool
+
+	DoBuyEvent        chan bool
+	DoSellEvent       chan bool
+	BuyCompleteEvent  chan bool
+	SellCompleteEvent chan bool
 }
 
 func NewTradeFsm() *TradeFsm {
-
-	// UML Diagram
-	//http://www.plantuml.com/plantuml/uml/SoWkIImgAStDuOhMYbNGrRLJy4p9ILMmKW2BkvQbvfLmSO65G78XHOafcNdf2bOWHYf45YO6aWUPOQKGd55Qaf9VdeSXxvBlL5e9L00aeIPpSJcavgK0hGS0
+	log.Info("Creating new trading fsm...")
 
 	tFsm := &TradeFsm{}
 
@@ -300,6 +319,33 @@ func NewTradeFsm() *TradeFsm {
 		NotMinute60SellEvent:  tFsm.CallBackInNotMinute60SellState,
 		NotMinute30SellEvent:  tFsm.CallBackInNotMinute30SellState}
 
+	// ------------------
+	// Event Channels
+	// ------------------
+
+	tFsm.StartEvent = make(chan bool)
+	tFsm.StartEvent    = make(chan bool)
+		ShutdownEvent = make(chan bool)
+		TradeEvent    = make(chan bool)
+
+		// --------------
+		// Buy Events
+		// --------------
+
+		Minute120BuyEvent = make(chan bool)
+		Minute60BuyEvent  = make(chan bool)
+		Minute30BuyEvent  = "Minute30BuySate"
+
+		NotMinute120BuyEvent = "NotMinute120BuyEvent"
+		NotMinute60BuyEvent  = "NotMinute60BuyEvent"
+		NotMinute30BuyEvent  = "NotMinute30BuySate"
+
+		DoBuyEvent        = "DoBuyEvent"
+		DoSellEvent       = "DoSellEvent"
+		BuyCompleteEvent  = "BuyCompleteEvent"
+		SellCompleteEvent = "SellCompleteEvent"
+	*/
+
 	// -------------
 	// FSM creation
 	// -------------
@@ -311,86 +357,14 @@ func NewTradeFsm() *TradeFsm {
 
 }
 
-func (tf *TradeFsm) CallBackInStartState(e *fsm.Event) {
-	log.Info("In state :", tf.FSM.Current())
-}
+/*
 
-func (tf *TradeFsm) CallBackInIdleState(e *fsm.Event) {
-	log.Info("In state :", tf.FSM.Current())
-}
+func (fsm *TradeFsm) FsmController {
 
-func (tf *TradeFsm) CallBackInHoldState(e *fsm.Event) {
-	log.Info("In state :", tf.FSM.Current())
-}
+	select :
 
-func (tf *TradeFsm) CallBackInDoSellState(e *fsm.Event) {
-	log.Info("In state :", tf.FSM.Current())
-}
 
-func (tf *TradeFsm) CallBackInDoBuyState(e *fsm.Event) {
-	log.Info("In state :", tf.FSM.Current())
-}
 
-func (tf *TradeFsm) CallBackInTradingState(e *fsm.Event) {
-	log.Info("In state :", tf.FSM.Current())
-}
 
-func (tf *TradeFsm) CallBackInShutdownState(e *fsm.Event) {
-	log.Info("In state :", tf.FSM.Current())
 }
-
-func (tf *TradeFsm) CallBackInMinute120BuyState(e *fsm.Event) {
-	log.Info("In state :", tf.FSM.Current())
-}
-
-func (tf *TradeFsm) CallBackInMinute60BuyState(e *fsm.Event) {
-	log.Info("In state :", tf.FSM.Current())
-}
-
-func (tf *TradeFsm) CallBackInMinute30BuyState(e *fsm.Event) {
-	log.Info("In state :", tf.FSM.Current())
-}
-
-func (tf *TradeFsm) CallBackInMinute120SellState(e *fsm.Event) {
-	log.Info("In state :", tf.FSM.Current())
-}
-
-func (tf *TradeFsm) CallBackInMinute60SellState(e *fsm.Event) {
-	log.Info("In state :", tf.FSM.Current())
-}
-
-func (tf *TradeFsm) CallBackInMinute30SellState(e *fsm.Event) {
-	log.Info("In state :", tf.FSM.Current())
-}
-
-// -----------
-// Not Events
-// -----------
-
-func (tf *TradeFsm) CallBackInNotMinute120BuyState(e *fsm.Event) {
-	log.Info("In state :", tf.FSM.Current())
-}
-
-func (tf *TradeFsm) CallBackInNotMinute60BuyState(e *fsm.Event) {
-	log.Info("In state :", tf.FSM.Current())
-}
-
-func (tf *TradeFsm) CallBackInNotMinute30BuyState(e *fsm.Event) {
-	log.Info("In state :", tf.FSM.Current())
-}
-
-func (tf *TradeFsm) CallBackInNotMinute120SellState(e *fsm.Event) {
-	log.Info("In state :", tf.FSM.Current())
-}
-
-func (tf *TradeFsm) CallBackInNotMinute60SellState(e *fsm.Event) {
-	log.Info("In state :", tf.FSM.Current())
-}
-
-func (tf *TradeFsm) CallBackInNotMinute30SellState(e *fsm.Event) {
-	log.Info("In state :", tf.FSM.Current())
-}
-
-func Start() {
-	log.Info("Tayni Trader starting...")
-}
+*/

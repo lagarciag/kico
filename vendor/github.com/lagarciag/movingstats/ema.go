@@ -1,14 +1,15 @@
 package movingstats
 
 import (
-	"github.com/sirupsen/logrus"
-	"github.com/VividCortex/ewma"
+	"github.com/lagarciag/multiema"
 	"github.com/lagarciag/ringbuffer"
+	"github.com/sirupsen/logrus"
 )
 
 type emaContainer struct {
-	Ema        ewma.MovingAverage
-	EmaAvr     ewma.MovingAverage
+	Ema    *multiema.MultiEma
+	EmaAvr *multiema.MultiEma
+
 	XEma       float64
 	EmaSlope   float64
 	EmaUp      bool
@@ -16,17 +17,18 @@ type emaContainer struct {
 	power      int
 }
 
-func newEmaContainer(size int, power int) (ec *emaContainer) {
-	window := float64(size)
+//periods int, periodSize int
+func newEmaContainer(periods, periodSize int, power int) (ec *emaContainer) {
 	ec = &emaContainer{}
 	ec.power = power
-	ec.Ema = ewma.NewMovingAverage(window)
+	//ec.Ema = ewma.NewMovingAverage(window)
+	ec.Ema = multiema.NewMultiEma(periods, periodSize)
 
 	if power > 1 {
-		ec.EmaAvr = ewma.NewMovingAverage(window)
+		ec.EmaAvr = multiema.NewMultiEma(periods, periodSize)
 	}
 
-	ec.EmaHistory = ringbuffer.NewBuffer(size, false)
+	ec.EmaHistory = ringbuffer.NewBuffer(periodSize*periods, false)
 	return ec
 }
 
@@ -68,41 +70,41 @@ func (ms *MovingStats) emaCalc(value float64) {
 	ms.sEma.Add(value)
 	ms.dEma.Add(value)
 	ms.tEma.Add(value)
-
 	/*
-		ms.HistNow = ms.sEma.Value()
-		ms.sEmaHistory.Push(ms.HistNow)
+	ms.HistNow = ms.sEma.Value()
+	ms.sEmaHistory.Push(ms.HistNow)
 
-		ms.HistMostRecent = ms.sEmaHistory.MostRecent()
-		ms.HistOldest = ms.sEmaHistory.Oldest()
+	ms.HistMostRecent = ms.sEmaHistory.MostRecent()
+	ms.HistOldest = ms.sEmaHistory.Oldest()
 
-		ms.sEmaSlope = ms.sEmaHistory.MostRecent() - ms.sEmaHistory.Oldest()
+	ms.sEmaSlope = ms.sEmaHistory.MostRecent() - ms.sEmaHistory.Oldest()
 
-		if ms.sEmaSlope > 0 {
-			ms.sEmaUp = true
-		} else {
-			ms.sEmaUp = false
-		}
+	if ms.sEmaSlope > 0 {
+		ms.sEmaUp = true
+	} else {
+		ms.sEmaUp = false
+	}
 
-		ms.dEma.Add(value)
-		ms.dEmaHistory.Push(ms.sEma.Value())
-		ms.dEmaSlope = ms.dEmaHistory.MostRecent() - ms.dEmaHistory.Oldest()
-		if ms.dEmaSlope > 0 {
-			ms.dEmaUp = true
-		} else {
-			ms.dEmaUp = false
-		}
+	ms.dEma.Add(value)
+	ms.dEmaHistory.Push(ms.sEma.Value())
+	ms.dEmaSlope = ms.dEmaHistory.MostRecent() - ms.dEmaHistory.Oldest()
+	if ms.dEmaSlope > 0 {
+		ms.dEmaUp = true
+	} else {
+		ms.dEmaUp = false
+	}
 
-		ms.tEma.Add(value)
-		ms.tEmaHistory.Push(ms.sEma.Value())
+	ms.tEma.Add(value)
+	ms.tEmaHistory.Push(ms.sEma.Value())
 
-		ms.tEmaSlope = ms.tEmaHistory.MostRecent() - ms.tEmaHistory.Oldest()
+	ms.tEmaSlope = ms.tEmaHistory.MostRecent() - ms.tEmaHistory.Oldest()
 
-		//TODO: Consider a shorter period for slope
-		if ms.tEmaSlope > 0 {
-			ms.tEmaUp = true
-		} else {
-			ms.tEmaUp = false
-		}
+	//TODO: Consider a shorter period for slope
+	if ms.tEmaSlope > 0 {
+		ms.tEmaUp = true
+	} else {
+		ms.tEmaUp = false
+	}
 	*/
+
 }

@@ -369,6 +369,7 @@ func (kr *Kredis) GetList(exchange, pair string) (retList []float64, err error) 
 		valueStr := string(element.([]uint8))
 		value, err := strconv.ParseFloat(valueStr, 64)
 		if err != nil {
+			log.Error("Parsing error")
 			return retList, err
 		}
 

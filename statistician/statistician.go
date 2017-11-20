@@ -3,7 +3,7 @@ package statistician
 import (
 	"fmt"
 
-	"time"
+	//"time"
 
 	"github.com/lagarciag/tayni/kredis"
 	log "github.com/sirupsen/logrus"
@@ -164,6 +164,7 @@ func (st *Statistician) Stable(size int) (bool, error) {
 	return false, fmt.Errorf("Invalid size request")
 }
 
+/*
 func trackExchange(exchangeName string,
 	pairsIntList []interface{},
 	statsMap map[string]*Statistician,
@@ -193,3 +194,4 @@ func trackExchange(exchangeName string,
 	}
 
 }
+*/

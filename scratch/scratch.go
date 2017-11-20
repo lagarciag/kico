@@ -2,20 +2,14 @@ package main
 
 import (
 	"fmt"
-	"time"
-
-	"github.com/metakeule/fmtdate"
 )
 
 func main() {
 
-	stringOffset := "+06.00h"
+	var a = bool(true)
 
-	offSet, err := time.ParseDuration(stringOffset)
-	if err != nil {
-		panic(err)
-	}
-	date := fmtdate.Format("MM/DD/YYYY hh:mm:ss", time.Now().Add(offSet))
-	fmt.Println(date)
+	b := true
+
+	fmt.Println("This is a: ", a && b)
 
 }

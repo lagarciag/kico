@@ -10,7 +10,7 @@ import (
 
 	"fmt"
 
-	"github.com/lagarciag/golang-moving-average"
+	"github.com/lagarciag/movingaverage"
 	"github.com/lagarciag/movingstats"
 )
 
@@ -31,7 +31,7 @@ func TestSimpleMovingAverage(t *testing.T) {
 	size = 15
 	t.Log("size:", size)
 	movingStats := movingstats.NewAverage(period)
-	movingAverage := movingaverage.New(uint(period))
+	movingAverage := movingaverage.New(int(period))
 
 	floatList := make([]float64, size)
 
