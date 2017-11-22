@@ -109,26 +109,34 @@ type TradeFsm struct {
 	// Fsm Callbacks
 	callbacks fsm.Callbacks
 
-	StartEvent    chan bool
-	ShutdownEvent chan bool
-	TradeEvent    chan bool
+	ChanStartEvent    chan bool
+	ChanShutdownEvent chan bool
+	ChanTradeEvent    chan bool
 
 	// --------------
 	// Buy Events
 	// --------------
 
-	Minute120BuyEvent chan bool
-	Minute60BuyEvent  chan bool
-	Minute30BuyEvent  chan bool
+	ChanMinute120BuyEvent chan bool
+	ChanMinute60BuyEvent  chan bool
+	ChanMinute30BuyEvent  chan bool
 
-	NotMinute120BuyEvent chan bool
-	NotMinute60BuyEvent  chan bool
-	NotMinute30BuyEvent  chan bool
+	ChanNotMinute120BuyEvent chan bool
+	ChanNotMinute60BuyEvent  chan bool
+	ChanNotMinute30BuyEvent  chan bool
 
-	DoBuyEvent        chan bool
-	DoSellEvent       chan bool
-	BuyCompleteEvent  chan bool
-	SellCompleteEvent chan bool
+	ChanMinute120SellEvent chan bool
+	ChanMinute60SellEvent  chan bool
+	ChanMinute30SellEvent  chan bool
+
+	ChanNotMinute120SellEvent chan bool
+	ChanNotMinute60SellEvent  chan bool
+	ChanNotMinute30SellEvent  chan bool
+
+	ChanDoBuyEvent        chan bool
+	ChanDoSellEvent       chan bool
+	ChanBuyCompleteEvent  chan bool
+	ChanSellCompleteEvent chan bool
 }
 
 func NewTradeFsm() *TradeFsm {
@@ -266,7 +274,7 @@ func NewTradeFsm() *TradeFsm {
 	// ----------------------
 	tFsm.eventsList = fsm.Events{
 		tFsm.startEvent,
-		tFsm.startEvent,
+		tFsm.shutdownEvent,
 		tFsm.tradeEvent,
 
 		tFsm.minute120BuyEvent,
@@ -323,28 +331,34 @@ func NewTradeFsm() *TradeFsm {
 	// Event Channels
 	// ------------------
 
-	tFsm.StartEvent = make(chan bool)
-	tFsm.StartEvent    = make(chan bool)
-		ShutdownEvent = make(chan bool)
-		TradeEvent    = make(chan bool)
+	tFsm.ChanStartEvent = make(chan bool)
+	tFsm.ChanShutdownEvent = make(chan bool)
+	tFsm.ChanTradeEvent = make(chan bool)
 
-		// --------------
-		// Buy Events
-		// --------------
+	// --------------
+	// Buy Events
+	// --------------
 
-		Minute120BuyEvent = make(chan bool)
-		Minute60BuyEvent  = make(chan bool)
-		Minute30BuyEvent  = "Minute30BuySate"
+	tFsm.ChanMinute120BuyEvent = make(chan bool)
+	tFsm.ChanMinute60BuyEvent = make(chan bool)
+	tFsm.ChanMinute30BuyEvent = make(chan bool)
 
-		NotMinute120BuyEvent = "NotMinute120BuyEvent"
-		NotMinute60BuyEvent  = "NotMinute60BuyEvent"
-		NotMinute30BuyEvent  = "NotMinute30BuySate"
+	tFsm.ChanNotMinute120BuyEvent = make(chan bool)
+	tFsm.ChanNotMinute60BuyEvent = make(chan bool)
+	tFsm.ChanNotMinute30BuyEvent = make(chan bool)
 
-		DoBuyEvent        = "DoBuyEvent"
-		DoSellEvent       = "DoSellEvent"
-		BuyCompleteEvent  = "BuyCompleteEvent"
-		SellCompleteEvent = "SellCompleteEvent"
-	*/
+	tFsm.ChanMinute120SellEvent = make(chan bool)
+	tFsm.ChanMinute60SellEvent = make(chan bool)
+	tFsm.ChanMinute30SellEvent = make(chan bool)
+
+	tFsm.ChanNotMinute120SellEvent = make(chan bool)
+	tFsm.ChanNotMinute60SellEvent = make(chan bool)
+	tFsm.ChanNotMinute30SellEvent = make(chan bool)
+
+	tFsm.ChanDoBuyEvent = make(chan bool)
+	tFsm.ChanDoSellEvent = make(chan bool)
+	tFsm.ChanBuyCompleteEvent = make(chan bool)
+	tFsm.ChanSellCompleteEvent = make(chan bool)
 
 	// -------------
 	// FSM creation
@@ -357,14 +371,95 @@ func NewTradeFsm() *TradeFsm {
 
 }
 
-/*
+func (tFsm *TradeFsm) FsmController() {
+	for {
+		select {
 
-func (fsm *TradeFsm) FsmController {
+		case <-tFsm.ChanStartEvent:
+			{
+				log.Info("Event: ", StartEvent)
+				tFsm.FSM.Event(StartEvent)
 
-	select :
+			}
+		case <-tFsm.ChanShutdownEvent:
+			{
+				tFsm.FSM.Event(ShutdownState)
+			}
+		case <-tFsm.ChanTradeEvent:
+			{
+				tFsm.FSM.Event(TradeEvent)
+			}
 
+		case <-tFsm.ChanMinute120BuyEvent:
+			{
+				tFsm.FSM.Event(Minute120BuyEvent)
+			}
+		case <-tFsm.ChanMinute60BuyEvent:
+			{
+				tFsm.FSM.Event(Minute60BuyEvent)
+			}
+		case <-tFsm.ChanMinute30BuyEvent:
+			{
+				tFsm.FSM.Event(Minute30BuyEvent)
+			}
 
+		case <-tFsm.ChanNotMinute120BuyEvent:
+			{
+				tFsm.FSM.Event(NotMinute120BuyEvent)
+			}
+		case <-tFsm.ChanNotMinute60BuyEvent:
+			{
+				tFsm.FSM.Event(NotMinute60BuyEvent)
+			}
+		case <-tFsm.ChanNotMinute30BuyEvent:
+			{
+				tFsm.FSM.Event(NotMinute30BuyEvent)
+			}
 
+		case <-tFsm.ChanMinute120SellEvent:
+			{
+				tFsm.FSM.Event(Minute120SellEvent)
+			}
+		case <-tFsm.ChanMinute60SellEvent:
+			{
+				tFsm.FSM.Event(Minute60SellEvent)
+			}
+		case <-tFsm.ChanMinute30SellEvent:
+			{
+				tFsm.FSM.Event(Minute30SellEvent)
+			}
+
+		case <-tFsm.ChanNotMinute120SellEvent:
+			{
+				tFsm.FSM.Event(NotMinute120SellEvent)
+			}
+		case <-tFsm.ChanNotMinute60SellEvent:
+			{
+				tFsm.FSM.Event(NotMinute30SellEvent)
+			}
+		case <-tFsm.ChanNotMinute30SellEvent:
+			{
+				tFsm.FSM.Event(NotMinute30SellEvent)
+			}
+
+		case <-tFsm.ChanDoBuyEvent:
+			{
+				tFsm.FSM.Event(DoBuyEvent)
+			}
+		case <-tFsm.ChanDoSellEvent:
+			{
+				tFsm.FSM.Event(DoSellEvent)
+			}
+		case <-tFsm.ChanBuyCompleteEvent:
+			{
+				tFsm.FSM.Event(BuyCompleteEvent)
+			}
+		case <-tFsm.ChanSellCompleteEvent:
+			{
+				tFsm.FSM.Event(StartEvent)
+			}
+
+		}
+	}
 
 }
-*/
