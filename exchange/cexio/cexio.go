@@ -54,7 +54,7 @@ type Bot struct {
 	apiError         chan error
 	stop             chan bool
 	apiStop          chan bool
-	priceAdderChan   chan float64
+	priceAdderChan   map[string]chan float64
 	apiOnline        bool
 }
 
@@ -79,7 +79,14 @@ func NewBot(config CollectorConfig, kr *kredis.Kredis) (bot *Bot) {
 	bot.priceUpdaterCond = sync.NewCond(&sync.Mutex{})
 	bot.apiStop = make(chan bool)
 	bot.stop = make(chan bool)
-	bot.priceAdderChan = make(chan float64, 300000)
+	//bot.priceAdderChan = make(chan float64, 300000)
+
+	bot.priceAdderChan = make(map[string]chan float64)
+
+	for _, pair := range bot.pairs {
+		bot.priceAdderChan[pair] = make(chan float64, 300000)
+	}
+
 	// -----------------------
 	// Start Error monitoring
 	// -----------------------
@@ -87,10 +94,8 @@ func NewBot(config CollectorConfig, kr *kredis.Kredis) (bot *Bot) {
 
 	bot.stats = make(map[string]*statistician.Statistician)
 
-	cID := 0
 	for _, pairName := range bot.pairs {
-		bot.stats[pairName] = statistician.NewStatistician(bot.name, bot.pairs[cID], bot.kr, false, bot.sampleRate)
-		cID++
+		bot.stats[pairName] = statistician.NewStatistician(bot.name, pairName, bot.kr, false, bot.sampleRate)
 	}
 
 	return bot
@@ -120,7 +125,7 @@ func (bot *Bot) errorMonitor() {
 
 //pStart are commong Start functionality
 func (bot *Bot) pStart() {
-	log.Info("Starting Public CEXIO collector")
+	log.Info("Starting Public CEXIO collector: ", bot.pairs)
 	bot.kr.Start()
 
 	priceUdateTimer := (time.Second * time.Duration(bot.sampleRate))
@@ -394,7 +399,7 @@ func (bot *Bot) priceUpdater(exchange, pair string) {
 		//priceEma.Add(value)
 		//log.Info("update value:", value)
 		if value != 0 {
-			bot.priceAdderChan <- value
+			bot.priceAdderChan[pair] <- value
 		}
 		//bot.stats[pair].Add(value)
 
@@ -418,10 +423,10 @@ func (bot *Bot) priceAdder(pair string) {
 
 	for {
 		select {
-		case value := <-bot.priceAdderChan:
+		case value := <-bot.priceAdderChan[pair]:
 			{
 
-				log.Info("update value:", value)
+				log.Infof("update value for pair %s value: %f", pair, value)
 				bot.stats[pair].Add(value)
 			}
 
