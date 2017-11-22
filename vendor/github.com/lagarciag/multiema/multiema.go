@@ -5,6 +5,7 @@ import (
 )
 
 type MultiEma struct {
+	init       bool
 	count      int
 	periods    int
 	periodSize int
@@ -12,7 +13,9 @@ type MultiEma struct {
 }
 
 func NewMultiEma(periods int, periodSize int) (mema *MultiEma) {
+
 	mema = &MultiEma{}
+	mema.init = false
 	mema.count = 0
 	mema.periods = periods
 	mema.periodSize = periodSize
@@ -25,15 +28,25 @@ func NewMultiEma(periods int, periodSize int) (mema *MultiEma) {
 }
 
 func (mema *MultiEma) Add(valule float64) {
-	mema.emaSlice[mema.count].Add(valule)
+	if !mema.init {
+		mema.emaSlice[mema.count].Set(valule)
+	} else {
+		mema.emaSlice[mema.count].Add(valule)
+	}
 	mema.count++
 	if mema.count%mema.periodSize == 0 {
-
 		mema.count = 0
+		if !mema.init {
+			mema.init = true
+		}
 	}
 }
 
 func (mema *MultiEma) Value() (val float64) {
-	val = mema.emaSlice[mema.count].Value()
+	valueCount := mema.count - 1
+	if mema.count == 0 {
+		valueCount = mema.periodSize - 1
+	}
+	val = mema.emaSlice[valueCount].Value()
 	return val
 }

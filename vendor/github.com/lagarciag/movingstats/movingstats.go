@@ -3,6 +3,7 @@ package movingstats
 import (
 	"sync"
 
+	"github.com/VividCortex/ewma"
 	"github.com/lagarciag/movingaverage"
 	"github.com/lagarciag/multiema"
 	"github.com/lagarciag/ringbuffer"
@@ -46,6 +47,8 @@ type MovingStats struct {
 		tEmaUp      bool
 		tEmaHistory *ringbuffer.RingBuffer
 	*/
+
+	sema ewma.MovingAverage
 
 	sEma *emaContainer
 
@@ -99,10 +102,11 @@ func NewMovingStats(size int) *MovingStats {
 	ms.lastWindowHistory = ringbuffer.NewBuffer(size, true)
 
 	ms.sma = movingaverage.New(size)
-	ms.atr = multiema.NewMultiEma(atrPeriod,size)
-	ms.plusDMAvr = multiema.NewMultiEma(atrPeriod,size)
-	ms.minusDMAvr = multiema.NewMultiEma(atrPeriod,size)
-	ms.adxAvr = multiema.NewMultiEma(atrPeriod,size)
+	ms.sema = ewma.NewMovingAverage(30)
+	ms.atr = multiema.NewMultiEma(atrPeriod, size)
+	ms.plusDMAvr = multiema.NewMultiEma(atrPeriod, size)
+	ms.minusDMAvr = multiema.NewMultiEma(atrPeriod, size)
+	ms.adxAvr = multiema.NewMultiEma(atrPeriod, size)
 
 	ms.smaLong = movingaverage.New(size * smallSmaPeriod)
 
@@ -117,14 +121,14 @@ func NewMovingStats(size int) *MovingStats {
 		ms.tEmaHistory = ringbuffer.NewBuffer(size, false)
 	*/
 
-	ms.sEma = newEmaContainer(emaPeriod,size, 1)
-	ms.dEma = newEmaContainer(emaPeriod,size, 2)
-	ms.tEma = newEmaContainer(emaPeriod,size, 3)
+	ms.sEma = newEmaContainer(emaPeriod, size, 1)
+	ms.dEma = newEmaContainer(emaPeriod, size, 2)
+	ms.tEma = newEmaContainer(emaPeriod, size, 3)
 
-	ms.emaMacd9 = multiema.NewMultiEma(macD9Period,size)
+	ms.emaMacd9 = multiema.NewMultiEma(macD9Period, size)
 
-	ms.ema12 = multiema.NewMultiEma(mac12Period,size)
-	ms.ema26 = multiema.NewMultiEma(mac26Period,size)
+	ms.ema12 = multiema.NewMultiEma(mac12Period, size)
+	ms.ema26 = multiema.NewMultiEma(mac26Period, size)
 
 	return ms
 }
@@ -134,7 +138,7 @@ func (ms *MovingStats) Add(value float64) {
 
 	ms.sma.Add(value)
 	ms.smaLong.Add(value)
-
+	ms.sema.Add(value)
 	// ------------------------------------------------
 	// Calculate Multiple Exponential Moving Averages
 	// ------------------------------------------------
@@ -269,4 +273,8 @@ func (ms *MovingStats) PHigh() float64 {
 
 func (ms *MovingStats) PLow() float64 {
 	return ms.pLow
+}
+
+func (ms *MovingStats) SimpleEma() float64 {
+	return ms.sema.Value()
 }

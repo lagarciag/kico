@@ -253,7 +253,7 @@ func (bot *Bot) MonitorPrice() {
 				_, ok := priceUpdateEmaMap[key]
 
 				if !ok {
-					priceUpdateEmaMap[key] = ewma.NewMovingAverage(float64(bot.sampleRate))
+					priceUpdateEmaMap[key] = ewma.NewMovingAverage(float64(bot.sampleRate / 2))
 					priceFloat, err := strconv.ParseFloat(lPriceUpdate.Price, 64)
 					if err != nil {
 						log.Fatal("converting string to float: ", err.Error())
@@ -340,15 +340,24 @@ func (bot *Bot) UpdatePriceLists(exchange, pair string) {
 	bot.stats[pair].SetDbUpdates(false)
 
 	if historySize > 1 {
-		for _, valueStr := range list {
+		size := int(len(list))
+		for i := size - 1; i >= 0; i-- {
+			valueStr := list[i]
 			value, err := strconv.ParseFloat(valueStr, 64)
 			if err != nil {
 				log.Error("Empty value in db: ", err.Error())
 
 			} else {
+				//log.Infof("Adding value %f for pair %s", value, pair)
 				bot.stats[pair].Add(value)
 			}
+
 		}
+
+		/*for _, valueStr := range list {
+
+		}
+		*/
 	}
 	// -----------------------------------------------
 	// re-enable Db updates for statistician & friends
@@ -384,7 +393,9 @@ func (bot *Bot) priceUpdater(exchange, pair string) {
 
 		//priceEma.Add(value)
 		//log.Info("update value:", value)
-		bot.priceAdderChan <- value
+		if value != 0 {
+			bot.priceAdderChan <- value
+		}
 		//bot.stats[pair].Add(value)
 
 		if counter%(60*5) == 0 {

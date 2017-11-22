@@ -140,14 +140,21 @@ func Monitor(kr *kredis.Kredis, key string, file *os.File, historyCount int) {
 		log.Fatal("error: ", err.Error())
 	}
 
-	for ID, row := range rows {
-
+	size := int(len(rows))
+	for ID := size - 1; ID >= 0; ID-- {
+		row := rows[ID]
 		if ID%100 == 0 {
 			log.Infof("%30s : %5d", key, ID)
 		}
 
 		headDone = writer(key, row, file, headDone)
 	}
+
+	/*
+		for ID, row := range rows {
+
+		}
+	*/
 	log.Info("DONE reading db:", key)
 
 	os.Exit(0)

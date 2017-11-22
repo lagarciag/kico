@@ -269,7 +269,18 @@ func (kr *Kredis) PushToPriceList(value interface{}, exchange, pair string) (ret
 		log.Error("UpdateList on AddString: ", err.Error())
 	}
 
-	retValue = string(value.([]uint8))
+	switch t := value.(type) {
+
+	case []uint8:
+		{
+			retValue = string(value.([]uint8))
+		}
+	default:
+		{
+
+			log.Error("Unknown type handling Value in PushtoPriceList: ", t, pair, exchange)
+		}
+	}
 
 	return retValue, err
 }

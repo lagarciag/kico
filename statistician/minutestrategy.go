@@ -23,6 +23,7 @@ type Indicators struct {
 	Date      string  `json:"date"`
 	LastValue float64 `json:"last_value"`
 	Sma       float64 `json:"sma"`
+	Sema      float64 `json:"sema"`
 	Ema       float64 `json:"ema"`
 	EmaUp     bool    `json:"ema_up"`
 	Slope     float64 `json:"slope"`
@@ -362,6 +363,8 @@ func (ms *MinuteStrategy) updateIndicators() {
 		ms.indicators.Sma = ms.movingStats.SMA1()
 
 		ms.indicators.Ema = ms.Ema()
+
+		ms.indicators.Sema = ms.movingStats.SimpleEma()
 
 		ms.indicators.EmaUp = ms.EmaDirectionUp()
 
