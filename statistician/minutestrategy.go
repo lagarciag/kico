@@ -294,8 +294,8 @@ func (ms *MinuteStrategy) EmaDirectionUp() bool {
 
 func (ms *MinuteStrategy) buySellUpdate() {
 
-	ms.buy = false
-	ms.sell = false
+	//ms.buy = false
+	//ms.sell = false
 
 	adx := ms.movingStats.Adx()
 	mDI := ms.movingStats.MinusDI()
@@ -328,14 +328,38 @@ func (ms *MinuteStrategy) buySellUpdate() {
 		mDirectionalBear = true
 	}
 
-	if pDirectionalBull && ms.MacdBullish() && ms.EmaDirectionUp() {
-		ms.buy = true
-	}
+	buyKey := fmt.Sprintf("%s_BUY", ms.ID)
+	sellKey := fmt.Sprintf("%s_SELL", ms.ID)
 
-	if mDirectionalBear && !ms.MacdBullish() && !ms.EmaDirectionUp() {
-		ms.sell = true
-	}
+	if ms.doDbUpdate {
+		if pDirectionalBull && ms.MacdBullish() && ms.EmaDirectionUp() {
+			if ms.buy != true {
+				logrus.Infof("BUY UPDATE for %s :%v", buyKey, true)
+				ms.kr.Publish(buyKey, "true")
+			}
+			ms.buy = true
+		} else {
+			if ms.buy != false {
+				logrus.Infof("BUY UPDATE for %s :%v", buyKey, false)
+				ms.kr.Publish(buyKey, "false")
+			}
+			ms.buy = false
+		}
 
+		if mDirectionalBear && !ms.MacdBullish() && !ms.EmaDirectionUp() {
+			if ms.sell != true {
+				logrus.Infof("SELL UPDATE for %s : %v", sellKey, true)
+				ms.kr.Publish(sellKey, "true")
+			}
+			ms.sell = true
+		} else {
+			if ms.sell != false {
+				logrus.Infof("SELL UPDATE for %s :%v", sellKey, false)
+				ms.kr.Publish(sellKey, "false")
+			}
+			ms.sell = false
+		}
+	}
 }
 
 func (ms *MinuteStrategy) Buy() bool {

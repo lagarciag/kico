@@ -377,7 +377,6 @@ func (tFsm *TradeFsm) FsmController() {
 
 		case <-tFsm.ChanStartEvent:
 			{
-				log.Info("Event: ", StartEvent)
 				tFsm.FSM.Event(StartEvent)
 
 			}

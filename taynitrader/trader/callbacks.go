@@ -84,7 +84,3 @@ func (tf *TradeFsm) CallBackInNotMinute60SellState(e *fsm.Event) {
 func (tf *TradeFsm) CallBackInNotMinute30SellState(e *fsm.Event) {
 	log.Info("In state :", tf.FSM.Current())
 }
-
-func Start() {
-	log.Info("Tayni Trader starting...")
-}

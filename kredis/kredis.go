@@ -11,9 +11,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var ExchangesList = []string{"CEXIO"}
-var ExchangePairListMap = map[string][]string{"CEXIO": {"BTCUSD"}}
-
 type Kredis struct {
 	conn           redis.Conn
 	psc            redis.PubSubConn
@@ -184,6 +181,17 @@ func (kr *Kredis) AddString(exchange, pair string, value interface{}) error {
 	//log.Debug("LPUSH to key: ", key)
 
 	return err
+}
+
+func (kr *Kredis) Publish(key string, value string) (err error) {
+
+	kr.mu.Lock()
+	_, err = kr.connUpdateList.Do("PUBLISH", key, value)
+	kr.mu.Unlock()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (kr *Kredis) AddStringLong(exchange, pair string, value interface{}) error {
@@ -432,14 +440,13 @@ func (kr *Kredis) SubscriberChann() chan []string {
 }
 
 func (kr *Kredis) SubscriberMonitor() {
-	return
 	for {
 
 		switch v := kr.psc.Receive().(type) {
 
 		case redis.Message:
-			//fmt.Printf("%s: message: %s\n", v.Channel, v.Data)
-			//log.Infof("REDIS CHAN RECIEVE: %s , %s", string(v.Channel), string(v.Data))
+			fmt.Printf("%s: message: %s\n", v.Channel, v.Data)
+			log.Infof("REDIS CHAN RECIEVE: %s , %s", string(v.Channel), string(v.Data))
 			resp := make([]string, 2)
 			resp[0] = string(v.Channel)
 			resp[1] = string(v.Data)
