@@ -69,9 +69,9 @@ const (
 )
 
 type TradeFsm struct {
-	To  string
-	FSM *fsm.FSM
-
+	To     string
+	FSM    *fsm.FSM
+	pairID string
 	// ------------
 	// Events
 	// ------------
@@ -137,13 +137,15 @@ type TradeFsm struct {
 	ChanDoSellEvent       chan bool
 	ChanBuyCompleteEvent  chan bool
 	ChanSellCompleteEvent chan bool
+
+	ChanMap map[string]chan bool
 }
 
-func NewTradeFsm() *TradeFsm {
-	log.Info("Creating new trading fsm...")
+func NewTradeFsm(pairID string) *TradeFsm {
+	log.Info("Creating new trading fsm for pair: ", pairID)
 
 	tFsm := &TradeFsm{}
-
+	tFsm.pairID = pairID
 	// ------------
 	// Events
 	// ------------
@@ -367,11 +369,25 @@ func NewTradeFsm() *TradeFsm {
 		tFsm.eventsList,
 		tFsm.callbacks)
 
+	tFsm.ChanMap = make(map[string]chan bool)
+	tFsm.ChanMap["CEXIO_BTCUSD_MS_30_BUY"] = tFsm.ChanMinute30BuyEvent
+	tFsm.ChanMap["CEXIO_BTCUSD_MS_60_BUY"] = tFsm.ChanMinute60BuyEvent
+	tFsm.ChanMap["CEXIO_BTCUSD_MS_120_BUY"] = tFsm.ChanMinute120BuyEvent
+
+	tFsm.ChanMap["CEXIO_BTCUSD_MS_30_SELL"] = tFsm.ChanMinute30SellEvent
+	tFsm.ChanMap["CEXIO_BTCUSD_MS_60_SELL"] = tFsm.ChanMinute60SellEvent
+	tFsm.ChanMap["CEXIO_BTCUSD_MS_120_SELL"] = tFsm.ChanMinute120SellEvent
+
 	return tFsm
 
 }
 
+func (tFsm *TradeFsm) SignalChannelsMap() map[string]chan bool {
+	return tFsm.ChanMap
+}
+
 func (tFsm *TradeFsm) FsmController() {
+	log.Info("Starting tFsm controlloer for : ", tFsm.pairID)
 	for {
 		select {
 

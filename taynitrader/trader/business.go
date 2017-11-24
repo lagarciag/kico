@@ -10,13 +10,18 @@ import (
 	"github.com/spf13/viper"
 )
 
-func Start() {
-	log.Info("Tayni Trader starting...")
-	//tFsm := NewTradeFsm()
+type Trader struct {
+	kr                       *kredis.Kredis
+	subscriptionMapExchanges map[string]map[string][]string
+	tFsmExchangeMap          map[string]map[string]*TradeFsm
+}
 
-	kr := kredis.NewKredis(1)
-	kr.Start()
-	log.Info("dial done.")
+func NewTrader() *Trader {
+
+	trader := &Trader{}
+	trader.kr = kredis.NewKredis(1)
+	trader.kr.Start()
+	go trader.kr.SubscriberMonitor()
 
 	exchanges := viper.Get("exchange").(map[string]interface{})
 	minuteStrategiesInt := viper.Get("minute_strategies").([]interface{})
@@ -24,40 +29,119 @@ func Start() {
 	minuteStrageis := make([]int, len(minuteStrategiesInt))
 
 	for i, stat := range minuteStrategiesInt {
-
 		minuteStrageis[i] = int(stat.(int64))
-
 	}
 
-	log.Info("stats: ", minuteStrageis)
+	// -------------------------------------------------------
+	// Create MAP per exchange & pair of subscriptions pairs
+	// -------------------------------------------------------
+
+	trader.subscriptionMapExchanges = make(map[string]map[string][]string) // Map index by echange of list of
+	trader.tFsmExchangeMap = make(map[string]map[string]*TradeFsm)
+	// subscriptions
 
 	for lowExchange := range exchanges {
 		exchange := strings.ToUpper(lowExchange)
 
-		// ---------------------------
-		// Set up bot configuration
-		// -------------------------
+		// Map indexed by pair of list of subscriptions
+		subscriptionMapPairs := make(map[string][]string)
+
+		// Get data from configuration
 		pairsIntMap := exchanges[lowExchange].(map[string]interface{})
 		pairsIntList := pairsIntMap["pairs"].([]interface{})
-
 		pairs := make([]string, len(pairsIntList))
-		subscriptionKeys := make([]string, len(pairsIntList)*len(minuteStrageis))
+
+		// Create slice of subscriptions
+
 		for i, pair := range pairsIntList {
 			pairs[i] = pair.(string)
-			for j, stat := range minuteStrageis {
-				//CEXIO_BTCUSD_MS_120_BUY
-				subscriptionKeys[i+j] = fmt.Sprintf("%s_%s_MS_%d_BUY", exchange, pairs[i], stat)
-				kr.SubscribeLookup(subscriptionKeys[i+j])
+			subscriptionKeys := make([]string, len(minuteStrageis)*2)
+
+			j := 0
+			for _, stat := range minuteStrageis {
+				subscriptionKeys[j] = fmt.Sprintf("%s_%s_MS_%d_BUY", exchange, pairs[i], stat)
+				subscriptionKeys[j+1] = fmt.Sprintf("%s_%s_MS_%d_SELL", exchange, pairs[i], stat)
+				j = j + 2
+			}
+			subscriptionMapPairs[pair.(string)] = subscriptionKeys
+		}
+		trader.subscriptionMapExchanges[exchange] = subscriptionMapPairs
+		trader.tFsmExchangeMap[exchange] = make(map[string]*TradeFsm)
+	}
+
+	//tFsmSlice := make([]*TradeFsm, len())
+
+	for exKey, exchangeMap := range trader.subscriptionMapExchanges {
+
+		// ---------------------------
+		// Do pair subscription to db
+		// and create FSMs per pair
+		// ---------------------------
+		for exPair, pairList := range exchangeMap {
+			for _, pair := range pairList {
+				log.Infof("Exchange: %s , Pair: %s , pair list : %v", exKey, exPair, pair)
+				trader.kr.SubscribeLookup(pair)
 			}
 
+			trader.tFsmExchangeMap[exKey][exPair] = NewTradeFsm(exPair)
 		}
 
-		log.Info("Subscriptions: ", subscriptionKeys)
-
 	}
-	go kr.SubscriberMonitor()
-	log.Info("subscriptions started...")
-	//go tFsm.FsmController()
-	log.Info("FsmController started...")
+	return trader
+}
 
+func Start() {
+	log.Info("Tayni Trader starting...")
+	trader := NewTrader()
+	trader.startControllers()
+	go trader.monitorSubscriptions()
+
+	log.Warn("TRADING!!")
+
+}
+
+func (trader *Trader) monitorSubscriptions() {
+	sbus := trader.kr.SubscriberChann()
+	for {
+
+		message := <-sbus
+
+		key := message[0]
+		val := message[1]
+
+		log.Infof("xxxxxxx   Message: %s -> %v ", key, val)
+
+		messageSlice := strings.Split(key, "_")
+
+		exchange := messageSlice[0]
+		pair := messageSlice[1]
+		tFsmMap := trader.tFsmExchangeMap[exchange]
+
+		tFsm := tFsmMap[pair]
+
+		chansMap := tFsm.SignalChannelsMap()
+
+		signalChannel := chansMap[key]
+
+		switch val {
+		case "true":
+			signalChannel <- true
+		case "false":
+			signalChannel <- false
+		}
+	}
+
+}
+
+func (trader *Trader) startControllers() {
+
+	for exKey, exchangeMap := range trader.subscriptionMapExchanges {
+
+		for exPair, _ := range exchangeMap {
+
+			tFsm := trader.tFsmExchangeMap[exKey][exPair]
+			go tFsm.FsmController()
+
+		}
+	}
 }
