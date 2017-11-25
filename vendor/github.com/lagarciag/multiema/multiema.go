@@ -10,6 +10,7 @@ type MultiEma struct {
 	periods    int
 	periodSize int
 	emaSlice   []ewma.MovingAverage
+	intEma     ewma.MovingAverage
 }
 
 func NewMultiEma(periods int, periodSize int) (mema *MultiEma) {
@@ -20,6 +21,7 @@ func NewMultiEma(periods int, periodSize int) (mema *MultiEma) {
 	mema.periods = periods
 	mema.periodSize = periodSize
 	mema.emaSlice = make([]ewma.MovingAverage, periodSize)
+	mema.intEma = ewma.NewMovingAverage(float64(30))
 
 	for i := range mema.emaSlice {
 		mema.emaSlice[i] = ewma.NewMovingAverage(float64(periods))
@@ -40,13 +42,21 @@ func (mema *MultiEma) Add(valule float64) {
 			mema.init = true
 		}
 	}
+
+	val := mema.inVal()
+	mema.intEma.Add(val)
+
 }
 
-func (mema *MultiEma) Value() (val float64) {
+func (mema *MultiEma) inVal() (val float64) {
 	valueCount := mema.count - 1
 	if mema.count == 0 {
 		valueCount = mema.periodSize - 1
 	}
 	val = mema.emaSlice[valueCount].Value()
 	return val
+}
+
+func (mema *MultiEma) Value() (val float64) {
+	return mema.intEma.Value()
 }

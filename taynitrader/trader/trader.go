@@ -6,63 +6,77 @@ import (
 )
 
 const (
-	StartState    = "StartState"
-	IdleState     = "IdleState"
-	TradingState  = "TradingState"
-	HoldState     = "HoldState"
-	ShutdownState = "ShutdownState"
+	StartState       = "StartState"
+	IdleState        = "IdleState"
+	TradingState     = "TradingState"
+	TestTradingState = "TestTradingState"
+	HoldState        = "HoldState"
+	TestHoldState    = "TestHoldState"
+	ShutdownState    = "ShutdownState"
 
 	// --------------
 	// Buy States
 	// --------------
 
+	Minute1BuyState   = "Minute1BuyState"
 	Minute120BuyState = "Minute120BuyState"
 	Minute60BuyState  = "Minute60BuyState"
 	Minute30BuyState  = "Minute30BuySate"
 
-	DoBuyState = "DoBuyState"
+	DoBuyState     = "DoBuyState"
+	TestDoBuyState = "TestDoBuyState"
 
 	// -------------
 	//   Sell Sates
 	// -------------
 
+	Minute1SellState   = "Minute1SellState"
 	Minute120SellState = "Minute120SellState"
 	Minute60SellState  = "Minute60SellState"
 	Minute30SellState  = "Minute30SellState"
 
-	DoSellState = "DoSellState"
+	DoSellState     = "DoSellState"
+	TestDoSellState = "TestDoSellState"
 )
 
 const (
 	StartEvent    = "startEvent"
 	ShutdownEvent = "shutdownEvent"
 	TradeEvent    = "TradeEvent"
-
+	Test1Event    = "Test2Event"
 	// --------------
 	// Buy Events
 	// --------------
 
+	Minute1BuyEvent   = "Minute1BuyEvent"
 	Minute120BuyEvent = "Minute120BuyEvent"
 	Minute60BuyEvent  = "Minute60BuyEvent"
 	Minute30BuyEvent  = "Minute30BuySate"
 
+	NotMinute1BuyEvent   = "NotMinute1BuyEvent"
 	NotMinute120BuyEvent = "NotMinute120BuyEvent"
 	NotMinute60BuyEvent  = "NotMinute60BuyEvent"
 	NotMinute30BuyEvent  = "NotMinute30BuySate"
 
-	DoBuyEvent        = "DoBuyEvent"
-	DoSellEvent       = "DoSellEvent"
-	BuyCompleteEvent  = "BuyCompleteEvent"
-	SellCompleteEvent = "SellCompleteEvent"
+	DoBuyEvent            = "DoBuyEvent"
+	TestDoBuyEvent        = "TestDoBuyEvent"
+	DoSellEvent           = "DoSellEvent"
+	TestDoSellEvent       = "TestDoSellEvent"
+	BuyCompleteEvent      = "BuyCompleteEvent"
+	TestBuyCompleteEvent  = "TestBuyCompleteEvent"
+	SellCompleteEvent     = "SellCompleteEvent"
+	TestSellCompleteEvent = "TestSellCompleteEvent"
 
 	// -------------
 	//   Sell Sates
 	// -------------
 
+	Minute1SellEvent   = "Minute1SellEvent"
 	Minute120SellEvent = "Minute120SellEvent"
 	Minute60SellEvent  = "Minute60SellEvent"
 	Minute30SellEvent  = "Minute30SellEvent"
 
+	NotMinute1SellEvent   = "NotMinute1SellEvent"
 	NotMinute120SellEvent = "NotMinute120SellEvent"
 	NotMinute60SellEvent  = "NotMinute60SellEvent"
 	NotMinute30SellEvent  = "NotMinute30SellEvent"
@@ -78,19 +92,24 @@ type TradeFsm struct {
 	startEvent    fsm.EventDesc
 	shutdownEvent fsm.EventDesc
 	tradeEvent    fsm.EventDesc
+	test1Event    fsm.EventDesc
 
+	minute1BuyEvent   fsm.EventDesc
 	minute120BuyEvent fsm.EventDesc
 	minute60BuyEvent  fsm.EventDesc
 	minute30BuyEvent  fsm.EventDesc
 
+	notMinute1BuyEvent   fsm.EventDesc
 	notMinute120BuyEvent fsm.EventDesc
 	notMinute60BuyEvent  fsm.EventDesc
 	notMinute30BuyEvent  fsm.EventDesc
 
+	minute1SellEvent   fsm.EventDesc
 	minute120SellEvent fsm.EventDesc
 	minute60SellEvent  fsm.EventDesc
 	minute30SellEvent  fsm.EventDesc
 
+	notMinute1SellEvent   fsm.EventDesc
 	notMinute120SellEvent fsm.EventDesc
 	notMinute60SellEvent  fsm.EventDesc
 	notMinute30SellEvent  fsm.EventDesc
@@ -99,6 +118,11 @@ type TradeFsm struct {
 	doSellEvent       fsm.EventDesc
 	buyCompleteEvent  fsm.EventDesc
 	sellCompleteEvent fsm.EventDesc
+
+	testDoBuyEvent        fsm.EventDesc
+	testDoSellEvent       fsm.EventDesc
+	testBuyCompleteEvent  fsm.EventDesc
+	testSellCompleteEvent fsm.EventDesc
 
 	// ------------------
 	// Events List
@@ -109,26 +133,30 @@ type TradeFsm struct {
 	// Fsm Callbacks
 	callbacks fsm.Callbacks
 
-	ChanStartEvent    chan bool
-	ChanShutdownEvent chan bool
-	ChanTradeEvent    chan bool
+	ChanStartEvent     chan bool
+	ChanShutdownEvent  chan bool
+	ChanTradeEvent     chan bool
+	testChanTradeEvent chan bool
 
 	// --------------
 	// Buy Events
 	// --------------
-
+	ChanMinute1BuyEvent   chan bool
 	ChanMinute120BuyEvent chan bool
 	ChanMinute60BuyEvent  chan bool
 	ChanMinute30BuyEvent  chan bool
 
+	ChanNotMinute1BuyEvent   chan bool
 	ChanNotMinute120BuyEvent chan bool
 	ChanNotMinute60BuyEvent  chan bool
 	ChanNotMinute30BuyEvent  chan bool
 
+	ChanMinute1SellEvent   chan bool
 	ChanMinute120SellEvent chan bool
 	ChanMinute60SellEvent  chan bool
 	ChanMinute30SellEvent  chan bool
 
+	ChanNotMinute1SellEvent   chan bool
 	ChanNotMinute120SellEvent chan bool
 	ChanNotMinute60SellEvent  chan bool
 	ChanNotMinute30SellEvent  chan bool
@@ -137,6 +165,11 @@ type TradeFsm struct {
 	ChanDoSellEvent       chan bool
 	ChanBuyCompleteEvent  chan bool
 	ChanSellCompleteEvent chan bool
+
+	testChanDoBuyEvent        chan bool
+	testChanDoSellEvent       chan bool
+	testChanBuyCompleteEvent  chan bool
+	testChanSellCompleteEvent chan bool
 
 	ChanMap map[string]chan bool
 }
@@ -151,6 +184,39 @@ func NewTradeFsm(pairID string) *TradeFsm {
 	// ------------
 	startEvent := fsm.EventDesc{Name: StartEvent, Src: []string{StartState}, Dst: IdleState}
 	tradeEvent := fsm.EventDesc{Name: TradeEvent, Src: []string{IdleState}, Dst: TradingState}
+	test1Event := fsm.EventDesc{Name: Test1Event, Src: []string{IdleState}, Dst: TestTradingState}
+
+	// ----------------
+	// Test evevents
+	// ----------------
+
+	minute1BuyEvent := fsm.EventDesc{Name: Minute1BuyEvent,
+		Src: []string{TestTradingState},
+		Dst: Minute1BuyState}
+
+	notMinute1BuyEvent := fsm.EventDesc{Name: NotMinute1BuyEvent,
+		Src: []string{Minute1BuyState},
+		Dst: TestTradingState}
+
+	testDoBuyEvent := fsm.EventDesc{Name: TestDoBuyEvent,
+		Src: []string{Minute1BuyState},
+		Dst: TestDoBuyState}
+
+	testDoSellEvent := fsm.EventDesc{Name: TestDoSellEvent,
+		Src: []string{Minute30SellState},
+		Dst: DoBuyState}
+
+	testBuyCompleteEvent := fsm.EventDesc{Name: TestBuyCompleteEvent,
+		Src: []string{TestDoBuyState},
+		Dst: TestHoldState}
+
+	minute1SellEvent := fsm.EventDesc{Name: Minute1SellEvent,
+		Src: []string{TestHoldState},
+		Dst: Minute1SellState}
+
+	testSellCompleteEvent := fsm.EventDesc{Name: TestSellCompleteEvent,
+		Src: []string{TestDoSellState},
+		Dst: TestTradingState}
 
 	// ----------------------
 	// Buying related events
@@ -226,6 +292,12 @@ func NewTradeFsm(pairID string) *TradeFsm {
 
 	tFsm.startEvent = startEvent
 	tFsm.tradeEvent = tradeEvent
+	tFsm.test1Event = test1Event
+
+	tFsm.minute1BuyEvent = minute1BuyEvent
+	tFsm.minute1SellEvent = minute1SellEvent
+	tFsm.notMinute1BuyEvent = notMinute1BuyEvent
+	tFsm.notMinute1SellEvent = notMinute1BuyEvent
 
 	tFsm.minute120BuyEvent = minute120BuyEvent
 	tFsm.minute60BuyEvent = minute60BuyEvent
@@ -233,6 +305,7 @@ func NewTradeFsm(pairID string) *TradeFsm {
 	tFsm.notMinute120BuyEvent = notMinute120BuyEvent
 	tFsm.notMinute120SellEvent = notMinute120SellEvent
 
+	tFsm.notMinute1BuyEvent = notMinute1BuyEvent
 	tFsm.notMinute120BuyEvent = notMinute120BuyEvent
 	tFsm.minute60SellEvent = minute60SellEvent
 	tFsm.notMinute60BuyEvent = notMinute60BuyEvent
@@ -250,6 +323,12 @@ func NewTradeFsm(pairID string) *TradeFsm {
 
 	tFsm.buyCompleteEvent = buyCompleteEvent
 	tFsm.sellCompleteEvent = sellCompleteEvent
+
+	tFsm.testDoBuyEvent = testDoBuyEvent
+	tFsm.testDoSellEvent = testDoSellEvent
+
+	tFsm.testBuyCompleteEvent = testBuyCompleteEvent
+	tFsm.testSellCompleteEvent = testSellCompleteEvent
 
 	//minute60BuyEvent  fsm.EventDesc
 	//minute30BuyEvent  fsm.EventDesc
@@ -278,6 +357,12 @@ func NewTradeFsm(pairID string) *TradeFsm {
 		tFsm.startEvent,
 		tFsm.shutdownEvent,
 		tFsm.tradeEvent,
+		tFsm.test1Event,
+
+		tFsm.minute1BuyEvent,
+		tFsm.notMinute1BuyEvent,
+		tFsm.minute1SellEvent,
+		tFsm.notMinute1SellEvent,
 
 		tFsm.minute120BuyEvent,
 		tFsm.minute60BuyEvent,
@@ -302,32 +387,53 @@ func NewTradeFsm(pairID string) *TradeFsm {
 
 		tFsm.buyCompleteEvent,
 		tFsm.sellCompleteEvent,
+
+		tFsm.testDoBuyEvent,
+		tFsm.testDoSellEvent,
+
+		tFsm.testBuyCompleteEvent,
+		tFsm.testSellCompleteEvent,
 	}
 
 	// -------------------
 	// Callbacks registry
 	// -------------------
 	tFsm.callbacks = fsm.Callbacks{
-		StartState:    tFsm.CallBackInStartState,
-		IdleState:     tFsm.CallBackInIdleState,
-		ShutdownState: tFsm.CallBackInShutdownState,
-		TradingState:  tFsm.CallBackInTradingState,
+		StartState:       tFsm.CallBackInStartState,
+		IdleState:        tFsm.CallBackInIdleState,
+		ShutdownState:    tFsm.CallBackInShutdownState,
+		TradingState:     tFsm.CallBackInTradingState,
+		TestTradingState: tFsm.CallBackInTestTradingState,
 
+		Minute1BuyEvent:   tFsm.CallBackInMinute1BuyState,
 		Minute120BuyEvent: tFsm.CallBackInMinute120BuyState,
 		Minute60BuyEvent:  tFsm.CallBackInMinute60BuyState,
 		Minute30BuyEvent:  tFsm.CallBackInMinute30BuyState,
 
+		Minute1SellEvent:   tFsm.CallBackInMinute1SellState,
 		Minute120SellEvent: tFsm.CallBackInMinute120SellState,
 		Minute60SellEvent:  tFsm.CallBackInMinute60SellState,
 		Minute30SellEvent:  tFsm.CallBackInMinute30SellState,
 
+		NotMinute1BuyEvent:   tFsm.CallBackInNotMinute1BuyState,
 		NotMinute120BuyEvent: tFsm.CallBackInNotMinute120BuyState,
 		NotMinute60BuyEvent:  tFsm.CallBackInNotMinute60BuyState,
 		NotMinute30BuyEvent:  tFsm.CallBackInNotMinute30BuyState,
 
+		NotMinute1SellEvent:   tFsm.CallBackInNotMinute1SellState,
 		NotMinute120SellEvent: tFsm.CallBackInNotMinute120SellState,
 		NotMinute60SellEvent:  tFsm.CallBackInNotMinute60SellState,
-		NotMinute30SellEvent:  tFsm.CallBackInNotMinute30SellState}
+		NotMinute30SellEvent:  tFsm.CallBackInNotMinute30SellState,
+
+		DoBuyEvent:            tFsm.CallBackInDoBuyState,
+		TestDoBuyEvent:        tFsm.CallBackInTestDoBuyState,
+		DoSellEvent:           tFsm.CallBackInDoSellState,
+		TestDoSellEvent:       tFsm.CallBackInDoTestDoSellState,
+		BuyCompleteEvent:      tFsm.CallBackInBuyCompleteState,
+		TestBuyCompleteEvent:  tFsm.CallBackInTestBuyCompleteState,
+		SellCompleteEvent:     tFsm.CallBackInSellCompleteState,
+		TestSellCompleteEvent: tFsm.CallBackInTestSellCompleteState,
+	}
 
 	// ------------------
 	// Event Channels
@@ -336,31 +442,40 @@ func NewTradeFsm(pairID string) *TradeFsm {
 	tFsm.ChanStartEvent = make(chan bool)
 	tFsm.ChanShutdownEvent = make(chan bool)
 	tFsm.ChanTradeEvent = make(chan bool)
+	tFsm.testChanTradeEvent = make(chan bool)
 
 	// --------------
 	// Buy Events
 	// --------------
-
+	tFsm.ChanMinute1BuyEvent = make(chan bool)
 	tFsm.ChanMinute120BuyEvent = make(chan bool)
 	tFsm.ChanMinute60BuyEvent = make(chan bool)
 	tFsm.ChanMinute30BuyEvent = make(chan bool)
 
+	tFsm.ChanNotMinute1BuyEvent = make(chan bool)
 	tFsm.ChanNotMinute120BuyEvent = make(chan bool)
 	tFsm.ChanNotMinute60BuyEvent = make(chan bool)
 	tFsm.ChanNotMinute30BuyEvent = make(chan bool)
 
+	tFsm.ChanMinute1SellEvent = make(chan bool)
 	tFsm.ChanMinute120SellEvent = make(chan bool)
 	tFsm.ChanMinute60SellEvent = make(chan bool)
 	tFsm.ChanMinute30SellEvent = make(chan bool)
 
+	tFsm.ChanNotMinute1SellEvent = make(chan bool)
 	tFsm.ChanNotMinute120SellEvent = make(chan bool)
 	tFsm.ChanNotMinute60SellEvent = make(chan bool)
 	tFsm.ChanNotMinute30SellEvent = make(chan bool)
 
-	tFsm.ChanDoBuyEvent = make(chan bool)
-	tFsm.ChanDoSellEvent = make(chan bool)
-	tFsm.ChanBuyCompleteEvent = make(chan bool)
-	tFsm.ChanSellCompleteEvent = make(chan bool)
+	tFsm.ChanDoBuyEvent = make(chan bool, 1)
+	tFsm.ChanDoSellEvent = make(chan bool, 1)
+	tFsm.ChanBuyCompleteEvent = make(chan bool, 1)
+	tFsm.ChanSellCompleteEvent = make(chan bool, 1)
+
+	tFsm.testChanDoBuyEvent = make(chan bool, 1)
+	tFsm.testChanDoSellEvent = make(chan bool, 1)
+	tFsm.testChanBuyCompleteEvent = make(chan bool, 1)
+	tFsm.testChanSellCompleteEvent = make(chan bool, 1)
 
 	// -------------
 	// FSM creation
@@ -373,10 +488,12 @@ func NewTradeFsm(pairID string) *TradeFsm {
 	tFsm.ChanMap["CEXIO_BTCUSD_MS_30_BUY"] = tFsm.ChanMinute30BuyEvent
 	tFsm.ChanMap["CEXIO_BTCUSD_MS_60_BUY"] = tFsm.ChanMinute60BuyEvent
 	tFsm.ChanMap["CEXIO_BTCUSD_MS_120_BUY"] = tFsm.ChanMinute120BuyEvent
+	tFsm.ChanMap["CEXIO_BTCUSD_MS_1_BUY"] = tFsm.ChanMinute120BuyEvent
 
 	tFsm.ChanMap["CEXIO_BTCUSD_MS_30_SELL"] = tFsm.ChanMinute30SellEvent
 	tFsm.ChanMap["CEXIO_BTCUSD_MS_60_SELL"] = tFsm.ChanMinute60SellEvent
 	tFsm.ChanMap["CEXIO_BTCUSD_MS_120_SELL"] = tFsm.ChanMinute120SellEvent
+	tFsm.ChanMap["CEXIO_BTCUSD_MS_1_SELL"] = tFsm.ChanMinute120SellEvent
 
 	return tFsm
 
@@ -393,85 +510,105 @@ func (tFsm *TradeFsm) FsmController() {
 
 		case <-tFsm.ChanStartEvent:
 			{
+				log.Info("tFsm %s Controller Event: %s", tFsm.pairID, StartEvent)
 				tFsm.FSM.Event(StartEvent)
 
 			}
 		case <-tFsm.ChanShutdownEvent:
 			{
+				log.Info("tFsm %s Controller Event: %s", tFsm.pairID, ShutdownEvent)
 				tFsm.FSM.Event(ShutdownState)
 			}
 		case <-tFsm.ChanTradeEvent:
 			{
+				log.Info("tFsm %s Controller Event: %s", tFsm.pairID, TradeEvent)
 				tFsm.FSM.Event(TradeEvent)
 			}
 
 		case <-tFsm.ChanMinute120BuyEvent:
 			{
+				log.Info("tFsm %s Controller Event: %s", tFsm.pairID, Minute120BuyState)
 				tFsm.FSM.Event(Minute120BuyEvent)
 			}
 		case <-tFsm.ChanMinute60BuyEvent:
 			{
+				log.Info("tFsm %s Controller Event: %s", tFsm.pairID, Minute60BuyEvent)
 				tFsm.FSM.Event(Minute60BuyEvent)
 			}
 		case <-tFsm.ChanMinute30BuyEvent:
 			{
+				log.Info("tFsm %s Controller Event: %s", tFsm.pairID, Minute30BuyEvent)
 				tFsm.FSM.Event(Minute30BuyEvent)
 			}
 
 		case <-tFsm.ChanNotMinute120BuyEvent:
 			{
+				log.Info("tFsm %s Controller Event: %s", tFsm.pairID, NotMinute120BuyEvent)
 				tFsm.FSM.Event(NotMinute120BuyEvent)
 			}
 		case <-tFsm.ChanNotMinute60BuyEvent:
 			{
+				log.Info("tFsm %s Controller Event: %s", tFsm.pairID, NotMinute60BuyEvent)
 				tFsm.FSM.Event(NotMinute60BuyEvent)
 			}
 		case <-tFsm.ChanNotMinute30BuyEvent:
 			{
+				log.Info("tFsm %s Controller Event: %s", tFsm.pairID, NotMinute30BuyEvent)
 				tFsm.FSM.Event(NotMinute30BuyEvent)
 			}
 
 		case <-tFsm.ChanMinute120SellEvent:
 			{
+				log.Info("tFsm %s Controller Event: %s", tFsm.pairID, Minute120SellEvent)
 				tFsm.FSM.Event(Minute120SellEvent)
 			}
 		case <-tFsm.ChanMinute60SellEvent:
 			{
+				log.Info("tFsm %s Controller Event: %s", tFsm.pairID, Minute60SellEvent)
 				tFsm.FSM.Event(Minute60SellEvent)
 			}
 		case <-tFsm.ChanMinute30SellEvent:
 			{
+				log.Info("tFsm %s Controller Event: %s", tFsm.pairID, Minute30SellEvent)
 				tFsm.FSM.Event(Minute30SellEvent)
 			}
 
 		case <-tFsm.ChanNotMinute120SellEvent:
+
 			{
+				log.Info("tFsm %s Controller Event: %s", tFsm.pairID, NotMinute120SellEvent)
 				tFsm.FSM.Event(NotMinute120SellEvent)
 			}
 		case <-tFsm.ChanNotMinute60SellEvent:
 			{
+				log.Info("tFsm %s Controller Event: %s", tFsm.pairID, NotMinute30SellEvent)
 				tFsm.FSM.Event(NotMinute30SellEvent)
 			}
 		case <-tFsm.ChanNotMinute30SellEvent:
 			{
+				log.Info("tFsm %s Controller Event: %s", tFsm.pairID, NotMinute30SellEvent)
 				tFsm.FSM.Event(NotMinute30SellEvent)
 			}
 
 		case <-tFsm.ChanDoBuyEvent:
 			{
+				log.Info("tFsm %s Controller Event: %s", tFsm.pairID, DoBuyEvent)
 				tFsm.FSM.Event(DoBuyEvent)
 			}
 		case <-tFsm.ChanDoSellEvent:
 			{
+				log.Info("tFsm %s Controller Event: %s", tFsm.pairID, DoSellEvent)
 				tFsm.FSM.Event(DoSellEvent)
 			}
 		case <-tFsm.ChanBuyCompleteEvent:
 			{
+				log.Info("tFsm %s Controller Event: %s", tFsm.pairID, BuyCompleteEvent)
 				tFsm.FSM.Event(BuyCompleteEvent)
 			}
 		case <-tFsm.ChanSellCompleteEvent:
 			{
-				tFsm.FSM.Event(StartEvent)
+				log.Info("tFsm %s Controller Event: %s", tFsm.pairID, SellCompleteEvent)
+				tFsm.FSM.Event(SellCompleteEvent)
 			}
 
 		}

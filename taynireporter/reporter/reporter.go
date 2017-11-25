@@ -54,7 +54,7 @@ func Start() {
 	exchanges := viper.Get("exchange").(map[string]interface{})
 	//historyCount := int(viper.Get("history").(int64)) / 100
 
-	historyCount := int(5000)
+	historyCount := int(500)
 
 	exchangesCount := len(exchanges)
 
@@ -81,6 +81,11 @@ func Start() {
 		// -------------------------
 		pairsIntMap := exchanges[key].(map[string]interface{})
 		pairsIntList := pairsIntMap["pairs"].([]interface{})
+
+		wg := &sync.WaitGroup{}
+		wgSize := len(pairsIntList) * len(minuteStrategies)
+
+		wg.Add(wgSize)
 
 		for _, pair := range pairsIntList {
 
@@ -109,16 +114,19 @@ func Start() {
 					log.Fatal("Error wirting file", err.Error())
 				}
 
-				go Monitor(kr, statsKey, file, historyCount)
+				go Monitor(kr, statsKey, file, historyCount, wg)
 
 			}
 
 		}
-
+		log.Infof("Waiting for %d write routines to finis", wgSize)
+		wg.Wait()
+		log.Info("All complete!!")
 	}
+
 }
 
-func Monitor(kr *kredis.Kredis, key string, file *os.File, historyCount int) {
+func Monitor(kr *kredis.Kredis, key string, file *os.File, historyCount int, wg *sync.WaitGroup) {
 	sampleRate := int(viper.Get("sample_rate").(int64))
 	readerTicker := time.NewTicker(time.Second * time.Duration(sampleRate))
 	writerChan := make(chan string, 100000)
@@ -140,6 +148,8 @@ func Monitor(kr *kredis.Kredis, key string, file *os.File, historyCount int) {
 		log.Fatal("error: ", err.Error())
 	}
 
+	log.Infof("Row Lenth: %d, pair: %s", len(rows), key)
+
 	size := int(len(rows))
 	for ID := size - 1; ID >= 0; ID-- {
 		row := rows[ID]
@@ -157,8 +167,8 @@ func Monitor(kr *kredis.Kredis, key string, file *os.File, historyCount int) {
 	*/
 	log.Info("DONE reading db:", key)
 
-	os.Exit(0)
-
+	//os.Exit(0)
+	wg.Done()
 	condLock.Broadcast()
 
 }
