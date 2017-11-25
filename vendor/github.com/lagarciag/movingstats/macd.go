@@ -8,6 +8,6 @@ func (ms *MovingStats) macdCalc(value float64) {
 	ms.macd = ms.ema12.Value() - ms.ema26.Value()
 	ms.emaMacd9.Add(ms.macd)
 
-	ms.macdDivergence = ms.emaMacd9.Value() - ms.macd
+	ms.macdDivergence = ms.macd - ms.emaMacd9.Value()
 
 }

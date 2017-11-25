@@ -122,6 +122,7 @@ func Start() {
 		log.Infof("Waiting for %d write routines to finis", wgSize)
 		wg.Wait()
 		log.Info("All complete!!")
+		os.Exit(1)
 	}
 
 }
