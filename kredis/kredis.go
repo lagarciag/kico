@@ -313,6 +313,22 @@ func (kr *Kredis) GetLatest(exchange, pair string) (float64, error) {
 
 }
 
+func (kr *Kredis) GetRawString(rawString string, index int) (string, error) {
+
+	key := rawString
+
+	fmt.Println("RAW String Key: ", key)
+
+	kr.mu.Lock()
+	valueInt, err := kr.conn.Do("LINDEX", key, index)
+	kr.mu.Unlock()
+
+	valueStr := string(valueInt.([]uint8))
+
+	return valueStr, err
+
+}
+
 func (kr *Kredis) GetLatestValue(key string) (string, error) {
 	kr.mu.Lock()
 	valueInt, err := kr.conn.Do("LINDEX", key, 0)

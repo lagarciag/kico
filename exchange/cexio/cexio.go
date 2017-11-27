@@ -71,6 +71,7 @@ func NewBot(config CollectorConfig, kr *kredis.Kredis) (bot *Bot) {
 	bot.sampleRate = config.SampleRate
 	bot.secret = config.CexioSecret
 	bot.kr = kr
+	bot.kr.Start()
 	bot.api, bot.apiError = cexioapi.NewPublicAPI()
 
 	bot.tickerSub = make(chan cexioapi.ResponseTickerSubData)
@@ -126,7 +127,7 @@ func (bot *Bot) errorMonitor() {
 //pStart are commong Start functionality
 func (bot *Bot) pStart() {
 	log.Info("Starting Public CEXIO collector: ", bot.pairs)
-	bot.kr.Start()
+	//bot.kr.Start()
 
 	priceUdateTimer := (time.Second * time.Duration(bot.sampleRate))
 
