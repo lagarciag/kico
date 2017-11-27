@@ -25,6 +25,13 @@ func (tf *TradeFsm) CallBackInDoSellState(e *fsm.Event) {
 
 func (tf *TradeFsm) CallBackInDoBuyState(e *fsm.Event) {
 	log.Info("In state :", tf.FSM.Current())
+
+	done := func() {
+		tf.FSM.Event(BuyCompleteEvent)
+	}
+	time.Sleep(time.Second)
+	go done()
+
 }
 
 func (tf *TradeFsm) CallBackInTradingState(e *fsm.Event) {
@@ -58,10 +65,28 @@ func (tf *TradeFsm) CallBackInMinute60BuyState(e *fsm.Event) {
 
 func (tf *TradeFsm) CallBackInMinute30BuyState(e *fsm.Event) {
 	log.Info("In state :", tf.FSM.Current())
+
+	done := func() {
+		tf.FSM.Event(DoBuyEvent)
+	}
+	log.Info("Test executing buy for ", tf.pairID)
+	time.Sleep(time.Second)
+	go done()
+	log.Infof("CallBack done: %s, %s", tf.FSM.Current(), tf.pairID)
+
 }
 
 func (tf *TradeFsm) CallBackInMinute1SellState(e *fsm.Event) {
 	log.Info("In state :", tf.FSM.Current())
+
+	done := func() {
+		tf.FSM.Event(TestDoSellEvent)
+	}
+	log.Info("Executing buy for ", tf.pairID)
+	time.Sleep(time.Second)
+	go done()
+	log.Infof("CallBack done: %s, %s", tf.FSM.Current(), tf.pairID)
+
 }
 
 func (tf *TradeFsm) CallBackInMinute120SellState(e *fsm.Event) {
@@ -74,6 +99,14 @@ func (tf *TradeFsm) CallBackInMinute60SellState(e *fsm.Event) {
 
 func (tf *TradeFsm) CallBackInMinute30SellState(e *fsm.Event) {
 	log.Info("In state :", tf.FSM.Current())
+	done := func() {
+		tf.FSM.Event(DoSellEvent)
+	}
+	log.Info("Executing buy for ", tf.pairID)
+	time.Sleep(time.Second)
+	go done()
+	log.Infof("CallBack done: %s, %s", tf.FSM.Current(), tf.pairID)
+
 }
 
 // -----------
@@ -120,6 +153,13 @@ func (tf *TradeFsm) CallBackInTestHoldState(e *fsm.Event) {
 
 func (tf *TradeFsm) CallBackInTestDoSellState(e *fsm.Event) {
 	log.Info("In state :", tf.FSM.Current())
+
+	done := func() {
+		tf.FSM.Event(SellCompleteEvent)
+	}
+	time.Sleep(time.Second)
+	go done()
+
 }
 
 func (tf *TradeFsm) CallBackInTestDoBuyState(e *fsm.Event) {
@@ -142,6 +182,7 @@ func (tf *TradeFsm) CallBackInDoTestDoSellState(e *fsm.Event) {
 }
 func (tf *TradeFsm) CallBackInBuyCompleteState(e *fsm.Event) {
 	log.Info("In state :", tf.FSM.Current())
+
 }
 func (tf *TradeFsm) CallBackInTestBuyCompleteState(e *fsm.Event) {
 	log.Info("In state :", tf.FSM.Current())

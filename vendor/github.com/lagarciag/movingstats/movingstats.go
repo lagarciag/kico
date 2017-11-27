@@ -3,7 +3,6 @@ package movingstats
 import (
 	"sync"
 
-	"github.com/VividCortex/ewma"
 	"github.com/lagarciag/movingaverage"
 	"github.com/lagarciag/multiema"
 	"github.com/lagarciag/ringbuffer"
@@ -48,7 +47,7 @@ type MovingStats struct {
 		tEmaHistory *ringbuffer.RingBuffer
 	*/
 
-	sema ewma.MovingAverage
+	sema multiema.DoubleEma
 
 	sEma *emaContainer
 
@@ -102,7 +101,8 @@ func NewMovingStats(size int) *MovingStats {
 	ms.lastWindowHistory = ringbuffer.NewBuffer(size, true)
 
 	ms.sma = movingaverage.New(size)
-	ms.sema = ewma.NewMovingAverage(30)
+	//ms.sema = ewma.NewMovingAverage(30)
+	ms.sema = multiema.NewDema(30)
 	ms.atr = multiema.NewMultiEma(atrPeriod, size)
 	ms.plusDMAvr = multiema.NewMultiEma(atrPeriod, size)
 	ms.minusDMAvr = multiema.NewMultiEma(atrPeriod, size)
@@ -142,17 +142,17 @@ func (ms *MovingStats) Add(value float64) {
 	// ------------------------------------------------
 	// Calculate Multiple Exponential Moving Averages
 	// ------------------------------------------------
-	ms.emaCalc(value)
+	ms.emaCalc(ms.sma.SimpleMovingAverage())
 
 	// --------------------------
 	// Calculate MACD indicator
 	// --------------------------
-	ms.macdCalc(value)
+	ms.macdCalc(ms.sma.SimpleMovingAverage())
 
 	// ------------------------------------------
 	// Calculate True Range & Average True Range
 	// ------------------------------------------
-	ms.atrCalc(value)
+	ms.atrCalc(ms.sma.SimpleMovingAverage())
 
 	// -----------------------------------------
 	// Calculate Directional Movement Indicator

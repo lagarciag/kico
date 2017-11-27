@@ -130,14 +130,16 @@ func TestTraderBasic(t *testing.T) {
 	fromTradingTo30MinBuy(t, tFsm)
 
 	err = tFsm.FSM.Event(trader.NotMinute120BuyEvent)
-	errorNotExpected(t, err)
-	checkState(t, tFsm, trader.TradingState)
-
-	fromTradingTo30MinBuy(t, tFsm)
+	errorExpected(t, err)
+	checkState(t, tFsm, trader.HoldState)
 
 	err = tFsm.FSM.Event(trader.DoBuyEvent)
+	errorExpected(t, err)
+	checkState(t, tFsm, trader.HoldState)
+
+	err = tFsm.FSM.Event(trader.Minute120SellEvent)
 	errorNotExpected(t, err)
-	checkState(t, tFsm, trader.DoBuyState)
+	//checkState(t, tFsm, trader.HoldState)
 
 }
 
@@ -178,10 +180,10 @@ func TestTrader1Min(t *testing.T) {
 	checkState(t, tFsm, trader.TestHoldState)
 
 	/*
-	err = tFsm.FSM.Event(trader.Minute1SellEvent)
-	errorNotExpected(t, err)
-	checkState(t, tFsm, trader.Minute1SellState)
-     */
+		err = tFsm.FSM.Event(trader.Minute1SellEvent)
+		errorNotExpected(t, err)
+		checkState(t, tFsm, trader.Minute1SellState)
+	*/
 }
 
 func fromTradingTo30MinBuy(t *testing.T, tFsm *trader.TradeFsm) {
@@ -196,7 +198,10 @@ func fromTradingTo30MinBuy(t *testing.T, tFsm *trader.TradeFsm) {
 
 	err = tFsm.FSM.Event(trader.Minute30BuyEvent)
 	errorNotExpected(t, err)
-	checkState(t, tFsm, trader.Minute30BuyState)
+
+	time.Sleep(time.Second * 2)
+
+	checkState(t, tFsm, trader.HoldState)
 
 }
 
