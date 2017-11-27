@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/lagarciag/ringbuffer"
-
 )
 
 type MovingAverage struct {
@@ -29,8 +28,8 @@ func NewAverage(period int) *MovingAverage {
 
 	avg := &MovingAverage{}
 	avg.period = period
-	avg.avgHistBuff = ringbuffer.NewBuffer(period, false)
-	avg.varHistBuff = ringbuffer.NewBuffer(period, false)
+	avg.avgHistBuff = ringbuffer.NewBuffer(period, false, 0, 0)
+	avg.varHistBuff = ringbuffer.NewBuffer(period, false, 0, 0)
 	return avg
 }
 

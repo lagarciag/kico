@@ -12,7 +12,7 @@ type RingBuffer struct {
 	counter       int
 }
 
-func NewBuffer(size int, recordHighLow bool) *RingBuffer {
+func NewBuffer(size int, recordHighLow bool, initHigh, initLow float64) *RingBuffer {
 
 	rb := &RingBuffer{}
 	rb.recordHighLow = recordHighLow
@@ -24,6 +24,13 @@ func NewBuffer(size int, recordHighLow bool) *RingBuffer {
 	rb.high = 0
 	rb.low = 0
 	rb.counter = 0
+
+	rb.buff[len(rb.buff)-1] = initHigh
+	rb.high = len(rb.buff) - 1
+
+	rb.buff[len(rb.buff)-2] = initLow
+	rb.low = len(rb.buff) - 2
+
 	return rb
 }
 

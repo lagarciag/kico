@@ -314,10 +314,8 @@ func (kr *Kredis) GetLatest(exchange, pair string) (float64, error) {
 }
 
 func (kr *Kredis) GetRawString(rawString string, index int) (string, error) {
-
+	//rawList, err := kr.conn.Do("LRANGE", key, 0, -1)
 	key := rawString
-
-	fmt.Println("RAW String Key: ", key)
 
 	kr.mu.Lock()
 	valueInt, err := kr.conn.Do("LINDEX", key, index)
@@ -326,6 +324,26 @@ func (kr *Kredis) GetRawString(rawString string, index int) (string, error) {
 	valueStr := string(valueInt.([]uint8))
 
 	return valueStr, err
+
+}
+
+func (kr *Kredis) GetRawStringList(rawString string, size int) ([]string, error) {
+
+	key := rawString
+
+	kr.mu.Lock()
+	//valueInt, err := kr.conn.Do("LINDEX", key, index)
+	rawList, err := kr.conn.Do("LRANGE", key, 0, size-1)
+	kr.mu.Unlock()
+
+	returnString := make([]string, len(rawList.([]interface{})))
+
+	for i, val := range rawList.([]interface{}) {
+		tmpVal := val.([]uint8)
+		returnString[i] = string(tmpVal)
+	}
+
+	return returnString, err
 
 }
 

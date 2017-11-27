@@ -343,33 +343,32 @@ func (bot *Bot) UpdatePriceLists(exchange, pair string) {
 	// Do not allow Db updates by statistician & friends while
 	// recovery is done
 	// --------------------------------------------------------
-	bot.stats[pair].SetDbUpdates(false)
 
-	if historySize > 1 {
-		size := int(len(list))
-		for i := size - 1; i >= 0; i-- {
-			valueStr := list[i]
-			value, err := strconv.ParseFloat(valueStr, 64)
-			if err != nil {
-				log.Error("Empty value in db: ", err.Error())
+	if false {
 
-			} else {
-				//log.Infof("Adding value %f for pair %s", value, pair)
-				bot.stats[pair].Add(value)
+		bot.stats[pair].SetDbUpdates(false)
+
+		if historySize > 1 {
+			size := int(len(list))
+			for i := size - 1; i >= 0; i-- {
+				valueStr := list[i]
+				value, err := strconv.ParseFloat(valueStr, 64)
+				if err != nil {
+					log.Error("Empty value in db: ", err.Error())
+
+				} else {
+					//log.Infof("Adding value %f for pair %s", value, pair)
+					bot.stats[pair].Add(value)
+				}
+
 			}
-
 		}
-
-		/*for _, valueStr := range list {
-
-		}
-		*/
+		log.Infof("DB recovery complete , reprocessed %d entries for pair %s : ", len(list), pair)
 	}
 	// -----------------------------------------------
 	// re-enable Db updates for statistician & friends
 	// -----------------------------------------------
 	bot.stats[pair].SetDbUpdates(true)
-	log.Infof("DB recovery complete , reprocessed %d entries for pair %s : ", len(list), pair)
 	time.Sleep(time.Second)
 
 	// ----------------------------------------

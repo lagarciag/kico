@@ -163,35 +163,3 @@ func (st *Statistician) Stable(size int) (bool, error) {
 	}
 	return false, fmt.Errorf("Invalid size request")
 }
-
-/*
-func trackExchange(exchangeName string,
-	pairsIntList []interface{},
-	statsMap map[string]*Statistician,
-	kr *kredis.Kredis) {
-	counter := 0
-	for Run {
-		now := time.Now()
-		for _, pair := range pairsIntList {
-
-			statsKey := fmt.Sprintf("%s_%s", exchangeName, pair.(string))
-
-			value, err := kr.GetLatest(exchangeName, pair.(string))
-
-			if err != nil {
-				log.Fatal("GetLatest: ", err.Error())
-			}
-
-			statsMap[statsKey].Add(value)
-			elapsed := time.Since(now)
-			if counter%(60*5) == 0 {
-				log.Debugf("TrackExchange: %s - %s - %f - Elapsed: %f", exchangeName, pair.(string), value, elapsed.Seconds())
-			}
-		}
-
-		counter++
-		time.Sleep(time.Second * 2)
-	}
-
-}
-*/

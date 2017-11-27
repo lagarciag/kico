@@ -9,6 +9,88 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+type IndicatorsHistory struct {
+	LastValue []float64 `json:"last_value"`
+	Sma       []float64 `json:"sma"`
+	Sema      []float64 `json:"sema"`
+	Ema       []float64 `json:"ema"`
+	EmaUp     []bool    `json:"ema_up"`
+	Slope     []float64 `json:"slope"`
+
+	// MACD indicators
+	Macd     []float64 `json:"macd"`
+	Md9      []float64 `json:"md_9"`
+	Macd12   []float64 `json:"macd_12"`
+	Macd26   []float64 `json:"macd_26"`
+	MacdDiv  []float64 `json:"macd_div"`
+	MacdBull []bool    `json:"macd_bull"`
+
+	StdDev           []float64 `json:"std_dev"`
+	StdDevPercentage []float64 `json:"std_dev_percentage"`
+	//stdDevBuy := ms.StdDevBuy()
+
+	CHigh []float64 `json:"c_high"`
+	CLow  []float64 `json:"c_low"`
+	PHigh []float64 `json:"p_high"`
+	PLow  []float64 `json:"p_low"`
+	MDM   []float64 `json:"mdm"`
+	PDM   []float64 `json:"pdm"`
+	Adx   []float64 `json:"adx"`
+	MDI   []float64 `json:"m_di"`
+	PDI   []float64 `json:"p_di"`
+
+	// --------------
+	// True Range
+	// --------------
+	TR  []float64 `json:"tr"`
+	ATR []float64 `json:"atr"`
+
+	Buy  []bool `json:"buy"`
+	Sell []bool `json:"sell"`
+}
+
+type Indicators struct {
+	Name      string  `json:"name"`
+	Date      string  `json:"date"`
+	LastValue float64 `json:"last_value"`
+	Sma       float64 `json:"sma"`
+	Sema      float64 `json:"sema"`
+	Ema       float64 `json:"ema"`
+	EmaUp     bool    `json:"ema_up"`
+	Slope     float64 `json:"slope"`
+
+	// MACD indicators
+	Macd     float64 `json:"macd"`
+	Md9      float64 `json:"md_9"`
+	Macd12   float64 `json:"macd_12"`
+	Macd26   float64 `json:"macd_26"`
+	MacdDiv  float64 `json:"macd_div"`
+	MacdBull bool    `json:"macd_bull"`
+
+	StdDev           float64 `json:"std_dev"`
+	StdDevPercentage float64 `json:"std_dev_percentage"`
+	//stdDevBuy := ms.StdDevBuy()
+
+	CHigh float64 `json:"c_high"`
+	CLow  float64 `json:"c_low"`
+	PHigh float64 `json:"p_high"`
+	PLow  float64 `json:"p_low"`
+	MDM   float64 `json:"mdm"`
+	PDM   float64 `json:"pdm"`
+	Adx   float64 `json:"adx"`
+	MDI   float64 `json:"m_di"`
+	PDI   float64 `json:"p_di"`
+
+	// --------------
+	// True Range
+	// --------------
+	TR  float64 `json:"tr"`
+	ATR float64 `json:"atr"`
+
+	Buy  bool `json:"buy"`
+	Sell bool `json:"sell"`
+}
+
 type MovingStats struct {
 	mu *sync.Mutex
 
@@ -89,24 +171,126 @@ const mac26Period = 26
 const atrPeriod = 14
 const smallSmaPeriod = 20
 
-func NewMovingStats(size int) *MovingStats {
+func createIndicatorsHistorySlice(indHistory []Indicators) (indicatorsHistorySlices IndicatorsHistory) {
+
+	size := len(indHistory)
+
+	indicatorsHistorySlices.LastValue = make([]float64, size)
+	indicatorsHistorySlices.Sma = make([]float64, size)
+	indicatorsHistorySlices.Sema = make([]float64, size)
+	indicatorsHistorySlices.Ema = make([]float64, size)
+	indicatorsHistorySlices.EmaUp = make([]bool, size)
+	indicatorsHistorySlices.Slope = make([]float64, size)
+
+	// MACD indicators
+	indicatorsHistorySlices.Macd = make([]float64, size)
+	indicatorsHistorySlices.Md9 = make([]float64, size)
+	indicatorsHistorySlices.Macd12 = make([]float64, size)
+	indicatorsHistorySlices.Macd26 = make([]float64, size)
+	indicatorsHistorySlices.MacdDiv = make([]float64, size)
+	indicatorsHistorySlices.MacdBull = make([]bool, size)
+
+	indicatorsHistorySlices.StdDev = make([]float64, size)
+	indicatorsHistorySlices.StdDevPercentage = make([]float64, size)
+	//stdDevBuy := ms.StdDevBuy()
+
+	indicatorsHistorySlices.CHigh = make([]float64, size)
+	indicatorsHistorySlices.CLow = make([]float64, size)
+	indicatorsHistorySlices.PHigh = make([]float64, size)
+	indicatorsHistorySlices.PLow = make([]float64, size)
+	indicatorsHistorySlices.MDM = make([]float64, size)
+	indicatorsHistorySlices.PDM = make([]float64, size)
+	indicatorsHistorySlices.Adx = make([]float64, size)
+	indicatorsHistorySlices.MDI = make([]float64, size)
+	indicatorsHistorySlices.PDI = make([]float64, size)
+
+	// --------------
+	// True Range
+	// --------------
+	indicatorsHistorySlices.TR = make([]float64, size)
+	indicatorsHistorySlices.ATR = make([]float64, size)
+
+	indicatorsHistorySlices.Buy = make([]bool, size)
+	indicatorsHistorySlices.Sell = make([]bool, size)
+
+	for i, indicator := range indHistory {
+
+		indicatorsHistorySlices.LastValue[i] = indicator.LastValue
+		indicatorsHistorySlices.Sma[i] = indicator.Sma
+		indicatorsHistorySlices.Sema[i] = indicator.Sema
+		indicatorsHistorySlices.Ema[i] = indicator.Ema
+		indicatorsHistorySlices.EmaUp[i] = indicator.EmaUp
+		indicatorsHistorySlices.Slope[i] = indicator.Slope
+
+		// MACD indicators
+		indicatorsHistorySlices.Macd[i] = indicator.Macd
+		indicatorsHistorySlices.Md9[i] = indicator.Md9
+		indicatorsHistorySlices.Macd12[i] = indicator.Macd12
+		indicatorsHistorySlices.Macd26[i] = indicator.Macd26
+		indicatorsHistorySlices.MacdDiv[i] = indicator.MacdDiv
+		indicatorsHistorySlices.MacdBull[i] = indicator.MacdBull
+
+		indicatorsHistorySlices.StdDev[i] = indicator.StdDev
+		indicatorsHistorySlices.StdDevPercentage[i] = indicator.StdDevPercentage
+		//stdDevBuy := ms.StdDevBuy()
+
+		indicatorsHistorySlices.CHigh[i] = indicator.CHigh
+		indicatorsHistorySlices.CLow[i] = indicator.CLow
+		indicatorsHistorySlices.PHigh[i] = indicator.PHigh
+		indicatorsHistorySlices.PLow[i] = indicator.PLow
+		indicatorsHistorySlices.MDM[i] = indicator.MDM
+		indicatorsHistorySlices.PDM[i] = indicator.PDM
+		indicatorsHistorySlices.Adx[i] = indicator.Adx
+		indicatorsHistorySlices.MDI[i] = indicator.MDI / 100
+		indicatorsHistorySlices.PDI[i] = indicator.PDI / 100
+
+		// --------------
+		// True Range
+		// --------------
+		indicatorsHistorySlices.TR[i] = indicator.TR
+		indicatorsHistorySlices.ATR[i] = indicator.ATR
+
+		indicatorsHistorySlices.Buy[i] = indicator.Buy
+		indicatorsHistorySlices.Sell[i] = indicator.Sell
+
+	}
+
+	return indicatorsHistorySlices
+}
+
+func NewMovingStats(size int, latestIndicators, prevIndicators Indicators, indicatorsHistory []Indicators) *MovingStats {
 
 	log.Debug("NewMovingStats Size: ", size)
+
+	historyIndicatorsInSlices := createIndicatorsHistorySlice(indicatorsHistory)
 
 	//window := float64(size)
 	ms := &MovingStats{}
 	ms.mu = &sync.Mutex{}
 	ms.windowSize = size
-	ms.currentWindowHistory = ringbuffer.NewBuffer(size, true)
-	ms.lastWindowHistory = ringbuffer.NewBuffer(size, true)
+
+	prevHigh := prevIndicators.PHigh
+	prevLow := prevIndicators.PLow
+
+	currHigh := latestIndicators.CHigh
+	currLow := latestIndicators.CLow
+
+	ms.currentWindowHistory = ringbuffer.NewBuffer(size, true, currHigh, currLow)
+	ms.lastWindowHistory = ringbuffer.NewBuffer(size, true, prevHigh, prevLow)
+
+	//emaHistBuffer := ringbuffer.NewBuffer(size, true, prevHigh, prevLow)
 
 	ms.sma = movingaverage.New(size)
 	//ms.sema = ewma.NewMovingAverage(30)
-	ms.sema = multiema.NewDema(30)
-	ms.atr = multiema.NewMultiEma(atrPeriod, size)
-	ms.plusDMAvr = multiema.NewMultiEma(atrPeriod, size)
-	ms.minusDMAvr = multiema.NewMultiEma(atrPeriod, size)
-	ms.adxAvr = multiema.NewMultiEma(atrPeriod, size)
+	ms.sema = multiema.NewDema(30, latestIndicators.Sema)
+
+	ms.atr = multiema.NewMultiEma(atrPeriod, size, historyIndicatorsInSlices.ATR)
+
+	ms.plusDMAvr = multiema.NewMultiEma(atrPeriod, size, historyIndicatorsInSlices.PDI)
+
+	ms.minusDMAvr = multiema.NewMultiEma(atrPeriod, size, historyIndicatorsInSlices.MDI)
+
+	ms.adxAvr = multiema.NewMultiEma(atrPeriod, size, historyIndicatorsInSlices.Adx)
 
 	ms.smaLong = movingaverage.New(size * smallSmaPeriod)
 
@@ -121,14 +305,14 @@ func NewMovingStats(size int) *MovingStats {
 		ms.tEmaHistory = ringbuffer.NewBuffer(size, false)
 	*/
 
-	ms.sEma = newEmaContainer(emaPeriod, size, 1)
-	ms.dEma = newEmaContainer(emaPeriod, size, 2)
-	ms.tEma = newEmaContainer(emaPeriod, size, 3)
+	ms.sEma = newEmaContainer(emaPeriod, size, 1, historyIndicatorsInSlices.Ema)
+	//ms.dEma = newEmaContainer(emaPeriod, size, 2, historyIndicatorsInSlices.d)
+	//ms.tEma = newEmaContainer(emaPeriod, size, 3, []float64{0})
 
-	ms.emaMacd9 = multiema.NewMultiEma(macD9Period, size)
+	ms.emaMacd9 = multiema.NewMultiEma(macD9Period, size, historyIndicatorsInSlices.Md9)
 
-	ms.ema12 = multiema.NewMultiEma(mac12Period, size)
-	ms.ema26 = multiema.NewMultiEma(mac26Period, size)
+	ms.ema12 = multiema.NewMultiEma(mac12Period, size, historyIndicatorsInSlices.Macd12)
+	ms.ema26 = multiema.NewMultiEma(mac26Period, size, historyIndicatorsInSlices.Macd26)
 
 	return ms
 }

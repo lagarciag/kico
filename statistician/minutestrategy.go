@@ -15,50 +15,8 @@ import (
 	"github.com/lagarciag/movingstats"
 	"github.com/lagarciag/tayni/kredis"
 	"github.com/metakeule/fmtdate"
-	"github.com/sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 )
-
-type Indicators struct {
-	Name      string  `json:"name"`
-	Date      string  `json:"date"`
-	LastValue float64 `json:"last_value"`
-	Sma       float64 `json:"sma"`
-	Sema      float64 `json:"sema"`
-	Ema       float64 `json:"ema"`
-	EmaUp     bool    `json:"ema_up"`
-	Slope     float64 `json:"slope"`
-
-	// MACD indicators
-	Macd     float64 `json:"macd"`
-	Md9      float64 `json:"md_9"`
-	Macd12   float64 `json:"macd_12"`
-	Macd26   float64 `json:"macd_26"`
-	MacdDiv  float64 `json:"macd_div"`
-	MacdBull bool    `json:"macd_bull"`
-
-	StdDev           float64 `json:"std_dev"`
-	StdDevPercentage float64 `json:"std_dev_percentage"`
-	//stdDevBuy := ms.StdDevBuy()
-
-	CHigh float64 `json:"c_high"`
-	CLow  float64 `json:"c_low"`
-	PHigh float64 `json:"p_high"`
-	PLow  float64 `json:"p_low"`
-	MDM   float64 `json:"mdm"`
-	PDM   float64 `json:"pdm"`
-	Adx   float64 `json:"adx"`
-	MDI   float64 `json:"m_di"`
-	PDI   float64 `json:"p_di"`
-
-	// --------------
-	// True Range
-	// --------------
-	TR  float64 `json:"tr"`
-	ATR float64 `json:"atr"`
-
-	Buy  bool `json:"buy"`
-	Sell bool `json:"sell"`
-}
 
 type MinuteStrategy struct {
 	ID string
@@ -71,7 +29,7 @@ type MinuteStrategy struct {
 
 	warmUpComplete bool
 
-	indicators Indicators
+	indicators movingstats.Indicators
 
 	kr *kredis.Kredis
 
@@ -117,10 +75,10 @@ type MinuteStrategy struct {
 
 	//Logging
 
-	log *logrus.Logger
-	fh  *os.File
+	//log *logrus.Logger
+	fh *os.File
 
-	indicatorsChan chan Indicators
+	indicatorsChan chan movingstats.Indicators
 
 	buy  bool
 	sell bool
@@ -139,8 +97,8 @@ func NewMinuteStrategy(name string, minuteWindowSize int, stdLimit float64, doLo
 	ps.ID = ID
 
 	ps.init = true
-	ps.indicatorsChan = make(chan Indicators, 1300000)
-	ps.indicators = Indicators{}
+	ps.indicatorsChan = make(chan movingstats.Indicators, 1300000)
+	ps.indicators = movingstats.Indicators{}
 	ps.doDbUpdate = true
 	ps.kr = kr
 	//ps.fh = f
@@ -153,7 +111,18 @@ func NewMinuteStrategy(name string, minuteWindowSize int, stdLimit float64, doLo
 	ps.minuteWindowSize = minuteWindowSize
 	ps.movingSampleWindowSize = minuteWindowSize * ps.multiplier
 
-	ps.movingStats = movingstats.NewMovingStats(int(ps.movingSampleWindowSize))
+	latestIndicators := ps.indicatorsGetter(0)
+	previewIndicators := ps.indicatorsGetter(ps.movingSampleWindowSize)
+
+	indicatorsHistory := ps.indicatorsHistoryGetter(ps.movingSampleWindowSize)
+
+	log.Info("Updating data from indicators history: ", len(indicatorsHistory))
+
+	ps.movingStats = movingstats.NewMovingStats(int(ps.movingSampleWindowSize),
+		latestIndicators,
+		previewIndicators,
+		indicatorsHistory)
+
 	ps.addChannel = make(chan float64, ps.movingSampleWindowSize)
 
 	ps.stable = false
@@ -172,17 +141,20 @@ func (ms *MinuteStrategy) SetDbUpdate(do bool) {
 }
 
 func (ms *MinuteStrategy) WarmUp(value float64) {
-	for n := 0; n < int(ms.stableCount*2); n++ {
-		ms.add(value)
-	}
+
+	//TODO: HACK
+	/*
+		for n := 0; n < int(ms.stableCount*2); n++ {
+			ms.add(value)
+		}
+	*/
 	ms.init = false
 	ms.warmUpComplete = true
 	ms.warmAppLock.Broadcast()
-	logrus.Info("Warm up Complete -> ", ms.ID)
+	log.Info("Warm up Complete -> ", ms.ID)
 }
 
 func (ms *MinuteStrategy) Add(value float64) {
-
 	if ms.init {
 		ms.init = false
 		go ms.addWorker()
@@ -217,6 +189,7 @@ func (ms *MinuteStrategy) add(value float64) {
 	if ms.warmUpComplete {
 		ms.storeIndicators()
 	}
+
 }
 
 func (ms *MinuteStrategy) addWorker() {
@@ -225,7 +198,7 @@ func (ms *MinuteStrategy) addWorker() {
 	ms.warmAppLock.Wait()
 	ms.warmAppLock.L.Unlock()
 
-	logrus.Info("addWorker waken up -> ", ms.ID)
+	log.Info("addWorker waken up -> ", ms.ID)
 
 	for value := range ms.addChannel {
 		ms.add(value)
@@ -334,13 +307,13 @@ func (ms *MinuteStrategy) buySellUpdate() {
 	if ms.doDbUpdate {
 		if pDirectionalBull && ms.MacdBullish() && ms.EmaDirectionUp() {
 			if ms.buy != true {
-				logrus.Infof("BUY UPDATE for %s :%v", buyKey, true)
+				log.Infof("BUY UPDATE for %s :%v", buyKey, true)
 				ms.kr.Publish(buyKey, "true")
 			}
 			ms.buy = true
 		} else {
 			if ms.buy != false {
-				logrus.Infof("BUY UPDATE for %s :%v", buyKey, false)
+				log.Infof("BUY UPDATE for %s :%v", buyKey, false)
 				ms.kr.Publish(buyKey, "false")
 			}
 			ms.buy = false
@@ -348,13 +321,13 @@ func (ms *MinuteStrategy) buySellUpdate() {
 
 		if mDirectionalBear && !ms.MacdBullish() && !ms.EmaDirectionUp() {
 			if ms.sell != true {
-				logrus.Infof("SELL UPDATE for %s : %v", sellKey, true)
+				log.Infof("SELL UPDATE for %s : %v", sellKey, true)
 				ms.kr.Publish(sellKey, "true")
 			}
 			ms.sell = true
 		} else {
 			if ms.sell != false {
-				logrus.Infof("SELL UPDATE for %s :%v", sellKey, false)
+				log.Infof("SELL UPDATE for %s :%v", sellKey, false)
 				ms.kr.Publish(sellKey, "false")
 			}
 			ms.sell = false
@@ -477,19 +450,57 @@ func (ms *MinuteStrategy) storeIndicators() {
 	}
 }
 
+func (ms *MinuteStrategy) indicatorsGetter(index int) (indicators movingstats.Indicators) {
+
+	key := fmt.Sprintf("%s_INDICATORS", ms.ID)
+	indicatorsJson, err := ms.kr.GetRawString(key, index)
+
+	if err != nil {
+		log.Fatal("Fatal error getting indicators: ", err.Error())
+	}
+
+	json.Unmarshal([]byte(indicatorsJson), &indicators)
+
+	return indicators
+
+}
+
+func (ms *MinuteStrategy) indicatorsHistoryGetter(size int) (indicators []movingstats.Indicators) {
+
+	key := fmt.Sprintf("%s_INDICATORS", ms.ID)
+	indicatorsJson, err := ms.kr.GetRawStringList(key, size)
+
+	if err != nil {
+		log.Fatal("Fatal error getting indicators: ", err.Error())
+	}
+
+	indicators = make([]movingstats.Indicators, size)
+
+	fmt.Println("SIZE: ", len(indicatorsJson), size)
+
+	for i, indicatorJson := range indicatorsJson {
+		anIndicator := movingstats.Indicators{}
+		json.Unmarshal([]byte(indicatorJson), &anIndicator)
+		indicators[i] = anIndicator
+	}
+
+	return indicators
+
+}
+
 func (ms *MinuteStrategy) indicatorsStorer() {
 	for indicator := range ms.indicatorsChan {
 		//logrus.Info("Store indicator: ", indicator)
 		indicatorsJSON, err := json.Marshal(indicator)
 		if err != nil {
-			logrus.Error("indicators marshall: ", err.Error())
+			log.Error("indicators marshall: ", err.Error())
 		}
 		//logrus.Infof("STORE: %s , %f", ms.ID, indicator.LastValue)
 
 		err = ms.kr.AddString(ms.ID, "INDICATORS", indicatorsJSON)
 
 		if err != nil {
-			logrus.Fatal("AddString :", err.Error())
+			log.Fatal("AddString :", err.Error())
 
 		}
 

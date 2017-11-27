@@ -16,8 +16,8 @@ import (
 
 	"sync"
 
+	"github.com/lagarciag/movingstats"
 	"github.com/lagarciag/tayni/kredis"
-	"github.com/lagarciag/tayni/statistician"
 	"github.com/spf13/viper"
 )
 
@@ -54,7 +54,7 @@ func Start() {
 	exchanges := viper.Get("exchange").(map[string]interface{})
 	//historyCount := int(viper.Get("history").(int64)) / 100
 
-	historyCount := int(5000)
+	historyCount := int(500)
 
 	exchangesCount := len(exchanges)
 
@@ -200,7 +200,7 @@ func dbReader(key string, readerTicker *time.Ticker, kr *kredis.Kredis, writerCh
 
 func writer(key string, value string, file *os.File, headDone bool) bool {
 
-	var indicator statistician.Indicators
+	var indicator movingstats.Indicators
 	err := json.Unmarshal([]byte(value), &indicator)
 
 	if err != nil {

@@ -19,7 +19,7 @@ func TestMain(m *testing.M) {
 
 func TestSimple(t *testing.T) {
 
-	rb := ringbuffer.NewBuffer(10, true)
+	rb := ringbuffer.NewBuffer(10, true, 0, 0)
 
 	rb.Push(4)
 	rb.Push(50)
@@ -28,19 +28,37 @@ func TestSimple(t *testing.T) {
 	rb.Push(1)
 	rb.Push(60)
 
+	if rb.Low() != 0 {
+		t.Error("mistmatch, Low is", rb.Low())
+	}
+
+	rb.Push(1)
+	rb.Push(1)
+	rb.Push(1)
+
+	if rb.High() != 60 {
+		t.Error("mistmatch, high is 60")
+	}
+
+	if rb.Low() != 0 {
+		t.Error("mistmatch, Low is", rb.Low())
+	}
+
+	rb.Push(1)
+
 	if rb.High() != 60 {
 		t.Error("mistmatch, high is 60")
 	}
 
 	if rb.Low() != 1 {
-		t.Error("mistmatch, Low is 0")
+		t.Error("mistmatch, Low is", rb.Low())
 	}
 
 }
 
 func TestSimple2(t *testing.T) {
 
-	rb := ringbuffer.NewBuffer(10, true)
+	rb := ringbuffer.NewBuffer(10, true, 0, 0)
 
 	rb.Push(1)
 	rb.Push(2)
@@ -72,7 +90,7 @@ func TestSimple2(t *testing.T) {
 
 func TestDownTrend(t *testing.T) {
 
-	rb := ringbuffer.NewBuffer(10, true)
+	rb := ringbuffer.NewBuffer(10, true, 0, 0)
 
 	rb.Push(1000)
 
@@ -108,7 +126,7 @@ func TestDownTrend(t *testing.T) {
 
 func TestDownTrend2(t *testing.T) {
 
-	rb := ringbuffer.NewBuffer(10, true)
+	rb := ringbuffer.NewBuffer(10, true, 0, 0)
 
 	rb.Push(1000)
 
@@ -157,7 +175,7 @@ func TestDownTrend2(t *testing.T) {
 
 func TestUpTrend(t *testing.T) {
 
-	rb := ringbuffer.NewBuffer(10, true)
+	rb := ringbuffer.NewBuffer(10, true, 0, 0)
 
 	rb.Push(1)
 

@@ -2,6 +2,7 @@ package multiema
 
 import (
 	"github.com/VividCortex/ewma"
+	"github.com/sirupsen/logrus"
 )
 
 type MultiEma struct {
@@ -20,10 +21,12 @@ type DoubleEma struct {
 	ema    ewma.MovingAverage
 }
 
-func NewDema(periodSize int) DoubleEma {
+func NewDema(periodSize int, initVal float64) DoubleEma {
 	dEma := DoubleEma{}
 	dEma.ema = ewma.NewMovingAverage(float64(periodSize))
 	dEma.emaEma = ewma.NewMovingAverage(float64(periodSize))
+	dEma.Set(initVal)
+	dEma.emaEma.Set(initVal)
 	return dEma
 }
 
@@ -42,21 +45,27 @@ func (dema *DoubleEma) Set(value float64) {
 	dema.emaEma.Set(value)
 }
 
-func NewMultiEma(periods int, periodSize int) (mema *MultiEma) {
+func NewMultiEma(periods int, periodSize int, initValues []float64) (mema *MultiEma) {
 
 	mema = &MultiEma{}
 	mema.init = false
+	if initValues[0] != 0 {
+		mema.init = true
+	} else {
+		logrus.Debug("NewMultiEma initval :", initValues)
+	}
+
 	mema.count = 0
 	mema.periods = periods
 	mema.periodSize = periodSize
 	//mema.emaSlice = make([]ewma.MovingAverage, periodSize)
 	//mema.intEma = ewma.NewMovingAverage(float64(30))
 	mema.emaSlice = make([]DoubleEma, periodSize)
-	mema.intEma = NewDema(30)
+	mema.intEma = NewDema(30, initValues[0])
 
 	for i := range mema.emaSlice {
 		//mema.emaSlice[i] = ewma.NewMovingAverage(float64(periods))
-		mema.emaSlice[i] = NewDema(periods)
+		mema.emaSlice[i] = NewDema(periods, initValues[i])
 	}
 	return mema
 }

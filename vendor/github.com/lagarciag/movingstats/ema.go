@@ -18,17 +18,17 @@ type emaContainer struct {
 }
 
 //periods int, periodSize int
-func newEmaContainer(periods, periodSize int, power int) (ec *emaContainer) {
+func newEmaContainer(periods, periodSize int, power int, initValues []float64) (ec *emaContainer) {
 	ec = &emaContainer{}
 	ec.power = power
 	//ec.Ema = ewma.NewMovingAverage(window)
-	ec.Ema = multiema.NewMultiEma(periods, periodSize)
+	ec.Ema = multiema.NewMultiEma(periods, periodSize, initValues)
 
 	if power > 1 {
-		ec.EmaAvr = multiema.NewMultiEma(periods, periodSize)
+		ec.EmaAvr = multiema.NewMultiEma(periods, periodSize, initValues)
 	}
 
-	ec.EmaHistory = ringbuffer.NewBuffer(periodSize*periods, false)
+	ec.EmaHistory = ringbuffer.NewBuffer(periodSize*periods, false, 0, 0)
 	return ec
 }
 
@@ -68,43 +68,7 @@ func (ec *emaContainer) Add(value float64) {
 func (ms *MovingStats) emaCalc(value float64) {
 
 	ms.sEma.Add(value)
-	ms.dEma.Add(value)
-	ms.tEma.Add(value)
-	/*
-	ms.HistNow = ms.sEma.Value()
-	ms.sEmaHistory.Push(ms.HistNow)
-
-	ms.HistMostRecent = ms.sEmaHistory.MostRecent()
-	ms.HistOldest = ms.sEmaHistory.Oldest()
-
-	ms.sEmaSlope = ms.sEmaHistory.MostRecent() - ms.sEmaHistory.Oldest()
-
-	if ms.sEmaSlope > 0 {
-		ms.sEmaUp = true
-	} else {
-		ms.sEmaUp = false
-	}
-
-	ms.dEma.Add(value)
-	ms.dEmaHistory.Push(ms.sEma.Value())
-	ms.dEmaSlope = ms.dEmaHistory.MostRecent() - ms.dEmaHistory.Oldest()
-	if ms.dEmaSlope > 0 {
-		ms.dEmaUp = true
-	} else {
-		ms.dEmaUp = false
-	}
-
-	ms.tEma.Add(value)
-	ms.tEmaHistory.Push(ms.sEma.Value())
-
-	ms.tEmaSlope = ms.tEmaHistory.MostRecent() - ms.tEmaHistory.Oldest()
-
-	//TODO: Consider a shorter period for slope
-	if ms.tEmaSlope > 0 {
-		ms.tEmaUp = true
-	} else {
-		ms.tEmaUp = false
-	}
-	*/
+	//ms.dEma.Add(value)
+	//ms.tEma.Add(value)
 
 }
