@@ -111,17 +111,59 @@ func NewMinuteStrategy(name string, minuteWindowSize int, stdLimit float64, doLo
 	ps.minuteWindowSize = minuteWindowSize
 	ps.movingSampleWindowSize = minuteWindowSize * ps.multiplier
 
+	keyCounter := fmt.Sprintf("%s_INDICATORS", ps.ID)
+	indicatorsSaved, err := ps.kr.GetCounterRaw(keyCounter)
+
+	if err != nil {
+		log.Fatal("Error reading indicators count")
+	}
+
+	log.Infof("Indicators count: %d, sample window size: %d", indicatorsSaved, ps.movingSampleWindowSize)
+
+	// ------------------
+	// Get latest values
+	// ------------------
 	latestIndicators := ps.indicatorsGetter(0)
 	previewIndicators := ps.indicatorsGetter(ps.movingSampleWindowSize)
 
-	indicatorsHistory := ps.indicatorsHistoryGetter(ps.movingSampleWindowSize)
+	indicatorsToRetrieve := ps.movingSampleWindowSize * 2
 
-	log.Info("Updating data from indicators history: ", len(indicatorsHistory))
+	upperWindowSize := ps.movingSampleWindowSize * 2
+	lowerWindowSize := ps.movingSampleWindowSize
+
+	if indicatorsSaved < (ps.movingSampleWindowSize * 2) {
+
+		if indicatorsSaved > ps.movingSampleWindowSize {
+			upperWindowSize = 2*ps.movingSampleWindowSize - indicatorsSaved
+		} else {
+			upperWindowSize = 0
+		}
+	}
+
+	if indicatorsSaved < ps.movingSampleWindowSize {
+
+		if indicatorsSaved > 0 {
+			lowerWindowSize = indicatorsSaved
+		} else {
+			lowerWindowSize = 0
+		}
+	}
+
+	indicatorsHistoryTotal := ps.indicatorsHistoryGetter(indicatorsToRetrieve)
+	log.Info("History Indicators retrieved: ", len(indicatorsHistoryTotal))
+	log.Info("History Upper Window Size :", upperWindowSize)
+	log.Info("History Lower Window Size :", lowerWindowSize)
+
+	indicatorsHistory0 := indicatorsHistoryTotal[0:lowerWindowSize]
+	indicatorsHistory1 := indicatorsHistoryTotal[ps.movingSampleWindowSize:upperWindowSize]
+
+	log.Info("Updating data from indicators history: ", len(indicatorsHistory0))
 
 	ps.movingStats = movingstats.NewMovingStats(int(ps.movingSampleWindowSize),
 		latestIndicators,
 		previewIndicators,
-		indicatorsHistory)
+		indicatorsHistory0,
+		indicatorsHistory1)
 
 	ps.addChannel = make(chan float64, ps.movingSampleWindowSize)
 

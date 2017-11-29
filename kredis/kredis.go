@@ -57,6 +57,40 @@ func (kr *Kredis) Start() {
 	kr.dial()
 }
 
+func (kr *Kredis) GetCounterRaw(key string) (int, error) {
+	kr.mu.Lock()
+	countUntype, err := kr.conn.Do("LLEN", key)
+	kr.mu.Unlock()
+	if err != nil {
+		return 0, err
+	}
+
+	switch v := countUntype.(type) {
+
+	case int64:
+		return int(countUntype.(int64)), nil
+
+	case []uint8:
+		countString := countUntype.(string)
+		countInt, err := strconv.ParseInt(countString, 10, 64)
+		if err != nil {
+			return 0, err
+		}
+		return int(countInt), nil
+
+	case []interface{}:
+		log.Info("Initializing...")
+		return 0, nil
+
+	default:
+		thisError := fmt.Errorf("BAD GETCOUNTER TYPE: %T!\n", v)
+		return 0, thisError
+
+	}
+	return 0, err
+
+}
+
 func (kr *Kredis) GetCounter(exchange, pair string) (int, error) {
 
 	key := fmt.Sprintf("%s_%s", exchange, pair)

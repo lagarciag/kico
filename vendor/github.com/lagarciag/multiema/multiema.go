@@ -63,6 +63,8 @@ func NewMultiEma(periods int, periodSize int, initValues []float64) (mema *Multi
 	mema.emaSlice = make([]DoubleEma, periodSize)
 	mema.intEma = NewDema(30, initValues[0])
 
+	//logrus.Info("NewEma Init: ", len(initValues), len(mema.emaSlice))
+
 	for i := range mema.emaSlice {
 		//mema.emaSlice[i] = ewma.NewMovingAverage(float64(periods))
 		mema.emaSlice[i] = NewDema(periods, initValues[i])

@@ -34,6 +34,12 @@ func NewBuffer(size int, recordHighLow bool, initHigh, initLow float64) *RingBuf
 	return rb
 }
 
+func (rb *RingBuffer) PushBuffer(values []float64) {
+	for _, value := range values {
+		rb.Push(value)
+	}
+}
+
 //Push adds a new element to the buffer
 func (rb *RingBuffer) Push(value float64) {
 
