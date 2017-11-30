@@ -12,7 +12,7 @@ import (
 
 	"strconv"
 
-	"github.com/VividCortex/ewma"
+	"github.com/RobinUS2/golang-moving-average"
 	"github.com/coreos/go-systemd/daemon"
 	"github.com/lagarciag/tayni/kredis"
 	"github.com/lagarciag/tayni/statistician"
@@ -49,10 +49,11 @@ type Bot struct {
 	// Control Structures
 	// --------------------
 	priceUpdateTimer *time.Ticker
+	statsUpdateTimer *time.Ticker
 	shutdownCond     *sync.Cond
 	priceUpdaterCond *sync.Cond
 	apiError         chan error
-	stop             chan bool
+	fullStop         chan bool
 	apiStop          chan bool
 	priceAdderChan   map[string]chan float64
 	apiOnline        bool
@@ -79,7 +80,7 @@ func NewBot(config CollectorConfig, kr *kredis.Kredis) (bot *Bot) {
 	bot.shutdownCond = sync.NewCond(&sync.Mutex{})
 	bot.priceUpdaterCond = sync.NewCond(&sync.Mutex{})
 	bot.apiStop = make(chan bool)
-	bot.stop = make(chan bool)
+	bot.fullStop = make(chan bool)
 	//bot.priceAdderChan = make(chan float64, 300000)
 
 	bot.priceAdderChan = make(map[string]chan float64)
@@ -115,7 +116,7 @@ func (bot *Bot) errorMonitor() {
 				continue
 			}
 
-		case <-bot.stop:
+		case <-bot.fullStop:
 			{
 				log.Info("Exiting errorMonitor()")
 				return
@@ -124,8 +125,8 @@ func (bot *Bot) errorMonitor() {
 	}
 }
 
-//pStart are commong Start functionality
-func (bot *Bot) pStart() {
+//exchangeStart are commong Start functionality
+func (bot *Bot) exchangeStart() {
 	log.Info("Starting Public CEXIO collector: ", bot.pairs)
 	//bot.kr.Start()
 
@@ -138,8 +139,19 @@ func (bot *Bot) pStart() {
 
 }
 
+func (bot *Bot) statsStart() {
+	log.Info("Starting stats calculator: ", bot.pairs)
+
+	statsUpdateTimer := (time.Second * time.Duration(bot.sampleRate))
+
+	bot.statsUpdateTimer = time.NewTicker(statsUpdateTimer)
+	go bot.statsCollector()
+
+}
+
 func (bot *Bot) PublicStart() {
-	go bot.pStart()
+	go bot.exchangeStart()
+	go bot.statsStart()
 }
 
 func (bot *Bot) PublicRestart() {
@@ -161,7 +173,7 @@ func (bot *Bot) PublicRestart() {
 	// ------------------------
 	// Start common routines
 	// ------------------------
-	go bot.pStart()
+	go bot.exchangeStart()
 
 }
 
@@ -210,6 +222,12 @@ func (bot *Bot) exchangeConnect() {
 
 	go bot.api.ResponseCollector()
 
+	bot.MonitorPrice()
+
+}
+
+func (bot *Bot) statsCollector() {
+
 	for _, pair := range bot.pairs {
 
 		statusCount, err := bot.kr.GetCounter(bot.name, pair)
@@ -224,8 +242,6 @@ func (bot *Bot) exchangeConnect() {
 
 	}
 
-	bot.MonitorPrice()
-
 }
 
 func (bot *Bot) MonitorPrice() {
@@ -234,7 +250,7 @@ func (bot *Bot) MonitorPrice() {
 	emaMapLock := &sync.Mutex{}
 
 	priceUpdateMap := make(map[string]cexioapi.ResponseTickerSubData)
-	priceUpdateEmaMap := make(map[string]ewma.MovingAverage)
+	priceUpdateEmaMap := make(map[string]*movingaverage.MovingAverage)
 
 	go bot.api.TickerSub(bot.tickerSub)
 	log.Info("Waiting for price change...")
@@ -259,7 +275,7 @@ func (bot *Bot) MonitorPrice() {
 				_, ok := priceUpdateEmaMap[key]
 
 				if !ok {
-					priceUpdateEmaMap[key] = ewma.NewMovingAverage(float64(bot.sampleRate / 2))
+					priceUpdateEmaMap[key] = movingaverage.New(bot.sampleRate / 2) //ewma.NewMovingAverage(float64(bot.sampleRate / 2))
 					priceFloat, err := strconv.ParseFloat(lPriceUpdate.Price, 64)
 					if err != nil {
 						log.Fatal("converting string to float: ", err.Error())
@@ -305,7 +321,7 @@ func (bot *Bot) MonitorPrice() {
 
 						emaMapLock.Lock()
 						priceUpdateEmaMap[key].Add(priceFloat)
-						avgPriceString := fmt.Sprintf("%f", priceUpdateEmaMap[key].Value())
+						avgPriceString := fmt.Sprintf("%f", priceUpdateEmaMap[key].Avg())
 						emaMapLock.Unlock()
 						//log.Infof("Real Price update: %s : %s, %s", key, avgPriceString, xPriceUpdate.Price)
 						bot.kr.Update(bot.name, pair, avgPriceString)
@@ -382,7 +398,7 @@ func (bot *Bot) priceUpdater(exchange, pair string) {
 	go bot.priceAdder(pair)
 	counter := 0
 
-	for _ = range bot.priceUpdateTimer.C {
+	for _ = range bot.statsUpdateTimer.C {
 		//valueStr, err := bot.kr.UpdateList(exchange, pair)
 
 		valueInterface, err := bot.kr.GetPriceValue(exchange, pair)
@@ -430,7 +446,7 @@ func (bot *Bot) priceAdder(pair string) {
 				bot.stats[pair].Add(value)
 			}
 
-		case _ = <-bot.stop:
+		case _ = <-bot.fullStop:
 			{
 				return
 			}
@@ -441,11 +457,12 @@ func (bot *Bot) priceAdder(pair string) {
 
 func (bot *Bot) Stop() {
 	bot.priceUpdateTimer.Stop()
+	bot.statsUpdateTimer.Stop()
 	err := bot.api.Close("MainStop")
 	if err != nil {
 		log.Fatal("error while stoping bot:", err.Error())
 	}
-	close(bot.stop)
+	close(bot.fullStop)
 	log.Info("Bot is down")
 }
 

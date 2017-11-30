@@ -94,6 +94,9 @@ func shutdownControl() {
 	for range osSignals {
 		log.Info("Sending shutdown signal...")
 		shutDownCond.Broadcast()
+
+		os.Exit(1)
+
 		return
 	}
 }

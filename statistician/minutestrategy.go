@@ -118,7 +118,14 @@ func NewMinuteStrategy(name string, minuteWindowSize int, stdLimit float64, doLo
 		log.Fatal("Error reading indicators count")
 	}
 
-	log.Infof("Indicators count: %d, sample window size: %d", indicatorsSaved, ps.movingSampleWindowSize)
+	oldestIndicator := ps.indicatorsGetter(indicatorsSaved - 1)
+
+	log.Info("Oldest Values: ", oldestIndicator)
+
+	maxPeriodCount := ps.movingSampleWindowSize * 26
+	log.Infof("Indicators count: %d, sample window size: %d, max period count (26): %d", indicatorsSaved, ps.movingSampleWindowSize, maxPeriodCount)
+
+	//os.Exit(1)
 
 	// ------------------
 	// Get latest values
