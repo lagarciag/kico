@@ -21,14 +21,23 @@ type emaContainer struct {
 func newEmaContainer(periods, periodSize int, power int, initValues []float64) (ec *emaContainer) {
 	ec = &emaContainer{}
 	ec.power = power
-	//ec.Ema = ewma.NewMovingAverage(window)
-	ec.Ema = multiema.NewMultiEma(periods, periodSize, initValues)
+
+	ec.Ema = multiema.NewMultiEma(periods, periodSize, initValues[0])
 
 	if power > 1 {
-		ec.EmaAvr = multiema.NewMultiEma(periods, periodSize, initValues)
+		ec.EmaAvr = multiema.NewMultiEma(periods, periodSize, initValues[0])
 	}
 
+	// ----------------------------
+	// Reverse initvalues history
+	// ----------------------------
+
+	reversedInitValues := reverseBuffer(initValues)
+
 	ec.EmaHistory = ringbuffer.NewBuffer(periodSize*periods, false, 0, 0)
+
+	ec.EmaHistory.PushBuffer(reversedInitValues)
+
 	return ec
 }
 

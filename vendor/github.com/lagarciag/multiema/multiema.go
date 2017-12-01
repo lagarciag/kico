@@ -6,6 +6,7 @@ import (
 )
 
 type MultiEma struct {
+	initCount  int
 	init       bool
 	count      int
 	periods    int
@@ -45,14 +46,14 @@ func (dema *DoubleEma) Set(value float64) {
 	dema.emaEma.Set(value)
 }
 
-func NewMultiEma(periods int, periodSize int, initValues []float64) (mema *MultiEma) {
+func NewMultiEma(periods int, periodSize int, initValue float64) (mema *MultiEma) {
 
 	mema = &MultiEma{}
 	mema.init = false
-	if initValues[0] != 0 {
+	if initValue != 0 {
 		mema.init = true
 	} else {
-		logrus.Debug("NewMultiEma initval :", initValues)
+		logrus.Debug("NewMultiEma initval :", initValue)
 	}
 
 	mema.count = 0
@@ -61,13 +62,12 @@ func NewMultiEma(periods int, periodSize int, initValues []float64) (mema *Multi
 	//mema.emaSlice = make([]ewma.MovingAverage, periodSize)
 	//mema.intEma = ewma.NewMovingAverage(float64(30))
 	mema.emaSlice = make([]DoubleEma, periodSize)
-	mema.intEma = NewDema(30, initValues[0])
+	mema.intEma = NewDema(30, initValue)
 
 	//logrus.Info("NewEma Init: ", len(initValues), len(mema.emaSlice))
 
 	for i := range mema.emaSlice {
-		//mema.emaSlice[i] = ewma.NewMovingAverage(float64(periods))
-		mema.emaSlice[i] = NewDema(periods, initValues[i])
+		mema.emaSlice[i] = NewDema(periods, initValue)
 	}
 	return mema
 }
@@ -88,7 +88,7 @@ func (mema *MultiEma) Add(valule float64) {
 
 	val := mema.inVal()
 	mema.intEma.Add(val)
-
+	mema.initCount++
 }
 
 func (mema *MultiEma) inVal() (val float64) {

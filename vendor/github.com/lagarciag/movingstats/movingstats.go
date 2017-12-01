@@ -280,30 +280,30 @@ func NewMovingStats(size int, latestIndicators,
 
 	ms.currentWindowHistory = ringbuffer.NewBuffer(size, true, currHigh, currLow)
 
-	ms.currentWindowHistory.PushBuffer(historyIndicatorsInSlices0.LastValue)
+	ms.currentWindowHistory.PushBuffer(reverseBuffer(historyIndicatorsInSlices0.LastValue))
 
 	ms.lastWindowHistory = ringbuffer.NewBuffer(size, true, prevHigh, prevLow)
 
-	ms.lastWindowHistory.PushBuffer(historyIndicatorsInSlices1.LastValue)
+	ms.lastWindowHistory.PushBuffer(reverseBuffer(historyIndicatorsInSlices1.LastValue))
 
 	//emaHistBuffer := ringbuffer.NewBuffer(size, true, prevHigh, prevLow)
 
 	ms.sma = movingaverage.New(size)
 
-	for _, value := range historyIndicatorsInSlices0.LastValue {
+	for _, value := range reverseBuffer(historyIndicatorsInSlices0.LastValue) {
 		ms.sma.Add(value)
 	}
 
 	//ms.sema = ewma.NewMovingAverage(30)
 	ms.sema = multiema.NewDema(30, latestIndicators.Sema)
 
-	ms.atr = multiema.NewMultiEma(atrPeriod, size, historyIndicatorsInSlices0.ATR)
+	ms.atr = multiema.NewMultiEma(atrPeriod, size, historyIndicatorsInSlices0.ATR[0])
 
-	ms.plusDMAvr = multiema.NewMultiEma(atrPeriod, size, historyIndicatorsInSlices0.PDI)
+	ms.plusDMAvr = multiema.NewMultiEma(atrPeriod, size, historyIndicatorsInSlices0.PDI[0])
 
-	ms.minusDMAvr = multiema.NewMultiEma(atrPeriod, size, historyIndicatorsInSlices0.MDI)
+	ms.minusDMAvr = multiema.NewMultiEma(atrPeriod, size, historyIndicatorsInSlices0.MDI[0])
 
-	ms.adxAvr = multiema.NewMultiEma(atrPeriod, size, historyIndicatorsInSlices0.Adx)
+	ms.adxAvr = multiema.NewMultiEma(atrPeriod, size, historyIndicatorsInSlices0.Adx[0])
 
 	ms.smaLong = movingaverage.New(size * smallSmaPeriod)
 
@@ -322,10 +322,10 @@ func NewMovingStats(size int, latestIndicators,
 	//ms.dEma = newEmaContainer(emaPeriod, size, 2, historyIndicatorsInSlices.d)
 	//ms.tEma = newEmaContainer(emaPeriod, size, 3, []float64{0})
 
-	ms.emaMacd9 = multiema.NewMultiEma(macD9Period, size, historyIndicatorsInSlices0.Md9)
+	ms.emaMacd9 = multiema.NewMultiEma(macD9Period, size, historyIndicatorsInSlices0.Md9[0])
 
-	ms.ema12 = multiema.NewMultiEma(mac12Period, size, historyIndicatorsInSlices0.Macd12)
-	ms.ema26 = multiema.NewMultiEma(mac26Period, size, historyIndicatorsInSlices0.Macd26)
+	ms.ema12 = multiema.NewMultiEma(mac12Period, size, historyIndicatorsInSlices0.Macd12[0])
+	ms.ema26 = multiema.NewMultiEma(mac26Period, size, historyIndicatorsInSlices0.Macd26[0])
 
 	return ms
 }
@@ -474,4 +474,22 @@ func (ms *MovingStats) PLow() float64 {
 
 func (ms *MovingStats) SimpleEma() float64 {
 	return ms.sema.Value()
+}
+
+func reverseBuffer(buf []float64) (rbuf []float64) {
+
+	rbuf = make([]float64, len(buf))
+
+	// ----------------------------
+	// Reverse initvalues history
+	// ----------------------------
+	rcount := len(buf) - 1
+	count := 0
+	for i := rcount; rcount >= 0; rcount-- {
+
+		rbuf[count] = buf[i]
+		count++
+	}
+	return rbuf
+
 }
