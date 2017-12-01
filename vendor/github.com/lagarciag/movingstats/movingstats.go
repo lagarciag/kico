@@ -92,9 +92,9 @@ type Indicators struct {
 }
 
 type MovingStats struct {
-	mu *sync.Mutex
-
-	windowSize int
+	mu           *sync.Mutex
+	dirtyHistory bool
+	windowSize   int
 
 	currentWindowHistory *ringbuffer.RingBuffer
 	lastWindowHistory    *ringbuffer.RingBuffer
@@ -260,15 +260,19 @@ func createIndicatorsHistorySlice(indHistory []Indicators) (indicatorsHistorySli
 
 func NewMovingStats(size int, latestIndicators,
 	prevIndicators Indicators,
-	indicatorsHistory0 []Indicators, indicatorsHistory1 []Indicators) *MovingStats {
+	indicatorsHistory0 []Indicators,
+	indicatorsHistory1 []Indicators, dirtyHistory bool) *MovingStats {
 
 	log.Debug("NewMovingStats Size: ", size)
+
+	log.Info("ZZZZZ: ", len(indicatorsHistory0))
 
 	historyIndicatorsInSlices0 := createIndicatorsHistorySlice(indicatorsHistory0)
 	historyIndicatorsInSlices1 := createIndicatorsHistorySlice(indicatorsHistory1)
 
 	//window := float64(size)
 	ms := &MovingStats{}
+	ms.dirtyHistory = dirtyHistory
 	ms.mu = &sync.Mutex{}
 	ms.windowSize = size
 
@@ -296,6 +300,8 @@ func NewMovingStats(size int, latestIndicators,
 
 	//ms.sema = ewma.NewMovingAverage(30)
 	ms.sema = multiema.NewDema(30, latestIndicators.Sema)
+
+	log.Info("xxx: ", len(historyIndicatorsInSlices0.ATR))
 
 	ms.atr = multiema.NewMultiEma(atrPeriod, size, historyIndicatorsInSlices0.ATR[0])
 
@@ -332,6 +338,20 @@ func NewMovingStats(size int, latestIndicators,
 
 func (ms *MovingStats) Add(value float64) {
 	ms.mu.Lock()
+	if ms.dirtyHistory {
+		log.Warn("Warming up data points due to dirty bit: ", ms.windowSize)
+		for i := 0; i < ms.windowSize*30; i++ {
+			ms.add(value)
+		}
+		log.Warn("Done warming up due to dirty bit: ", ms.windowSize)
+		ms.dirtyHistory = false
+	} else {
+		ms.add(value)
+	}
+	ms.mu.Unlock()
+}
+
+func (ms *MovingStats) add(value float64) {
 
 	ms.sma.Add(value)
 	ms.smaLong.Add(value)
@@ -357,7 +377,7 @@ func (ms *MovingStats) Add(value float64) {
 	ms.dmiCalc()
 
 	ms.count++
-	ms.mu.Unlock()
+
 }
 
 func (ms *MovingStats) Ema1() float64 {

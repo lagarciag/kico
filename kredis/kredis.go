@@ -355,8 +355,15 @@ func (kr *Kredis) GetRawString(rawString string, index int) (string, error) {
 	valueInt, err := kr.conn.Do("LINDEX", key, index)
 	kr.mu.Unlock()
 
-	valueStr := string(valueInt.([]uint8))
+	valueStr := ""
 
+	switch v := valueInt.(type) {
+	case []uint8:
+		valueStr = string(valueInt.([]uint8))
+	default:
+		log.Warn("unknown type getting raw string, probably empty", v)
+		valueStr = "0"
+	}
 	return valueStr, err
 
 }

@@ -89,6 +89,7 @@ type MinuteStrategy struct {
 func NewMinuteStrategy(name string, minuteWindowSize int, stdLimit float64, doLog bool, kr *kredis.Kredis, sampleRate int) *MinuteStrategy {
 
 	ID := fmt.Sprintf("%s_MS_%d", name, minuteWindowSize)
+	dirtyHistory := false
 
 	// -------------------
 	// Setup MinutStrategy
@@ -114,13 +115,18 @@ func NewMinuteStrategy(name string, minuteWindowSize int, stdLimit float64, doLo
 	keyCounter := fmt.Sprintf("%s_INDICATORS", ps.ID)
 	indicatorsSaved, err := ps.kr.GetCounterRaw(keyCounter)
 
+	if indicatorsSaved < ps.movingSampleWindowSize {
+		dirtyHistory = true
+		log.Warn("XXXX Indicators History is to shallow, setting dirty bit XXXX ")
+	}
+
 	if err != nil {
 		log.Fatal("Error reading indicators count")
 	}
 
-	oldestIndicator := ps.indicatorsGetter(indicatorsSaved - 1)
+	//oldestIndicator := ps.indicatorsGetter(indicatorsSaved - 1)
 
-	log.Info("Oldest Values: ", oldestIndicator)
+	//log.Info("Oldest Values: ", oldestIndicator)
 
 	maxPeriodCount := ps.movingSampleWindowSize * 26
 	log.Infof("Indicators count: %d, sample window size: %d, max period count (26): %d", indicatorsSaved, ps.movingSampleWindowSize, maxPeriodCount)
@@ -143,16 +149,18 @@ func NewMinuteStrategy(name string, minuteWindowSize int, stdLimit float64, doLo
 		if indicatorsSaved > ps.movingSampleWindowSize {
 			upperWindowSize = 2*ps.movingSampleWindowSize - indicatorsSaved
 		} else {
+
 			upperWindowSize = 0
 		}
 	}
 
 	if indicatorsSaved < ps.movingSampleWindowSize {
-
 		if indicatorsSaved > 0 {
 			lowerWindowSize = indicatorsSaved
 		} else {
-			lowerWindowSize = 0
+			dirtyHistory = true
+
+			lowerWindowSize = 1
 		}
 	}
 
@@ -161,8 +169,18 @@ func NewMinuteStrategy(name string, minuteWindowSize int, stdLimit float64, doLo
 	log.Info("History Upper Window Size :", upperWindowSize)
 	log.Info("History Lower Window Size :", lowerWindowSize)
 
-	indicatorsHistory0 := indicatorsHistoryTotal[0:lowerWindowSize]
-	indicatorsHistory1 := indicatorsHistoryTotal[ps.movingSampleWindowSize:upperWindowSize]
+	var indicatorsHistory0 []movingstats.Indicators
+	var indicatorsHistory1 []movingstats.Indicators
+
+	indicatorsHistory0 = indicatorsHistoryTotal[0:lowerWindowSize]
+
+	if upperWindowSize > ps.movingSampleWindowSize {
+
+		indicatorsHistory1 = indicatorsHistoryTotal[ps.movingSampleWindowSize:upperWindowSize]
+
+	} else {
+		indicatorsHistory1 = indicatorsHistory0
+	}
 
 	log.Info("Updating data from indicators history: ", len(indicatorsHistory0))
 
@@ -170,7 +188,7 @@ func NewMinuteStrategy(name string, minuteWindowSize int, stdLimit float64, doLo
 		latestIndicators,
 		previewIndicators,
 		indicatorsHistory0,
-		indicatorsHistory1)
+		indicatorsHistory1, dirtyHistory)
 
 	ps.addChannel = make(chan float64, ps.movingSampleWindowSize)
 
@@ -523,6 +541,16 @@ func (ms *MinuteStrategy) indicatorsHistoryGetter(size int) (indicators []moving
 		log.Fatal("Fatal error getting indicators: ", err.Error())
 	}
 
+	log.Info("XXXXXXXXX: ", len(indicatorsJson))
+
+	if len(indicatorsJson) < size {
+		size = len(indicatorsJson)
+	}
+
+	if size == 0 {
+		size = 1
+	}
+
 	indicators = make([]movingstats.Indicators, size)
 
 	fmt.Println("SIZE: ", len(indicatorsJson), size)
@@ -531,6 +559,10 @@ func (ms *MinuteStrategy) indicatorsHistoryGetter(size int) (indicators []moving
 		anIndicator := movingstats.Indicators{}
 		json.Unmarshal([]byte(indicatorJson), &anIndicator)
 		indicators[i] = anIndicator
+	}
+
+	if len(indicatorsJson) == 0 {
+		indicators[0].LastValue = 0
 	}
 
 	return indicators
