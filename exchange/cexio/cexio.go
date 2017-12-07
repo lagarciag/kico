@@ -1,6 +1,7 @@
 package cexio
 
 import (
+	"github.com/VividCortex/ewma"
 	cexioapi "github.com/lagarciag/cexioapi"
 	log "github.com/sirupsen/logrus"
 
@@ -12,7 +13,6 @@ import (
 
 	"strconv"
 
-	"github.com/RobinUS2/golang-moving-average"
 	"github.com/coreos/go-systemd/daemon"
 	"github.com/lagarciag/tayni/kredis"
 	"github.com/lagarciag/tayni/statistician"
@@ -250,7 +250,7 @@ func (bot *Bot) MonitorPrice() {
 	emaMapLock := &sync.Mutex{}
 
 	priceUpdateMap := make(map[string]cexioapi.ResponseTickerSubData)
-	priceUpdateEmaMap := make(map[string]*movingaverage.MovingAverage)
+	priceUpdateEmaMap := make(map[string]ewma.MovingAverage)
 
 	go bot.api.TickerSub(bot.tickerSub)
 	log.Info("Waiting for price change...")
@@ -275,14 +275,14 @@ func (bot *Bot) MonitorPrice() {
 				_, ok := priceUpdateEmaMap[key]
 
 				if !ok {
-					priceUpdateEmaMap[key] = movingaverage.New(bot.sampleRate / 2) //ewma.NewMovingAverage(float64(bot.sampleRate / 2))
+					priceUpdateEmaMap[key] = ewma.NewMovingAverage(float64(bot.sampleRate / 2)) //((60 / bot.sampleRate) / 2) //ewma.NewMovingAverage(float64(bot.sampleRate / 2))
 					priceFloat, err := strconv.ParseFloat(lPriceUpdate.Price, 64)
 					if err != nil {
 						log.Fatal("converting string to float: ", err.Error())
 					}
-					for i := 0; i < 10; i++ {
-						priceUpdateEmaMap[key].Add(priceFloat)
-					}
+					//for i := 0; i < 10; i++ {
+					priceUpdateEmaMap[key].Set(priceFloat)
+					//}
 
 				}
 				emaMapLock.Unlock()
@@ -321,7 +321,7 @@ func (bot *Bot) MonitorPrice() {
 
 						emaMapLock.Lock()
 						priceUpdateEmaMap[key].Add(priceFloat)
-						avgPriceString := fmt.Sprintf("%f", priceUpdateEmaMap[key].Avg())
+						avgPriceString := fmt.Sprintf("%f", priceUpdateEmaMap[key].Value())
 						emaMapLock.Unlock()
 						//log.Infof("Real Price update: %s : %s, %s", key, avgPriceString, xPriceUpdate.Price)
 						bot.kr.Update(bot.name, pair, avgPriceString)
@@ -332,6 +332,7 @@ func (bot *Bot) MonitorPrice() {
 	}
 }
 
+//UpdatePriceLists updates prcie list db entry
 func (bot *Bot) UpdatePriceLists(exchange, pair string) {
 	log.Debugf("Starting price update routine for : %s_%s ", exchange, pair)
 

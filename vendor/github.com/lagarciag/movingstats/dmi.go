@@ -2,6 +2,8 @@ package movingstats
 
 import (
 	"math"
+
+	log "github.com/sirupsen/logrus"
 )
 
 /*DmiCal Calculates all DMI components:
@@ -72,10 +74,18 @@ func (ms *MovingStats) dmiCalc() {
 
 	//fmt.Println((ms.plusDI - ms.minusDI), pDImDI)
 
-	ms.adxAvr.Add(math.Abs((ms.plusDI - ms.minusDI) / pDImDI))
+	adVal := (math.Abs((ms.plusDI - ms.minusDI) / pDImDI))
+	ms.adxAvr.Add(adVal)
+
 	ms.adx = float64(100) * ms.adxAvr.Value()
 
-	/*
+	if ms.adx < float64(0) {
+		log.Error("ADX NEGATIVE!!", ms.adx)
+	}
+
+	const DMIDebug = false
+
+	if DMIDebug {
 		debugMsg := `
 			DMI Window:          :%d
 			DMI Current high     :%f
@@ -84,10 +94,13 @@ func (ms *MovingStats) dmiCalc() {
 			DMI Prev    Low      :%f
 			DMI minusDM          :%f
 			DMI plusDM           :%f
+			DMI plusDI           :%f
+			DMI minuDI           :%f
 			DMI pAvrTr           :%f
 			DMI plusDMAvr        :%f
 			DMI minusDMAvr       :%f
 			DMI pDImDI           :%f
+			DMI ADVal            :%f
 			DMI ADX              :%f
 			`
 
@@ -99,10 +112,14 @@ func (ms *MovingStats) dmiCalc() {
 			previousLow,
 			ms.minusDM,
 			ms.plusDM,
+			ms.plusDI,
+			ms.minusDI,
 			pAvrTr,
 			ms.plusDMAvr.Value(),
 			ms.minusDMAvr.Value(),
 			pDImDI,
+			adVal,
 			ms.adx)
-	*/
+
+	}
 }

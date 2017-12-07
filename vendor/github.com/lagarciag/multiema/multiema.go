@@ -50,7 +50,7 @@ func NewMultiEma(periods int, periodSize int, initValue float64) (mema *MultiEma
 
 	mema = &MultiEma{}
 	mema.init = false
-	if initValue != 0 {
+	if initValue != float64(0) {
 		mema.init = true
 	} else {
 		logrus.Debug("NewMultiEma initval :", initValue)
