@@ -265,8 +265,6 @@ func NewMovingStats(size int, latestIndicators,
 
 	log.Debug("NewMovingStats Size: ", size)
 
-	log.Info("ZZZZZ: ", len(indicatorsHistory0))
-
 	historyIndicatorsInSlices0 := createIndicatorsHistorySlice(indicatorsHistory0)
 	historyIndicatorsInSlices1 := createIndicatorsHistorySlice(indicatorsHistory1)
 
@@ -305,11 +303,19 @@ func NewMovingStats(size int, latestIndicators,
 
 	ms.atr = multiema.NewMultiEma(atrPeriod, size, historyIndicatorsInSlices0.ATR[0])
 
+	log.Debug("PDI Init value: ", historyIndicatorsInSlices0.PDI[0])
 	ms.plusDMAvr = multiema.NewMultiEma(atrPeriod, size, historyIndicatorsInSlices0.PDI[0])
-
+	log.Debug("MDI Init value: ", historyIndicatorsInSlices0.MDI[0])
 	ms.minusDMAvr = multiema.NewMultiEma(atrPeriod, size, historyIndicatorsInSlices0.MDI[0])
 
+	if historyIndicatorsInSlices0.Adx[0] > 200 || historyIndicatorsInSlices0.Adx[0] < 0 {
+		log.Errorf("Correcting spurious DB ADX value from %f to %f: ", historyIndicatorsInSlices0.Adx[0], float64(0.1))
+		historyIndicatorsInSlices0.Adx[0] = float64(0.1)
+
+	}
+
 	ms.adxAvr = multiema.NewMultiEma(atrPeriod, size, historyIndicatorsInSlices0.Adx[0])
+	log.Warn("ADX Value:", ms.adxAvr.Value())
 
 	ms.smaLong = movingaverage.New(size * smallSmaPeriod)
 

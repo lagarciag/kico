@@ -31,7 +31,6 @@ func (ms *MovingStats) dmiCalc() {
 	ms.cLow = currentLow
 	ms.pHigh = previousHigh
 	ms.pLow = previousLow
-
 	upMove := currentHigh - previousHigh
 	downMove := currentLow - previousLow
 
@@ -46,8 +45,7 @@ func (ms *MovingStats) dmiCalc() {
 	} else {
 		ms.minusDM = float64(0)
 	}
-	//logrus.Debugf("CH: %f PH: %f CL : %f PL: %f", currentHigh, previousHigh, currentLow, previousLow)
-	//logrus.Debugf("UM: %f DM: %f PDM: %f MDM: %F", upMove, downMove, ms.plusDM, ms.minusDM)
+	//log.Debugf("DMI Prev    Low     %f: %d", previousLow, ms.windowSize)
 
 	pAvrTr := ms.atr.Value()
 	mAvrTr := pAvrTr
@@ -59,7 +57,7 @@ func (ms *MovingStats) dmiCalc() {
 	ms.plusDMAvr.Add(ms.plusDM / pAvrTr)
 	ms.minusDMAvr.Add(ms.minusDM / mAvrTr)
 
-	//fmt.Println(ms.plusDM, mAvrTr, ms.plusDM/mAvrTr, ms.plusDMAvr.Value())
+	//log.Debug("DMI  plusDM          %f: %d", ms.plusDM, ms.windowSize)
 
 	ms.plusDI = ms.plusDMAvr.Value() * float64(100)
 	ms.minusDI = ms.minusDMAvr.Value() * float64(100)
@@ -77,4 +75,34 @@ func (ms *MovingStats) dmiCalc() {
 	ms.adxAvr.Add(math.Abs((ms.plusDI - ms.minusDI) / pDImDI))
 	ms.adx = float64(100) * ms.adxAvr.Value()
 
+	/*
+		debugMsg := `
+			DMI Window:          :%d
+			DMI Current high     :%f
+			DMI Current Low for  :%f
+			DMI Prev    high     :%f
+			DMI Prev    Low      :%f
+			DMI minusDM          :%f
+			DMI plusDM           :%f
+			DMI pAvrTr           :%f
+			DMI plusDMAvr        :%f
+			DMI minusDMAvr       :%f
+			DMI pDImDI           :%f
+			DMI ADX              :%f
+			`
+
+		log.Debugf(debugMsg,
+			ms.windowSize,
+			currentHigh,
+			currentLow,
+			previousHigh,
+			previousLow,
+			ms.minusDM,
+			ms.plusDM,
+			pAvrTr,
+			ms.plusDMAvr.Value(),
+			ms.minusDMAvr.Value(),
+			pDImDI,
+			ms.adx)
+	*/
 }

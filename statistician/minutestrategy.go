@@ -541,8 +541,6 @@ func (ms *MinuteStrategy) indicatorsHistoryGetter(size int) (indicators []moving
 		log.Fatal("Fatal error getting indicators: ", err.Error())
 	}
 
-	log.Info("XXXXXXXXX: ", len(indicatorsJson))
-
 	if len(indicatorsJson) < size {
 		size = len(indicatorsJson)
 	}
