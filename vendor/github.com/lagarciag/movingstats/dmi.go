@@ -34,7 +34,7 @@ func (ms *MovingStats) dmiCalc() {
 	ms.pHigh = previousHigh
 	ms.pLow = previousLow
 	upMove := currentHigh - previousHigh
-	downMove := currentLow - previousLow
+	downMove := previousLow - currentLow
 
 	if (upMove > downMove) && (upMove > float64(0)) {
 		ms.plusDM = upMove
