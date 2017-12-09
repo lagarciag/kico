@@ -13,6 +13,7 @@ type IndicatorsHistory struct {
 	LastValue []float64 `json:"last_value"`
 	Sma       []float64 `json:"sma"`
 	Sema      []float64 `json:"sema"`
+	Mema9     []float64 `json:"mema_9"`
 	Ema       []float64 `json:"ema"`
 	EmaUp     []bool    `json:"ema_up"`
 	Slope     []float64 `json:"slope"`
@@ -55,6 +56,7 @@ type Indicators struct {
 	LastValue float64 `json:"last_value"`
 	Sma       float64 `json:"sma"`
 	Sema      float64 `json:"sema"`
+	Mema9     float64 `json:"mema_9"`
 	Ema       float64 `json:"ema"`
 	EmaUp     bool    `json:"ema_up"`
 	Slope     float64 `json:"slope"`
@@ -101,6 +103,8 @@ type MovingStats struct {
 
 	// Simple Moving Average
 	sma *movingaverage.MovingAverage
+
+	mema9 *multiema.MultiEma
 
 	// True Range Average
 	//atr ewma.MovingAverage
@@ -177,6 +181,7 @@ func createIndicatorsHistorySlice(indHistory []Indicators) (indicatorsHistorySli
 
 	indicatorsHistorySlices.LastValue = make([]float64, size)
 	indicatorsHistorySlices.Sma = make([]float64, size)
+	indicatorsHistorySlices.Mema9 = make([]float64, size)
 	indicatorsHistorySlices.Sema = make([]float64, size)
 	indicatorsHistorySlices.Ema = make([]float64, size)
 	indicatorsHistorySlices.EmaUp = make([]bool, size)
@@ -217,6 +222,7 @@ func createIndicatorsHistorySlice(indHistory []Indicators) (indicatorsHistorySli
 
 		indicatorsHistorySlices.LastValue[i] = indicator.LastValue
 		indicatorsHistorySlices.Sma[i] = indicator.Sma
+		indicatorsHistorySlices.Mema9[i] = indicator.Mema9
 		indicatorsHistorySlices.Sema[i] = indicator.Sema
 		indicatorsHistorySlices.Ema[i] = indicator.Ema
 		indicatorsHistorySlices.EmaUp[i] = indicator.EmaUp
@@ -297,6 +303,8 @@ func NewMovingStats(size int, latestIndicators,
 	//ms.sema = ewma.NewMovingAverage(30)
 	ms.sema = multiema.NewDema(30, latestIndicators.Sema)
 
+	ms.mema9 = multiema.NewMultiEma(emaPeriod, size, historyIndicatorsInSlices0.Mema9[0])
+
 	log.Info("xxx: ", len(historyIndicatorsInSlices0.ATR))
 
 	ms.atr = multiema.NewMultiEma(atrPeriod, size, historyIndicatorsInSlices0.ATR[0])
@@ -366,10 +374,12 @@ func (ms *MovingStats) add(value float64) {
 	ms.sma.Add(value)
 	ms.smaLong.Add(value)
 	ms.sema.Add(value)
+	ms.mema9.Add(value)
 	// ------------------------------------------------
 	// Calculate Multiple Exponential Moving Averages
 	// ------------------------------------------------
 	ms.emaCalc(ms.sma.SimpleMovingAverage())
+	//ms.emaCalc(value)
 
 	// --------------------------
 	// Calculate MACD indicator
@@ -436,6 +446,10 @@ func (ms *MovingStats) Macd() float64 {
 
 func (ms *MovingStats) EmaMacd9() float64 {
 	return ms.emaMacd9.Value()
+}
+
+func (ms *MovingStats) Mema9() float64 {
+	return ms.mema9.Value()
 }
 
 func (ms *MovingStats) MacdDiv() float64 {

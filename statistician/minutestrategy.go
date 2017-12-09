@@ -444,6 +444,8 @@ func (ms *MinuteStrategy) updateIndicators() {
 
 		ms.indicators.Ema = ms.Ema()
 
+		ms.indicators.Mema9 = ms.movingStats.Mema9()
+
 		ms.indicators.Sema = ms.movingStats.SimpleEma()
 
 		ms.indicators.EmaUp = ms.EmaDirectionUp()
