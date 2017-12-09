@@ -97,7 +97,9 @@ func TestTraderBasic(t *testing.T) {
 
 	tFsm := trader.NewTradeFsm("TEST")
 
-	tFsm.FSM.Event(trader.StartEvent)
+	if err := tFsm.FSM.Event(trader.StartEvent); err != nil {
+		t.Log(err.Error())
+	}
 
 	if tFsm.FSM.Current() != trader.IdleState {
 		t.Error("Bad current state: ", tFsm.FSM.Current())
@@ -105,7 +107,9 @@ func TestTraderBasic(t *testing.T) {
 		t.Log("State : ", tFsm.FSM.Current())
 	}
 
-	tFsm.FSM.Event(trader.TradeEvent)
+	if err := tFsm.FSM.Event(trader.TradeEvent); err != nil {
+		t.Log(err.Error())
+	}
 
 	if tFsm.FSM.Current() != trader.TradingState {
 		t.Error("Bad current state: ", tFsm.FSM.Current())
@@ -147,7 +151,9 @@ func TestTrader1Min(t *testing.T) {
 
 	tFsm := trader.NewTradeFsm("TEST")
 
-	tFsm.FSM.Event(trader.StartEvent)
+	if err := tFsm.FSM.Event(trader.StartEvent); err != nil {
+		t.Log(err.Error())
+	}
 
 	if tFsm.FSM.Current() != trader.IdleState {
 		t.Error("Bad current state: ", tFsm.FSM.Current())
@@ -155,7 +161,9 @@ func TestTrader1Min(t *testing.T) {
 		t.Log("State : ", tFsm.FSM.Current())
 	}
 
-	tFsm.FSM.Event(trader.Test1Event)
+	if err := tFsm.FSM.Event(trader.Test1Event); err != nil {
+		t.Log(err.Error())
+	}
 
 	if tFsm.FSM.Current() != trader.TestTradingState {
 		t.Error("Bad current state: ", tFsm.FSM.Current())

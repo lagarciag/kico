@@ -98,6 +98,17 @@ func Start() {
 
 	log.Warn("TRADING!!")
 
+	tFsmMap := trader.tFsmExchangeMap["CEXIO"]
+
+	tFsm := tFsmMap["BTCUSD"]
+	chansMap := tFsm.SignalChannelsMap()
+
+	startChan := chansMap["START"]
+	startChan <- true
+
+	tradeChan := chansMap["TRADE"]
+	tradeChan <- true
+
 }
 
 func (trader *Trader) monitorSubscriptions() {
@@ -109,7 +120,7 @@ func (trader *Trader) monitorSubscriptions() {
 		key := message[0]
 		val := message[1]
 
-		log.Infof("xxxxxxx   Message: %s -> %v ", key, val)
+		log.Debugf("Message: %s -> %v ", key, val)
 
 		messageSlice := strings.Split(key, "_")
 
@@ -121,14 +132,21 @@ func (trader *Trader) monitorSubscriptions() {
 
 		chansMap := tFsm.SignalChannelsMap()
 
-		signalChannel := chansMap[key]
+		signalChannel, ok := chansMap[key]
 
-		switch val {
-		case "true":
-			signalChannel <- true
-		case "false":
-			signalChannel <- false
+		if ok {
+
+			switch val {
+			case "true":
+				signalChannel <- true
+			case "false":
+				signalChannel <- false
+			}
+
+		} else {
+			log.Warn("unknown signal: ", key)
 		}
+
 	}
 
 }
@@ -138,7 +156,6 @@ func (trader *Trader) startControllers() {
 	for exKey, exchangeMap := range trader.subscriptionMapExchanges {
 
 		for exPair, _ := range exchangeMap {
-
 			tFsm := trader.tFsmExchangeMap[exKey][exPair]
 			go tFsm.FsmController()
 

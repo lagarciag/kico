@@ -476,7 +476,9 @@ func (kr *Kredis) GetList(exchange, pair string) (retList []float64, err error) 
 func (kr *Kredis) Subscribe(chanName string, foo func(value float64)) interface{} {
 	kr.mu.Lock()
 	psc := redis.PubSubConn{Conn: kr.conn}
-	psc.Subscribe(chanName)
+	if err := psc.Subscribe(chanName); err != nil {
+		log.Error("redis subscribe: ", err.Error())
+	}
 	kr.mu.Unlock()
 
 	for {
@@ -506,7 +508,9 @@ func (kr *Kredis) Subscribe(chanName string, foo func(value float64)) interface{
 
 func (kr *Kredis) SubscribeLookup(chanName string) {
 	kr.mu.Lock()
-	kr.psc.Subscribe(chanName)
+	if err := kr.psc.Subscribe(chanName); err != nil {
+		log.Error(err.Error())
+	}
 	kr.mu.Unlock()
 }
 
@@ -520,8 +524,8 @@ func (kr *Kredis) SubscriberMonitor() {
 		switch v := kr.psc.Receive().(type) {
 
 		case redis.Message:
-			fmt.Printf("%s: message: %s\n", v.Channel, v.Data)
-			log.Infof("REDIS CHAN RECIEVE: %s , %s", string(v.Channel), string(v.Data))
+			//fmt.Printf("%s: message: %s\n", v.Channel, v.Data)
+			//log.Infof("REDIS CHAN RECIEVE: %s , %s", string(v.Channel), string(v.Data))
 			resp := make([]string, 2)
 			resp[0] = string(v.Channel)
 			resp[1] = string(v.Data)

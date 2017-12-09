@@ -279,7 +279,9 @@ func TestKredisPubSub(t *testing.T) {
 
 	//key := fmt.Sprintf("%s_%_", exchange, pair)
 	keyp := fmt.Sprintf("%s_%s", exchange, pair)
-	psc.Subscribe(keyp)
+	if err := psc.Subscribe(keyp); err != nil {
+		log.Error(err.Error())
+	}
 
 	go pubSub(psc)
 
