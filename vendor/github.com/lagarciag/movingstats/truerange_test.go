@@ -9,8 +9,11 @@ import (
 )
 
 func TestTrueRangeSimple(t *testing.T) {
-
-	ms := movingstats.NewMovingStats(10)
+	ind1 := movingstats.Indicators{}
+	ind2 := movingstats.Indicators{}
+	arg1 := make([]movingstats.Indicators, 1)
+	arg2 := make([]movingstats.Indicators, 1)
+	ms := movingstats.NewMovingStats(10, ind1, ind2, arg1, arg2, false)
 
 	floatSlice := []float64{10, 11, 12, 13, 14, 15, 16, 17, 16, 11,
 		10, 11, 12, 13, 14, 15, 16, 17, 16, 11,

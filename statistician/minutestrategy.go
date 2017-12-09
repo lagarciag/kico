@@ -23,6 +23,8 @@ type MinuteStrategy struct {
 
 	init bool
 
+	count uint64
+
 	addChannel chan float64
 
 	warmAppLock *sync.Cond
@@ -229,13 +231,14 @@ func (ms *MinuteStrategy) Add(value float64) {
 		go ms.WarmUp(value)
 
 	} else {
+
 		ms.addChannel <- value
 	}
 
 }
 
 func (ms *MinuteStrategy) add(value float64) {
-
+	ms.count++
 	ms.mu.Lock()
 	ms.LatestValue = value
 	ms.movingStats.Add(value)
@@ -373,31 +376,44 @@ func (ms *MinuteStrategy) buySellUpdate() {
 
 	if ms.doDbUpdate {
 		if pDirectionalBull && ms.MacdBullish() && ms.EmaDirectionUp() {
-			if ms.buy != true {
-				log.Infof("BUY UPDATE for %s :%v", buyKey, true)
-				ms.kr.Publish(buyKey, "true")
+			if ms.buy == false {
+				log.Infof("BUY CHANGE for %s :%v", buyKey, true)
+			}
+			if err := ms.kr.Publish(buyKey, "true"); err != nil {
+				log.Errorf("Publishing to: %s -> %s ", buyKey, "true")
 			}
 			ms.buy = true
 		} else {
-			if ms.buy != false {
-				log.Infof("BUY UPDATE for %s :%v", buyKey, false)
-				ms.kr.Publish(buyKey, "false")
+			if ms.buy == true {
+				log.Infof("BUY CHANGE for %s :%v", buyKey, false)
+			}
+			if err := ms.kr.Publish(buyKey, "false"); err != nil {
+				log.Errorf("Publishing to: %s -> %s ", buyKey, "false")
 			}
 			ms.buy = false
 		}
 
 		if mDirectionalBear && !ms.MacdBullish() && !ms.EmaDirectionUp() {
-			if ms.sell != true {
-				log.Infof("SELL UPDATE for %s : %v", sellKey, true)
-				ms.kr.Publish(sellKey, "true")
+			if ms.sell == false {
+				log.Infof("SELL CHANGE for %s : %v", sellKey, true)
+			}
+			if err := ms.kr.Publish(sellKey, "true"); err != nil {
+				log.Errorf("Publishing to: %s -> %s ", sellKey, "true")
 			}
 			ms.sell = true
 		} else {
-			if ms.sell != false {
-				log.Infof("SELL UPDATE for %s :%v", sellKey, false)
-				ms.kr.Publish(sellKey, "false")
+			if ms.sell == true {
+				log.Infof("SELL CHANGE for %s :%v", sellKey, false)
+			}
+			if err := ms.kr.Publish(sellKey, "false"); err != nil {
+				log.Errorf("Publishing to: %s -> %s ", buyKey, "false")
 			}
 			ms.sell = false
+		}
+
+		if ms.count%6 == 0 {
+			log.Infof("** BUY STATUS UPDATE for %s :%v", buyKey, ms.buy)
+			log.Infof("** SEL STATUS UPDATE for %s :%v", sellKey, ms.sell)
 		}
 	}
 }
@@ -526,7 +542,9 @@ func (ms *MinuteStrategy) indicatorsGetter(index int) (indicators movingstats.In
 		log.Fatal("Fatal error getting indicators: ", err.Error())
 	}
 
-	json.Unmarshal([]byte(indicatorsJson), &indicators)
+	if err = json.Unmarshal([]byte(indicatorsJson), &indicators); err != nil {
+		log.Error("unmarshaling indicators json")
+	}
 
 	return indicators
 
@@ -555,7 +573,10 @@ func (ms *MinuteStrategy) indicatorsHistoryGetter(size int) (indicators []moving
 
 	for i, indicatorJson := range indicatorsJson {
 		anIndicator := movingstats.Indicators{}
-		json.Unmarshal([]byte(indicatorJson), &anIndicator)
+		if err := json.Unmarshal([]byte(indicatorJson), &anIndicator); err != nil {
+			log.Error("unmarshaling indicators json")
+		}
+
 		indicators[i] = anIndicator
 	}
 

@@ -48,7 +48,7 @@ func TestSimpleMovingAverage(t *testing.T) {
 	}
 
 	avg1 := movingStats.SimpleMovingAverage()
-	avg2 := movingAverage.Avg()
+	avg2 := movingAverage.SimpleMovingAverage()
 
 	if uint(avg1) != uint(avg2) {
 
@@ -68,8 +68,14 @@ func TestSimpleMovingAverageFromStats(t *testing.T) {
 	size := period + rand.Intn(1000000)
 	//size = 5
 	t.Log("size:", size)
-	movingStats := movingstats.NewMovingStats(period)
-	movingAverage := movingaverage.New(uint(period))
+
+	ind1 := movingstats.Indicators{}
+	ind2 := movingstats.Indicators{}
+	arg1 := make([]movingstats.Indicators, 1)
+	arg2 := make([]movingstats.Indicators, 1)
+
+	movingStats := movingstats.NewMovingStats(period, ind1, ind2, arg1, arg2, false)
+	movingAverage := movingaverage.New(int(period))
 
 	floatList := make([]float64, size)
 
@@ -87,7 +93,7 @@ func TestSimpleMovingAverageFromStats(t *testing.T) {
 	}
 
 	avg1 := movingStats.SMA1()
-	avg2 := movingAverage.Avg()
+	avg2 := movingAverage.SimpleMovingAverage()
 
 	if uint(avg1) != uint(avg2) {
 
@@ -128,7 +134,12 @@ func TestDmi(t *testing.T) {
 
 	windowSize := 10
 
-	ms := movingstats.NewMovingStats(windowSize)
+	ind1 := movingstats.Indicators{}
+	ind2 := movingstats.Indicators{}
+	arg1 := make([]movingstats.Indicators, 1)
+	arg2 := make([]movingstats.Indicators, 1)
+
+	ms := movingstats.NewMovingStats(windowSize, ind1, ind2, arg1, arg2, false)
 
 	//floatList = []float64{1,1,1,2,2,2}
 
@@ -155,8 +166,13 @@ func TestStandardDeviation(t *testing.T) {
 		//period = 10
 		size := period + rand.Intn(100000)
 		//size = 10
-		movingStats := movingstats.NewMovingStats(period)
-		movingAverage := movingaverage.New(uint(period))
+		ind1 := movingstats.Indicators{}
+		ind2 := movingstats.Indicators{}
+		arg1 := make([]movingstats.Indicators, 1)
+		arg2 := make([]movingstats.Indicators, 1)
+
+		movingStats := movingstats.NewMovingStats(period, ind1, ind2, arg1, arg2, false)
+		movingAverage := movingaverage.New(int(period))
 
 		floatList := make([]float64, size)
 
@@ -175,7 +191,7 @@ func TestStandardDeviation(t *testing.T) {
 			movingAverage.Add(value)
 		}
 
-		std2 := movingAverage.StdDev()
+		std2 := movingAverage.MovingStandardDeviation()
 		std3 := movingStats.StdDev1()
 		avg := movingStats.SMA1()
 

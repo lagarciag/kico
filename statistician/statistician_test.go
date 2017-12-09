@@ -51,13 +51,13 @@ func TestStatistitianAdd(t *testing.T) {
 		for count := 0; count < (int(window)*stablePeriodsCount)+1; count++ {
 			value := float64(rand.Intn(10000))
 			stat.Add(value)
-			stable, _ := stat.Stable(window)
+			stable, _ := stat.Stable(int(window))
 			if stable && count < (int(window)*stablePeriodsCount) {
 				t.Error("Early stable for window:", window, count)
 			}
 		}
 
-		stable, err := stat.Stable(window)
+		stable, err := stat.Stable(int(window))
 
 		if err != nil {
 			t.Error("Failed with stable error: ", err.Error(), window)
@@ -89,7 +89,7 @@ func TestStatistitianAddWarmUp(t *testing.T) {
 
 		time.Sleep(time.Second)
 
-		stable, err := stat.Stable(window)
+		stable, err := stat.Stable(int(window))
 
 		if err != nil {
 			t.Error("Failed with stable error: ", err.Error(), window)
@@ -98,26 +98,6 @@ func TestStatistitianAddWarmUp(t *testing.T) {
 		if !stable {
 			t.Error("Did not reach stable state for window:", window)
 		}
-
-	}
-
-}
-
-func TestNewStatistician(t *testing.T) {
-	//name string, minuteWindowSize uint, stdLimit float64, doLog bool, kr *kredis.Kredis
-	ms := statistician.NewMinuteStrategy("NAME", statistician.Minute5, 0.5, true, kr)
-
-	for n := 0; n < 10000; n++ {
-		value := float64(rand.Intn(10000))
-		ms.Add(value)
-
-	}
-
-	for n := 0; n < 10; n++ {
-		value := float64(rand.Intn(10000))
-		ms.Add(value)
-
-		//t.Log(ms.Print())
 
 	}
 

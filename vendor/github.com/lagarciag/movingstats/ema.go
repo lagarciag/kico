@@ -14,7 +14,8 @@ type emaContainer struct {
 	EmaSlope   float64
 	EmaUp      bool
 	EmaHistory *ringbuffer.RingBuffer
-	power      int
+
+	power int
 }
 
 //periods int, periodSize int
@@ -28,15 +29,14 @@ func newEmaContainer(periods, periodSize int, power int, initValues []float64) (
 		ec.EmaAvr = multiema.NewMultiEma(periods, periodSize, initValues[0])
 	}
 
-	// ----------------------------
-	// Reverse initvalues history
-	// ----------------------------
-
-	reversedInitValues := reverseBuffer(initValues)
-
-	ec.EmaHistory = ringbuffer.NewBuffer(periodSize*periods, false, 0, 0)
-
-	ec.EmaHistory.PushBuffer(reversedInitValues)
+	// ---------------------
+	// ----------
+	// Reverse one period init values
+	// -------------------------------
+	periodsInitValues := initValues[0:periodSize]
+	reversedPeriodInitValues := reverseBuffer(periodsInitValues)
+	ec.EmaHistory = ringbuffer.NewBuffer(periodSize, false, 0, 0)
+	ec.EmaHistory.PushBuffer(reversedPeriodInitValues)
 
 	return ec
 }

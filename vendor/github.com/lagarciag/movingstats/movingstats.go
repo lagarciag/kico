@@ -288,9 +288,7 @@ func NewMovingStats(size int, latestIndicators,
 
 	ms.lastWindowHistory.PushBuffer(reverseBuffer(historyIndicatorsInSlices1.LastValue))
 
-	//emaHistBuffer := ringbuffer.NewBuffer(size, true, prevHigh, prevLow)
-
-	ms.sma = movingaverage.New(size)
+	ms.sma = movingaverage.New(6)
 
 	for _, value := range reverseBuffer(historyIndicatorsInSlices0.LastValue) {
 		ms.sma.Add(value)

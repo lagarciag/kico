@@ -245,6 +245,7 @@ func (bot *Bot) statsCollector() {
 }
 
 func (bot *Bot) MonitorPrice() {
+	currentPrice := "0"
 	monTimer := time.NewTicker(time.Second)
 	priceLock := &sync.Mutex{}
 	emaMapLock := &sync.Mutex{}
@@ -287,7 +288,11 @@ func (bot *Bot) MonitorPrice() {
 				}
 				emaMapLock.Unlock()
 
-				log.Infof("Price update: %s : %s", key, lPriceUpdate.Price)
+				if lPriceUpdate.Price != currentPrice {
+					log.Infof("Price update: %s : %s", key, lPriceUpdate.Price)
+				}
+				currentPrice = lPriceUpdate.Price
+
 				pair = fmt.Sprintf("%s_RAW", pair)
 				bot.kr.Update(bot.name, pair, lPriceUpdate.Price)
 			}
