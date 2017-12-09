@@ -33,7 +33,16 @@ func newEmaContainer(periods, periodSize int, power int, initValues []float64) (
 	// ----------
 	// Reverse one period init values
 	// -------------------------------
-	periodsInitValues := initValues[0:periodSize]
+	initValuesLen := len(initValues)
+	var periodsInitValues []float64
+
+	size := periodSize
+
+	if periodSize > initValuesLen {
+		size = initValuesLen
+	}
+
+	periodsInitValues = initValues[0:size]
 	reversedPeriodInitValues := reverseBuffer(periodsInitValues)
 	ec.EmaHistory = ringbuffer.NewBuffer(periodSize, false, 0, 0)
 	ec.EmaHistory.PushBuffer(reversedPeriodInitValues)
