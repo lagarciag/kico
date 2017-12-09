@@ -69,12 +69,21 @@ func (ms *MovingStats) dmiCalc() {
 	pDImDI := ms.plusDI + ms.minusDI
 
 	if pDImDI == 0 {
-		pDImDI = 1
+		pDImDI = float64(1)
 	}
 
 	//fmt.Println((ms.plusDI - ms.minusDI), pDImDI)
 
 	adVal := (math.Abs((ms.plusDI - ms.minusDI) / pDImDI))
+
+	if adVal < 0 {
+		log.Error("adval NEGATIVE!!", adVal)
+		log.Error("plusDI", ms.plusDI)
+		log.Error("plusDI", ms.plusDI)
+		log.Error("pDIMDI", pDImDI)
+
+	}
+
 	ms.adxAvr.Add(adVal)
 
 	ms.adx = float64(100) * ms.adxAvr.Value()
