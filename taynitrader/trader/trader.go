@@ -1,6 +1,7 @@
 package trader
 
 import (
+	"github.com/lagarciag/tayni/twitter"
 	"github.com/looplab/fsm"
 	log "github.com/sirupsen/logrus"
 )
@@ -83,6 +84,7 @@ const (
 )
 
 type TradeFsm struct {
+	tc     *twitter.TwitterClient
 	To     string
 	FSM    *fsm.FSM
 	pairID string
@@ -178,6 +180,15 @@ func NewTradeFsm(pairID string) *TradeFsm {
 	log.Info("Creating new trading fsm for pair: ", pairID)
 
 	tFsm := &TradeFsm{}
+
+	config := twitter.Config{}
+
+	config.ConsumerKey = "RK2gkJghS1yQUrMvpQixh3FDF"
+	config.ConsumerSecret = "TQvoFlBiLg6aOSezxLSq0pwmZnc6iINOMsg67ln9eqYkrDT46s"
+	config.AccessToken = "50073326-TTy4E67ODF0UE76ProfCXt5Kd7m0gLv57b8TwpUDi"
+	config.AccessTokenSecret = "GwWzOY6WHlxMuXFenksmAw1RGDBCgyMQhnwzXW1k09TAs"
+
+	tFsm.tc = twitter.NewTwitterClient(config)
 	tFsm.pairID = pairID
 	// ------------
 	// Events

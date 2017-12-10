@@ -1,6 +1,7 @@
 package trader
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/looplab/fsm"
@@ -27,6 +28,15 @@ func (tf *TradeFsm) CallBackInDoSellState(e *fsm.Event) {
 		}
 	}
 
+	if tf.pairID != "TEST" {
+
+		t := time.Now()
+		theTime := fmt.Sprint(t.Format("2006-01-02 15:04:05"))
+
+		twit := fmt.Sprintf("TayniBot (beta test) says: SELL %s @%s", tf.pairID, theTime)
+		tf.tc.Twit(twit)
+	}
+
 	message := `
 	----------------------------------------------------
 	SELL COMPLETE for PAIR: %s
@@ -44,6 +54,15 @@ func (tf *TradeFsm) CallBackInDoBuyState(e *fsm.Event) {
 		if err := tf.FSM.Event(BuyCompleteEvent); err != nil {
 			log.Warn(err.Error())
 		}
+	}
+
+	if tf.pairID != "TEST" {
+
+		t := time.Now()
+		theTime := fmt.Sprint(t.Format("2006-01-02 15:04:05"))
+
+		twit := fmt.Sprintf("TayniBot (beta test) says: BUY %s @%s", tf.pairID, theTime)
+		tf.tc.Twit(twit)
 	}
 
 	message := `

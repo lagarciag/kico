@@ -1,17 +1,20 @@
 package twitter
 
 import (
+	"fmt"
 	"net/http"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/dghubble/go-twitter/twitter"
 	"github.com/dghubble/oauth1"
 )
 
 type Config struct {
-	consumerKey       string
-	consumerSecret    string
-	accessToken       string
-	accessTokenSecret string
+	ConsumerKey       string
+	ConsumerSecret    string
+	AccessToken       string
+	AccessTokenSecret string
 }
 
 type TwitterClient struct {
@@ -28,10 +31,10 @@ type TwitterClient struct {
 
 func NewTwitterClient(config Config) *TwitterClient {
 	tc := &TwitterClient{}
-	tc.consumerKey = config.consumerKey
-	tc.consumerSecret = config.consumerSecret
-	tc.accessToken = config.accessToken
-	tc.accessTokenSecret = config.accessTokenSecret
+	tc.consumerKey = config.ConsumerKey
+	tc.consumerSecret = config.ConsumerSecret
+	tc.accessToken = config.AccessToken
+	tc.accessTokenSecret = config.AccessTokenSecret
 
 	tc.oauthConfig = oauth1.NewConfig(tc.consumerKey, tc.consumerSecret)
 	tc.oauthToken = oauth1.NewToken(tc.accessToken, tc.accessTokenSecret)
@@ -43,13 +46,18 @@ func NewTwitterClient(config Config) *TwitterClient {
 	return tc
 }
 
-/*
+func (tc *TwitterClient) Twit(message string) {
+
+	tweet, resp, err := tc.twitterClient.Statuses.Update(message, nil)
+	log.Debug(tweet, resp, err)
+}
+
 func configure() {
 	// Pass in your consumer key (API Key) and your Consumer Secret (API Secret)
-	consumerKey :=
-	consumerSecret
-	accessToken :=
-	accessTokenSecret :=
+	consumerKey := "RK2gkJghS1yQUrMvpQixh3FDF"
+	consumerSecret := "TQvoFlBiLg6aOSezxLSq0pwmZnc6iINOMsg67ln9eqYkrDT46s"
+	accessToken := "50073326-TTy4E67ODF0UE76ProfCXt5Kd7m0gLv57b8TwpUDi"
+	accessTokenSecret := "GwWzOY6WHlxMuXFenksmAw1RGDBCgyMQhnwzXW1k09TAs"
 
 	config := oauth1.NewConfig(consumerKey, consumerSecret)
 	token := oauth1.NewToken(accessToken, accessTokenSecret)
@@ -91,9 +99,3 @@ func configure() {
 	fmt.Println(followers, resp, err)
 
 }
-
-func main() {
-	fmt.Println("Go-Twitter Bot v0.01")
-	configure()
-}
-*/

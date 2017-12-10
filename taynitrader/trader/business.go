@@ -2,10 +2,12 @@ package trader
 
 import (
 	"strings"
+	"time"
 
 	"fmt"
 
 	"github.com/lagarciag/tayni/kredis"
+	"github.com/lagarciag/tayni/twitter"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
@@ -14,6 +16,7 @@ type Trader struct {
 	kr                       *kredis.Kredis
 	subscriptionMapExchanges map[string]map[string][]string
 	tFsmExchangeMap          map[string]map[string]*TradeFsm
+	tc                       *twitter.TwitterClient
 }
 
 func NewTrader() *Trader {
@@ -92,6 +95,9 @@ func NewTrader() *Trader {
 
 func Start() {
 	log.Info("Tayni Trader starting...")
+
+	time.Sleep(time.Second)
+
 	trader := NewTrader()
 	trader.startControllers()
 	go trader.monitorSubscriptions()
