@@ -120,7 +120,7 @@ func (trader *Trader) monitorSubscriptions() {
 		key := message[0]
 		val := message[1]
 
-		log.Debugf("Message: %s -> %v ", key, val)
+		//log.Debugf("Message: %s -> %v ", key, val)
 
 		messageSlice := strings.Split(key, "_")
 
@@ -144,7 +144,7 @@ func (trader *Trader) monitorSubscriptions() {
 			}
 
 		} else {
-			log.Warn("unknown signal: ", key)
+			//log.Warn("unknown signal: ", key)
 		}
 
 	}

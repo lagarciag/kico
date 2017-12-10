@@ -54,7 +54,7 @@ func Start() {
 	exchanges := viper.Get("exchange").(map[string]interface{})
 	//historyCount := int(viper.Get("history").(int64)) / 100
 
-	historyCount := int(500)
+	historyCount := int(1000)
 
 	exchangesCount := len(exchanges)
 
@@ -105,7 +105,9 @@ func Start() {
 					if isError(err) {
 						return
 					}
-					file.Close()
+					if err := file.Close(); err != nil {
+						log.Error("closing file: ", err.Error())
+					}
 				}
 
 				// open file using READ & WRITE permission

@@ -93,6 +93,232 @@ func TestTraderController(t *testing.T) {
 	*/
 }
 
+func TestTraderBasicChans(t *testing.T) {
+
+	tFsm := trader.NewTradeFsm("TEST")
+
+	go tFsm.FsmController()
+
+	tFsm.ChanStartEvent <- true
+	time.Sleep(time.Second)
+
+	if tFsm.FSM.Current() != trader.IdleState {
+		t.Error("Bad state: ", tFsm.FSM.Current())
+	}
+
+	tFsm.ChanTradeEvent <- true
+	time.Sleep(time.Second)
+
+	if tFsm.FSM.Current() != trader.TradingState {
+		t.Error("Bad state: ", tFsm.FSM.Current())
+	}
+
+	tFsm.ChanMinute120BuyEvent <- true
+	time.Sleep(time.Second)
+
+	if tFsm.FSM.Current() != trader.Minute120BuyState {
+		t.Error("Bad state: ", tFsm.FSM.Current())
+	}
+
+	tFsm.ChanMinute60BuyEvent <- true
+	time.Sleep(time.Second)
+
+	if tFsm.FSM.Current() != trader.Minute60BuyState {
+		t.Error("Bad state: ", tFsm.FSM.Current())
+	}
+
+	tFsm.ChanMinute30BuyEvent <- true
+	time.Sleep(time.Second * 3)
+
+	if tFsm.FSM.Current() != trader.HoldState {
+		t.Error("Bad state: ", tFsm.FSM.Current())
+	}
+
+	tFsm.ChanMinute120SellEvent <- true
+	time.Sleep(time.Second * 1)
+
+	if tFsm.FSM.Current() != trader.Minute120SellState {
+		t.Error("Bad state: ", tFsm.FSM.Current())
+	}
+
+	tFsm.ChanMinute60SellEvent <- true
+	time.Sleep(time.Second * 1)
+
+	if tFsm.FSM.Current() != trader.Minute60SellState {
+		t.Error("Bad state: ", tFsm.FSM.Current())
+	}
+
+	tFsm.ChanMinute30SellEvent <- true
+	time.Sleep(time.Second * 3)
+
+	if tFsm.FSM.Current() != trader.TradingState {
+		t.Error("Bad state: ", tFsm.FSM.Current())
+	}
+
+}
+
+func TestTraderBasicChansLoop(t *testing.T) {
+
+	tFsm := trader.NewTradeFsm("TEST")
+
+	go tFsm.FsmController()
+
+	tFsm.ChanStartEvent <- true
+	time.Sleep(time.Second)
+
+	if tFsm.FSM.Current() != trader.IdleState {
+		t.Error("Bad state: ", tFsm.FSM.Current())
+	}
+
+	tFsm.ChanTradeEvent <- true
+	time.Sleep(time.Second)
+
+	if tFsm.FSM.Current() != trader.TradingState {
+		t.Error("Bad state: ", tFsm.FSM.Current())
+	}
+
+	const countLoop = 5
+
+	count := 0
+	for count < countLoop {
+
+		log.Info("TEST LOOP: ", count)
+
+		tFsm.ChanMinute120BuyEvent <- true
+		time.Sleep(time.Second)
+
+		if tFsm.FSM.Current() != trader.Minute120BuyState {
+			t.Error("Bad state: ", tFsm.FSM.Current())
+		}
+
+		tFsm.ChanMinute60BuyEvent <- true
+		time.Sleep(time.Second)
+
+		if tFsm.FSM.Current() != trader.Minute60BuyState {
+			t.Error("Bad state: ", tFsm.FSM.Current())
+		}
+
+		tFsm.ChanMinute30BuyEvent <- true
+		time.Sleep(time.Second * 3)
+
+		if tFsm.FSM.Current() != trader.HoldState {
+			t.Error("Bad state: ", tFsm.FSM.Current())
+		}
+
+		tFsm.ChanMinute120SellEvent <- true
+		time.Sleep(time.Second * 1)
+
+		if tFsm.FSM.Current() != trader.Minute120SellState {
+			t.Error("Bad state: ", tFsm.FSM.Current())
+		}
+
+		tFsm.ChanMinute60SellEvent <- true
+		time.Sleep(time.Second * 1)
+
+		if tFsm.FSM.Current() != trader.Minute60SellState {
+			t.Error("Bad state: ", tFsm.FSM.Current())
+		}
+
+		tFsm.ChanMinute30SellEvent <- true
+		time.Sleep(time.Second * 3)
+
+		if tFsm.FSM.Current() != trader.TradingState {
+			t.Error("Bad state: ", tFsm.FSM.Current())
+		}
+		count++
+	}
+
+}
+
+func TestTraderBasicChansLoopNoEvents(t *testing.T) {
+
+	tFsm := trader.NewTradeFsm("TEST")
+
+	go tFsm.FsmController()
+
+	tFsm.ChanStartEvent <- true
+	time.Sleep(time.Second)
+
+	if tFsm.FSM.Current() != trader.IdleState {
+		t.Error("Bad state: ", tFsm.FSM.Current())
+	}
+
+	tFsm.ChanTradeEvent <- true
+	time.Sleep(time.Second)
+
+	if tFsm.FSM.Current() != trader.TradingState {
+		t.Error("Bad state: ", tFsm.FSM.Current())
+	}
+
+	const countLoop = 5
+
+	count := 0
+	for count < countLoop {
+
+		log.Info("TEST LOOP: ", count)
+
+		tFsm.ChanMinute120BuyEvent <- true
+		time.Sleep(time.Millisecond * 100)
+
+		if tFsm.FSM.Current() != trader.Minute120BuyState {
+			t.Error("Bad state: ", tFsm.FSM.Current())
+		}
+		reverse := rand.Intn(2)
+		log.Info("Reverse :", reverse)
+		if reverse == 1 {
+			log.Info("Going back to traiding...")
+			tFsm.ChanMinute120BuyEvent <- false
+		} else {
+
+			tFsm.ChanMinute60BuyEvent <- true
+			time.Sleep(time.Millisecond * 100)
+
+			if tFsm.FSM.Current() != trader.Minute60BuyState {
+				t.Error("Bad state: ", tFsm.FSM.Current())
+			}
+
+			reverse := rand.Intn(2)
+			log.Info("Reverse :", reverse)
+			if reverse == 1 {
+				log.Info("Going back to traiding...")
+				tFsm.ChanMinute120BuyEvent <- false
+			} else {
+
+				tFsm.ChanMinute30BuyEvent <- true
+				time.Sleep(time.Millisecond * 100 * 3)
+
+				if tFsm.FSM.Current() != trader.HoldState {
+					t.Error("Bad state: ", tFsm.FSM.Current())
+				}
+
+				tFsm.ChanMinute120SellEvent <- true
+				time.Sleep(time.Millisecond * 100)
+
+				if tFsm.FSM.Current() != trader.Minute120SellState {
+					t.Error("Bad state: ", tFsm.FSM.Current())
+				}
+
+				tFsm.ChanMinute60SellEvent <- true
+				time.Sleep(time.Millisecond * 100)
+
+				if tFsm.FSM.Current() != trader.Minute60SellState {
+					t.Error("Bad state: ", tFsm.FSM.Current())
+				}
+
+				tFsm.ChanMinute30SellEvent <- true
+				time.Sleep(time.Millisecond * 100 * 3)
+
+				if tFsm.FSM.Current() != trader.TradingState {
+					t.Error("Bad state: ", tFsm.FSM.Current())
+				}
+
+			}
+		}
+		count++
+	}
+
+}
+
 func TestTraderBasic(t *testing.T) {
 
 	tFsm := trader.NewTradeFsm("TEST")

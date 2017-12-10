@@ -21,6 +21,20 @@ func (tf *TradeFsm) CallBackInHoldState(e *fsm.Event) {
 
 func (tf *TradeFsm) CallBackInDoSellState(e *fsm.Event) {
 	log.Info("In state :", tf.FSM.Current())
+	done := func() {
+		if err := tf.FSM.Event(SellCompleteEvent); err != nil {
+			log.Warn(err.Error())
+		}
+	}
+
+	message := `
+	----------------------------------------------------
+	SELL COMPLETE for PAIR: %s
+	----------------------------------------------------
+	`
+	log.Infof(message, tf.pairID)
+	time.Sleep(time.Millisecond * 100)
+	go done()
 }
 
 func (tf *TradeFsm) CallBackInDoBuyState(e *fsm.Event) {
@@ -31,7 +45,14 @@ func (tf *TradeFsm) CallBackInDoBuyState(e *fsm.Event) {
 			log.Warn(err.Error())
 		}
 	}
-	time.Sleep(time.Second)
+
+	message := `
+	----------------------------------------------------
+	BUY COMPLETE for PAIR: %s
+	----------------------------------------------------
+	`
+	log.Infof(message, tf.pairID)
+	time.Sleep(time.Millisecond * 100)
 	go done()
 
 }
@@ -53,7 +74,7 @@ func (tf *TradeFsm) CallBackInMinute1BuyState(e *fsm.Event) {
 		}
 	}
 	log.Info("Test executing buy for ", tf.pairID)
-	time.Sleep(time.Second)
+	time.Sleep(time.Millisecond * 100)
 	go done()
 	log.Infof("CallBack done: %s, %s", tf.FSM.Current(), tf.pairID)
 
@@ -76,7 +97,7 @@ func (tf *TradeFsm) CallBackInMinute30BuyState(e *fsm.Event) {
 		}
 	}
 	log.Info("Test executing buy for ", tf.pairID)
-	time.Sleep(time.Second)
+	time.Sleep(time.Millisecond * 100)
 	go done()
 	log.Infof("CallBack done: %s, %s", tf.FSM.Current(), tf.pairID)
 
@@ -91,7 +112,7 @@ func (tf *TradeFsm) CallBackInMinute1SellState(e *fsm.Event) {
 		}
 	}
 	log.Info("Executing buy for ", tf.pairID)
-	time.Sleep(time.Second)
+	time.Sleep(time.Millisecond * 100)
 	go done()
 	log.Infof("CallBack done: %s, %s", tf.FSM.Current(), tf.pairID)
 
@@ -114,7 +135,7 @@ func (tf *TradeFsm) CallBackInMinute30SellState(e *fsm.Event) {
 
 	}
 	log.Info("Executing buy for ", tf.pairID)
-	time.Sleep(time.Second)
+	time.Sleep(time.Millisecond * 100)
 	go done()
 	log.Infof("CallBack done: %s, %s", tf.FSM.Current(), tf.pairID)
 
@@ -158,7 +179,7 @@ func (tf *TradeFsm) CallBackInNotMinute30SellState(e *fsm.Event) {
 
 func (tf *TradeFsm) CallBackInTestHoldState(e *fsm.Event) {
 	log.Info("In state :", tf.FSM.Current())
-	time.Sleep(time.Second)
+	time.Sleep(time.Millisecond * 100)
 
 }
 
@@ -170,7 +191,7 @@ func (tf *TradeFsm) CallBackInTestDoSellState(e *fsm.Event) {
 			log.Warn(err.Error())
 		}
 	}
-	time.Sleep(time.Second)
+	time.Sleep(time.Millisecond * 100)
 	go done()
 
 }
@@ -183,7 +204,7 @@ func (tf *TradeFsm) CallBackInTestDoBuyState(e *fsm.Event) {
 			log.Warn(err.Error())
 		}
 	}
-	time.Sleep(time.Second)
+	time.Sleep(time.Millisecond * 100)
 	go done()
 
 }

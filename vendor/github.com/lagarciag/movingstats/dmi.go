@@ -86,7 +86,14 @@ func (ms *MovingStats) dmiCalc() {
 
 	ms.adxAvr.Add(adVal)
 
-	ms.adx = float64(100) * ms.adxAvr.Value()
+	adxAvrValue := ms.adxAvr.Value()
+
+	if adxAvrValue < float64(0) {
+		log.Error("ADXAvrValue NEGATIVE!!", ms.adx)
+		adxAvrValue = math.Abs(adxAvrValue)
+	}
+
+	ms.adx = float64(100) * adxAvrValue
 
 	if ms.adx < float64(0) {
 		log.Error("ADX NEGATIVE!!", ms.adx)

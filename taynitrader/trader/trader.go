@@ -1,8 +1,6 @@
 package trader
 
 import (
-	"time"
-
 	"github.com/looplab/fsm"
 	log "github.com/sirupsen/logrus"
 )
@@ -254,22 +252,22 @@ func NewTradeFsm(pairID string) *TradeFsm {
 
 	minute120SellEvent := fsm.EventDesc{Name: Minute120SellEvent,
 		Src: []string{HoldState},
-		Dst: TradingState}
+		Dst: Minute120SellState}
 
 	minute60SellEvent := fsm.EventDesc{Name: Minute60SellEvent,
-		Src: []string{Minute60BuyState},
-		Dst: Minute120BuyState}
+		Src: []string{Minute120SellState},
+		Dst: Minute60SellState}
 
 	minute30SellEvent := fsm.EventDesc{Name: Minute30SellEvent,
-		Src: []string{Minute30BuyState},
-		Dst: Minute60BuyState}
+		Src: []string{Minute60SellState},
+		Dst: Minute30SellState}
 
 	notMinute120SellEvent := fsm.EventDesc{Name: NotMinute120SellEvent,
 		Src: []string{Minute120SellState, Minute60SellState, Minute30SellState},
 		Dst: HoldState}
 
 	notMinute60SellEvent := fsm.EventDesc{Name: NotMinute60SellEvent,
-		Src: []string{Minute60SellState, Minute30SellEvent},
+		Src: []string{Minute60SellState, Minute30SellState},
 		Dst: Minute120SellState}
 
 	notMinute30SellEvent := fsm.EventDesc{Name: NotMinute30SellEvent,
@@ -282,7 +280,7 @@ func NewTradeFsm(pairID string) *TradeFsm {
 
 	doSellEvent := fsm.EventDesc{Name: DoSellEvent,
 		Src: []string{Minute30SellState},
-		Dst: DoBuyState}
+		Dst: DoSellState}
 
 	buyCompleteEvent := fsm.EventDesc{Name: BuyCompleteEvent,
 		Src: []string{DoBuyState},
@@ -497,6 +495,16 @@ func NewTradeFsm(pairID string) *TradeFsm {
 	tFsm.ChanMap["CEXIO_BTCUSD_MS_120_SELL"] = tFsm.ChanMinute120SellEvent
 	tFsm.ChanMap["CEXIO_BTCUSD_MS_1_SELL"] = tFsm.ChanMinute120SellEvent
 
+	tFsm.ChanMap["CEXIO_BTCUSD_MS_30_BUY_NOT"] = tFsm.ChanNotMinute30BuyEvent
+	tFsm.ChanMap["CEXIO_BTCUSD_MS_60_BUY_NOT"] = tFsm.ChanNotMinute60BuyEvent
+	tFsm.ChanMap["CEXIO_BTCUSD_MS_120_BUY_NOT"] = tFsm.ChanNotMinute120BuyEvent
+	tFsm.ChanMap["CEXIO_BTCUSD_MS_1_BUY_NOT"] = tFsm.ChanNotMinute120BuyEvent
+
+	tFsm.ChanMap["CEXIO_BTCUSD_MS_30_SELL_NOT"] = tFsm.ChanNotMinute30SellEvent
+	tFsm.ChanMap["CEXIO_BTCUSD_MS_60_SELL_NOT"] = tFsm.ChanNotMinute60SellEvent
+	tFsm.ChanMap["CEXIO_BTCUSD_MS_120_SELL_NOT"] = tFsm.ChanNotMinute120SellEvent
+	tFsm.ChanMap["CEXIO_BTCUSD_MS_1_SELL_NOT"] = tFsm.ChanNotMinute120SellEvent
+
 	tFsm.ChanMap["TRADE"] = tFsm.ChanTradeEvent
 	tFsm.ChanMap["START"] = tFsm.ChanStartEvent
 
@@ -509,6 +517,24 @@ func (tFsm *TradeFsm) SignalChannelsMap() map[string]chan bool {
 }
 
 func (tFsm *TradeFsm) FsmController() {
+
+	logMap := make(map[string]bool)
+	logMap[Minute120BuyEvent] = false
+	logMap[Minute60BuyEvent] = false
+	logMap[Minute30BuyEvent] = false
+
+	logMap[NotMinute60BuyEvent] = false
+	logMap[NotMinute120BuyEvent] = false
+	logMap[NotMinute30BuyEvent] = false
+
+	logMap[Minute120SellEvent] = false
+	logMap[Minute60SellEvent] = false
+	logMap[Minute30SellEvent] = false
+
+	logMap[NotMinute120SellEvent] = false
+	logMap[NotMinute60SellEvent] = false
+	logMap[NotMinute30SellEvent] = false
+
 	log.Info("Starting tFsm controlloer for : ", tFsm.pairID)
 
 	for {
@@ -518,7 +544,7 @@ func (tFsm *TradeFsm) FsmController() {
 			{
 				log.Infof("tFsm %s Controller Event: %s", tFsm.pairID, StartEvent)
 				if err := tFsm.FSM.Event(StartEvent); err != nil {
-					log.Warn(err.Error())
+					//log.Warn(err.Error())
 				}
 
 			}
@@ -526,137 +552,256 @@ func (tFsm *TradeFsm) FsmController() {
 			{
 				log.Infof("tFsm %s Controller Event: %s", tFsm.pairID, ShutdownEvent)
 				if err := tFsm.FSM.Event(ShutdownState); err != nil {
-					log.Warn(err.Error())
+					//log.Warn(err.Error())
 				}
 			}
 		case _ = <-tFsm.ChanTradeEvent:
 			{
 				log.Infof("tFsm %s Controller Event: %s", tFsm.pairID, TradeEvent)
 				if err := tFsm.FSM.Event(TradeEvent); err != nil {
-					log.Warn(err.Error())
+					//log.Warn(err.Error())
 				}
 			}
 
-		case _ = <-tFsm.ChanMinute120BuyEvent:
+		case ev := <-tFsm.ChanMinute120BuyEvent:
 			{
-				log.Infof("tFsm %s Controller Event: %s", tFsm.pairID, Minute120BuyState)
-				if err := tFsm.FSM.Event(Minute120BuyEvent); err != nil {
-					log.Warn(err.Error())
-				}
-			}
-		case _ = <-tFsm.ChanMinute60BuyEvent:
-			{
-				log.Infof("tFsm %s Controller Event: %s", tFsm.pairID, Minute60BuyEvent)
-				if err := tFsm.FSM.Event(Minute60BuyEvent); err != nil {
-					log.Warn(err.Error())
-				}
-			}
-		case _ = <-tFsm.ChanMinute30BuyEvent:
-			{
-				log.Infof("tFsm %s Controller Event: %s", tFsm.pairID, Minute30BuyEvent)
-				if err := tFsm.FSM.Event(Minute30BuyEvent); err != nil {
-					log.Warn(err.Error())
-				}
-			}
 
-		case _ = <-tFsm.ChanNotMinute120BuyEvent:
-			{
-				log.Infof("tFsm %s Controller Event: %s", tFsm.pairID, NotMinute120BuyEvent)
-				if err := tFsm.FSM.Event(NotMinute120BuyEvent); err != nil {
-					log.Warn(err.Error())
+				doLog := false
+				if logMap[Minute120BuyEvent] != ev {
+					doLog = true
 				}
-			}
-		case _ = <-tFsm.ChanNotMinute60BuyEvent:
-			{
-				log.Infof("tFsm %s Controller Event: %s", tFsm.pairID, NotMinute60BuyEvent)
-				if err := tFsm.FSM.Event(NotMinute60BuyEvent); err != nil {
-					log.Warn(err.Error())
-				}
-			}
-		case _ = <-tFsm.ChanNotMinute30BuyEvent:
-			{
-				log.Infof("tFsm %s Controller Event: %s", tFsm.pairID, NotMinute30BuyEvent)
-				if err := tFsm.FSM.Event(NotMinute30BuyEvent); err != nil {
-					log.Warn(err.Error())
-				}
-			}
+				logMap[Minute120BuyEvent] = ev
 
-		case _ = <-tFsm.ChanMinute120SellEvent:
-			{
-				log.Infof("tFsm %s Controller Event: %s", tFsm.pairID, Minute120SellEvent)
-				if err := tFsm.FSM.Event(Minute120SellEvent); err != nil {
-					log.Warn(err.Error())
+				if ev {
+					if doLog {
+						log.Infof("tFsm %s Controller Event: %s , %v", tFsm.pairID, Minute120BuyEvent, ev)
+					}
+					if err := tFsm.FSM.Event(Minute120BuyEvent); err != nil {
+						//log.Warn(err.Error())
+					}
+				} else {
+					if doLog {
+						log.Infof("tFsm %s Controller Event: %s , %v", tFsm.pairID, NotMinute120BuyEvent, ev)
+					}
+					if err := tFsm.FSM.Event(NotMinute120BuyEvent); err != nil {
+						//log.Warn(err.Error())
+					}
 				}
-			}
-		case _ = <-tFsm.ChanMinute60SellEvent:
-			{
-				log.Infof("tFsm %s Controller Event: %s", tFsm.pairID, Minute60SellEvent)
-				if err := tFsm.FSM.Event(Minute60SellEvent); err != nil {
-					log.Warn(err.Error())
-				}
-			}
-		case _ = <-tFsm.ChanMinute30SellEvent:
-			{
-				log.Infof("tFsm %s Controller Event: %s", tFsm.pairID, Minute30SellEvent)
-				if err := tFsm.FSM.Event(Minute30SellEvent); err != nil {
-					log.Warn(err.Error())
-				}
-			}
 
-		case _ = <-tFsm.ChanNotMinute120SellEvent:
+			}
+		case ev := <-tFsm.ChanMinute60BuyEvent:
+			{
 
-			{
-				log.Infof("tFsm %s Controller Event: %s", tFsm.pairID, NotMinute120SellEvent)
-				if err := tFsm.FSM.Event(NotMinute120SellEvent); err != nil {
-					log.Warn(err.Error())
+				doLog := false
+				if logMap[Minute60BuyEvent] != ev {
+					doLog = true
 				}
-			}
-		case _ = <-tFsm.ChanNotMinute60SellEvent:
-			{
-				log.Infof("tFsm %s Controller Event: %s", tFsm.pairID, NotMinute30SellEvent)
-				if err := tFsm.FSM.Event(NotMinute30SellEvent); err != nil {
-					log.Warn(err.Error())
-				}
-			}
-		case _ = <-tFsm.ChanNotMinute30SellEvent:
-			{
-				log.Infof("tFsm %s Controller Event: %s", tFsm.pairID, NotMinute30SellEvent)
-				if err := tFsm.FSM.Event(NotMinute30SellEvent); err != nil {
-					log.Warn(err.Error())
-				}
-			}
+				logMap[Minute60BuyEvent] = ev
 
+				if ev {
+					if doLog {
+						log.Infof("tFsm %s Controller Event: %s, %v", tFsm.pairID, Minute60BuyEvent, ev)
+					}
+
+					if err := tFsm.FSM.Event(Minute60BuyEvent); err != nil {
+						//log.Warn(err.Error())
+					}
+				} else {
+					if doLog {
+						log.Infof("tFsm %s Controller Event: %s, %v", tFsm.pairID, NotMinute60BuyEvent, ev)
+					}
+
+					if err := tFsm.FSM.Event(NotMinute60BuyEvent); err != nil {
+						//log.Warn(err.Error())
+					}
+				}
+
+			}
+		case ev := <-tFsm.ChanMinute30BuyEvent:
+			{
+				doLog := false
+				if logMap[Minute30BuyEvent] != ev {
+					doLog = true
+				}
+				logMap[Minute30BuyEvent] = ev
+
+				if ev {
+					if doLog {
+						log.Infof("tFsm %s Controller Event: %s, %v", tFsm.pairID, Minute30BuyEvent, ev)
+					}
+
+					if err := tFsm.FSM.Event(Minute30BuyEvent); err != nil {
+						//log.Warn(err.Error())
+					}
+				} else {
+					if doLog {
+						log.Infof("tFsm %s Controller Event: %s, %v", tFsm.pairID, NotMinute30BuyEvent, ev)
+					}
+
+					if err := tFsm.FSM.Event(NotMinute30BuyEvent); err != nil {
+						//log.Warn(err.Error())
+					}
+				}
+			}
+			/*
+				case _ = <-tFsm.ChanNotMinute120BuyEvent:
+					{
+						log.Infof("tFsm %s Controller Event: %s", tFsm.pairID, NotMinute120BuyEvent)
+						if err := tFsm.FSM.Event(NotMinute120BuyEvent); err != nil {
+							//log.Warn(err.Error())
+						}
+					}
+				case _ = <-tFsm.ChanNotMinute60BuyEvent:
+					{
+						log.Infof("tFsm %s Controller Event: %s", tFsm.pairID, NotMinute60BuyEvent)
+						if err := tFsm.FSM.Event(NotMinute60BuyEvent); err != nil {
+							//log.Warn(err.Error())
+						}
+					}
+				case _ = <-tFsm.ChanNotMinute30BuyEvent:
+					{
+						log.Infof("tFsm %s Controller Event: %s", tFsm.pairID, NotMinute30BuyEvent)
+						if err := tFsm.FSM.Event(NotMinute30BuyEvent); err != nil {
+							//log.Warn(err.Error())
+						}
+					}
+			*/
+		case ev := <-tFsm.ChanMinute120SellEvent:
+			{
+
+				doLog := false
+				if logMap[Minute120SellEvent] != ev {
+					doLog = true
+				}
+				logMap[Minute120SellEvent] = ev
+
+				if ev {
+					if doLog {
+						log.Infof("tFsm %s Controller Event: %s, %v", tFsm.pairID, Minute120SellEvent, ev)
+					}
+
+					if err := tFsm.FSM.Event(Minute120SellEvent); err != nil {
+						//log.Warn(err.Error())
+					}
+				} else {
+					if doLog {
+						log.Infof("tFsm %s Controller Event: %s, %v", tFsm.pairID, NotMinute120SellEvent, ev)
+					}
+					if err := tFsm.FSM.Event(NotMinute120SellEvent); err != nil {
+						//log.Warn(err.Error())
+					}
+				}
+
+			}
+		case ev := <-tFsm.ChanMinute60SellEvent:
+			{
+
+				doLog := false
+				if logMap[Minute60SellEvent] != ev {
+					doLog = true
+				}
+				logMap[Minute60SellEvent] = ev
+
+				if ev {
+					if doLog {
+						log.Infof("tFsm %s Controller Event: %s, %v", tFsm.pairID, Minute60SellEvent, ev)
+					}
+
+					if err := tFsm.FSM.Event(Minute60SellEvent); err != nil {
+						//log.Warn(err.Error())
+					}
+
+				} else {
+					if doLog {
+						log.Infof("tFsm %s Controller Event: %s, %v", tFsm.pairID, NotMinute60SellEvent, ev)
+					}
+
+					if err := tFsm.FSM.Event(NotMinute60SellEvent); err != nil {
+						//log.Warn(err.Error())
+					}
+
+				}
+			}
+		case ev := <-tFsm.ChanMinute30SellEvent:
+			{
+
+				doLog := false
+				if logMap[Minute30SellEvent] != ev {
+					doLog = true
+				}
+				logMap[Minute30SellEvent] = ev
+
+				if ev {
+					if doLog {
+						log.Infof("tFsm %s Controller Event: %s, %v", tFsm.pairID, Minute30SellEvent, ev)
+					}
+
+					if err := tFsm.FSM.Event(Minute30SellEvent); err != nil {
+						//log.Warn(err.Error())
+					}
+				} else {
+					if doLog {
+						log.Infof("tFsm %s Controller Event: %s, %v", tFsm.pairID, NotMinute30SellEvent, ev)
+					}
+					if err := tFsm.FSM.Event(NotMinute30SellEvent); err != nil {
+						//log.Warn(err.Error())
+					}
+				}
+			}
+			/*
+				case _ = <-tFsm.ChanNotMinute120SellEvent:
+
+					{
+						log.Infof("tFsm %s Controller Event: %s", tFsm.pairID, NotMinute120SellEvent)
+						if err := tFsm.FSM.Event(NotMinute120SellEvent); err != nil {
+							//log.Warn(err.Error())
+						}
+					}
+				case _ = <-tFsm.ChanNotMinute60SellEvent:
+					{
+						log.Infof("tFsm %s Controller Event: %s", tFsm.pairID, NotMinute30SellEvent)
+						if err := tFsm.FSM.Event(NotMinute30SellEvent); err != nil {
+							//log.Warn(err.Error())
+						}
+					}
+				case _ = <-tFsm.ChanNotMinute30SellEvent:
+					{
+						log.Infof("tFsm %s Controller Event: %s", tFsm.pairID, NotMinute30SellEvent)
+						if err := tFsm.FSM.Event(NotMinute30SellEvent); err != nil {
+							//log.Warn(err.Error())
+						}
+					}
+			*/
 		case _ = <-tFsm.ChanDoBuyEvent:
 			{
-				log.Infof("tFsm %s Controller Event: %s", tFsm.pairID, DoBuyEvent)
+				log.Infof("tFsm %s Controller Event: %s, %v", tFsm.pairID, DoBuyEvent)
 				if err := tFsm.FSM.Event(DoBuyEvent); err != nil {
-					log.Warn(err.Error())
+					//log.Warn(err.Error())
 				}
 			}
 		case _ = <-tFsm.ChanDoSellEvent:
 			{
 				log.Infof("tFsm %s Controller Event: %s", tFsm.pairID, DoSellEvent)
 				if err := tFsm.FSM.Event(DoSellEvent); err != nil {
-					log.Warn(err.Error())
+					//log.Warn(err.Error())
 				}
 			}
 		case _ = <-tFsm.ChanBuyCompleteEvent:
 			{
 				log.Infof("tFsm %s Controller Event: %s", tFsm.pairID, BuyCompleteEvent)
 				if err := tFsm.FSM.Event(BuyCompleteEvent); err != nil {
-					log.Warn(err.Error())
+					//log.Warn(err.Error())
 				}
 			}
 		case _ = <-tFsm.ChanSellCompleteEvent:
 			{
 				log.Infof("tFsm %s Controller Event: %s", tFsm.pairID, SellCompleteEvent)
 				if err := tFsm.FSM.Event(SellCompleteEvent); err != nil {
-					log.Warn(err.Error())
+					//log.Warn(err.Error())
 				}
 			}
 
 		}
-		log.Info("Loop complete")
-		time.Sleep(time.Second)
+		//time.Sleep(time.Second)
 	}
 }
