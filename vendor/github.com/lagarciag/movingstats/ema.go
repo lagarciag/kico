@@ -1,6 +1,8 @@
 package movingstats
 
 import (
+	"time"
+
 	"github.com/lagarciag/multiema"
 	"github.com/lagarciag/ringbuffer"
 	"github.com/sirupsen/logrus"
@@ -16,6 +18,10 @@ type emaContainer struct {
 	EmaHistory *ringbuffer.RingBuffer
 
 	power int
+
+	emaStart     time.Time
+	EmaUpElapsed time.Duration
+	WmaDnElapsed time.Duration
 }
 
 //periods int, periodSize int
@@ -46,7 +52,7 @@ func newEmaContainer(periods, periodSize int, power int, initValues []float64) (
 	reversedPeriodInitValues := reverseBuffer(periodsInitValues)
 	ec.EmaHistory = ringbuffer.NewBuffer(periodSize, false, 0, 0)
 	ec.EmaHistory.PushBuffer(reversedPeriodInitValues)
-
+	ec.emaStart = time.Now()
 	return ec
 }
 
@@ -77,8 +83,19 @@ func (ec *emaContainer) Add(value float64) {
 	ec.EmaSlope = ec.EmaHistory.MostRecent() - ec.EmaHistory.Oldest()
 
 	if ec.EmaSlope > 0 {
+
+		if ec.EmaUp == false {
+			ec.emaStart = time.Now()
+		}
+		ec.EmaUpElapsed = time.Since(ec.emaStart)
+		ec.WmaDnElapsed = time.Duration(0)
 		ec.EmaUp = true
 	} else {
+		if ec.EmaUp == true {
+			ec.emaStart = time.Now()
+		}
+		ec.WmaDnElapsed = time.Since(ec.emaStart)
+		ec.EmaUpElapsed = time.Duration(0)
 		ec.EmaUp = false
 	}
 }

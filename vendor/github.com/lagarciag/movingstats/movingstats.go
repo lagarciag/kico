@@ -2,6 +2,7 @@ package movingstats
 
 import (
 	"sync"
+	"time"
 
 	"github.com/lagarciag/movingaverage"
 	"github.com/lagarciag/multiema"
@@ -149,6 +150,11 @@ type MovingStats struct {
 
 	macd           float64
 	macdDivergence float64
+
+	emaUpTimer  time.Duration
+	emaDnTimer  time.Duration
+	macdUpTimer time.Duration
+	macdDnTimer time.Duration
 
 	//Directional Movement
 	cHigh float64

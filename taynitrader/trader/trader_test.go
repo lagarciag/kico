@@ -9,6 +9,7 @@ import (
 
 	"github.com/lagarciag/tayni/taynitrader/trader"
 	log "github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
 )
 
 func TestMain(m *testing.M) {
@@ -24,6 +25,19 @@ func TestMain(m *testing.M) {
 	formatter.ForceColors = true
 	log.SetLevel(log.InfoLevel)
 	log.SetFormatter(formatter)
+
+	// ----------------------------
+	// Set up Viper configuration
+	// ----------------------------
+
+	viper.SetConfigName("tayni")        // name of config file (without extension)
+	viper.AddConfigPath("/etc/tayni/")  // path to look for the config file in
+	viper.AddConfigPath("$HOME/.tayni") // call multiple times to add many search paths
+	viper.AddConfigPath(".")            // optionally look for config in the working directory
+	err := viper.ReadInConfig()         // Find and read the config file
+	if err != nil {                     // Handle errors reading the config file
+		panic(fmt.Errorf("Fatal error config file: %s \n", err))
+	}
 
 	os.Exit(m.Run())
 }
@@ -59,21 +73,21 @@ func TestTraderController(t *testing.T) {
 		t.Log("State : ", tFsm.FSM.Current())
 	}
 
-	//err := tFsm.FSM.Event(trader.Minute120BuyEvent)
 	tFsm.ChanMinute120BuyEvent <- true
 	time.Sleep(time.Second)
 
 	checkState(t, tFsm, trader.Minute120BuyState)
 
-	//err = tFsm.FSM.Event(trader.NotMinute120BuyEvent)
-	tFsm.ChanNotMinute120BuyEvent <- true
+	tFsm.ChanMinute120BuyEvent <- false
 	time.Sleep(time.Second)
-	//err = tFsm.FSM.Event(trader.Minute60BuyEvent)
-	//errorExpected(t, err)
+
+	checkState(t, tFsm, trader.TradingState)
+
 	tFsm.ChanMinute60BuyEvent <- true
 	time.Sleep(time.Second)
-	//err = tFsm.FSM.Event(trader.Minute30BuyEvent)
-	//errorExpected(t, err)
+
+	checkState(t, tFsm, trader.TradingState)
+
 	tFsm.ChanMinute30BuyEvent <- true
 	time.Sleep(time.Second)
 	checkState(t, tFsm, trader.TradingState)

@@ -30,7 +30,9 @@ type TwitterClient struct {
 }
 
 func NewTwitterClient(config Config) *TwitterClient {
+
 	tc := &TwitterClient{}
+
 	tc.consumerKey = config.ConsumerKey
 	tc.consumerSecret = config.ConsumerSecret
 	tc.accessToken = config.AccessToken
@@ -48,8 +50,13 @@ func NewTwitterClient(config Config) *TwitterClient {
 
 func (tc *TwitterClient) Twit(message string) {
 
-	tweet, resp, err := tc.twitterClient.Statuses.Update(message, nil)
-	log.Debug(tweet, resp, err)
+	if false {
+		tweet, resp, err := tc.twitterClient.Statuses.Update(message, nil)
+		log.Debug(tweet, resp, err)
+	} else {
+		log.Debug("Twitter in debug mode: ", message)
+	}
+
 }
 
 func configure() {

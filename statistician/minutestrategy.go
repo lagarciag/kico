@@ -367,7 +367,7 @@ func (ms *MinuteStrategy) buySellUpdate() {
 		pDirectionalBull = true
 	}
 
-	if mDIBear {
+	if mDIBear || adxBull {
 		mDirectionalBear = true
 	}
 

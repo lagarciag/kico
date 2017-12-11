@@ -4,6 +4,7 @@ import (
 	"github.com/lagarciag/tayni/twitter"
 	"github.com/looplab/fsm"
 	log "github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
 )
 
 const (
@@ -148,20 +149,20 @@ type TradeFsm struct {
 	ChanMinute60BuyEvent  chan bool
 	ChanMinute30BuyEvent  chan bool
 
-	ChanNotMinute1BuyEvent   chan bool
-	ChanNotMinute120BuyEvent chan bool
-	ChanNotMinute60BuyEvent  chan bool
-	ChanNotMinute30BuyEvent  chan bool
+	ChanNotMinute1BuyEvent chan bool
+	//ChanNotMinute120BuyEvent chan bool
+	//ChanNotMinute60BuyEvent  chan bool
+	//ChanNotMinute30BuyEvent  chan bool
 
 	ChanMinute1SellEvent   chan bool
 	ChanMinute120SellEvent chan bool
 	ChanMinute60SellEvent  chan bool
 	ChanMinute30SellEvent  chan bool
 
-	ChanNotMinute1SellEvent   chan bool
-	ChanNotMinute120SellEvent chan bool
-	ChanNotMinute60SellEvent  chan bool
-	ChanNotMinute30SellEvent  chan bool
+	//ChanNotMinute1SellEvent   chan bool
+	//ChanNotMinute120SellEvent chan bool
+	//ChanNotMinute60SellEvent  chan bool
+	//ChanNotMinute30SellEvent  chan bool
 
 	ChanDoBuyEvent        chan bool
 	ChanDoSellEvent       chan bool
@@ -183,10 +184,16 @@ func NewTradeFsm(pairID string) *TradeFsm {
 
 	config := twitter.Config{}
 
-	config.ConsumerKey = "RK2gkJghS1yQUrMvpQixh3FDF"
-	config.ConsumerSecret = "TQvoFlBiLg6aOSezxLSq0pwmZnc6iINOMsg67ln9eqYkrDT46s"
-	config.AccessToken = "50073326-TTy4E67ODF0UE76ProfCXt5Kd7m0gLv57b8TwpUDi"
-	config.AccessTokenSecret = "GwWzOY6WHlxMuXFenksmAw1RGDBCgyMQhnwzXW1k09TAs"
+	vTwitterConfig := viper.Get("twitter").(map[string]interface{})
+
+	config.ConsumerKey = vTwitterConfig["consumer_key"].(string)
+	config.ConsumerSecret = vTwitterConfig["consumer_secret"].(string)
+	config.AccessToken = vTwitterConfig["access_token"].(string)
+	config.AccessTokenSecret = vTwitterConfig["access_token_secret"].(string)
+
+	if config.ConsumerKey == "" {
+		log.Fatal("bad consumerkey")
+	}
 
 	tFsm.tc = twitter.NewTwitterClient(config)
 	tFsm.pairID = pairID
@@ -464,19 +471,19 @@ func NewTradeFsm(pairID string) *TradeFsm {
 	tFsm.ChanMinute30BuyEvent = make(chan bool)
 
 	tFsm.ChanNotMinute1BuyEvent = make(chan bool)
-	tFsm.ChanNotMinute120BuyEvent = make(chan bool)
-	tFsm.ChanNotMinute60BuyEvent = make(chan bool)
-	tFsm.ChanNotMinute30BuyEvent = make(chan bool)
+	//tFsm.ChanNotMinute120BuyEvent = make(chan bool)
+	//tFsm.ChanNotMinute60BuyEvent = make(chan bool)
+	//tFsm.ChanNotMinute30BuyEvent = make(chan bool)
 
 	tFsm.ChanMinute1SellEvent = make(chan bool)
 	tFsm.ChanMinute120SellEvent = make(chan bool)
 	tFsm.ChanMinute60SellEvent = make(chan bool)
 	tFsm.ChanMinute30SellEvent = make(chan bool)
 
-	tFsm.ChanNotMinute1SellEvent = make(chan bool)
-	tFsm.ChanNotMinute120SellEvent = make(chan bool)
-	tFsm.ChanNotMinute60SellEvent = make(chan bool)
-	tFsm.ChanNotMinute30SellEvent = make(chan bool)
+	//tFsm.ChanNotMinute1SellEvent = make(chan bool)
+	//tFsm.ChanNotMinute120SellEvent = make(chan bool)
+	//tFsm.ChanNotMinute60SellEvent = make(chan bool)
+	//tFsm.ChanNotMinute30SellEvent = make(chan bool)
 
 	tFsm.ChanDoBuyEvent = make(chan bool, 1)
 	tFsm.ChanDoSellEvent = make(chan bool, 1)
@@ -506,15 +513,15 @@ func NewTradeFsm(pairID string) *TradeFsm {
 	tFsm.ChanMap["CEXIO_BTCUSD_MS_120_SELL"] = tFsm.ChanMinute120SellEvent
 	tFsm.ChanMap["CEXIO_BTCUSD_MS_1_SELL"] = tFsm.ChanMinute120SellEvent
 
-	tFsm.ChanMap["CEXIO_BTCUSD_MS_30_BUY_NOT"] = tFsm.ChanNotMinute30BuyEvent
-	tFsm.ChanMap["CEXIO_BTCUSD_MS_60_BUY_NOT"] = tFsm.ChanNotMinute60BuyEvent
-	tFsm.ChanMap["CEXIO_BTCUSD_MS_120_BUY_NOT"] = tFsm.ChanNotMinute120BuyEvent
-	tFsm.ChanMap["CEXIO_BTCUSD_MS_1_BUY_NOT"] = tFsm.ChanNotMinute120BuyEvent
+	//tFsm.ChanMap["CEXIO_BTCUSD_MS_30_BUY_NOT"] = tFsm.ChanNotMinute30BuyEvent
+	//tFsm.ChanMap["CEXIO_BTCUSD_MS_60_BUY_NOT"] = tFsm.ChanNotMinute60BuyEvent
+	//tFsm.ChanMap["CEXIO_BTCUSD_MS_120_BUY_NOT"] = tFsm.ChanNotMinute120BuyEvent
+	//tFsm.ChanMap["CEXIO_BTCUSD_MS_1_BUY_NOT"] = tFsm.ChanNotMinute120BuyEvent
 
-	tFsm.ChanMap["CEXIO_BTCUSD_MS_30_SELL_NOT"] = tFsm.ChanNotMinute30SellEvent
-	tFsm.ChanMap["CEXIO_BTCUSD_MS_60_SELL_NOT"] = tFsm.ChanNotMinute60SellEvent
-	tFsm.ChanMap["CEXIO_BTCUSD_MS_120_SELL_NOT"] = tFsm.ChanNotMinute120SellEvent
-	tFsm.ChanMap["CEXIO_BTCUSD_MS_1_SELL_NOT"] = tFsm.ChanNotMinute120SellEvent
+	//tFsm.ChanMap["CEXIO_BTCUSD_MS_30_SELL_NOT"] = tFsm.ChanNotMinute30SellEvent
+	//tFsm.ChanMap["CEXIO_BTCUSD_MS_60_SELL_NOT"] = tFsm.ChanNotMinute60SellEvent
+	//tFsm.ChanMap["CEXIO_BTCUSD_MS_120_SELL_NOT"] = tFsm.ChanNotMinute120SellEvent
+	//tFsm.ChanMap["CEXIO_BTCUSD_MS_1_SELL_NOT"] = tFsm.ChanNotMinute120SellEvent
 
 	tFsm.ChanMap["TRADE"] = tFsm.ChanTradeEvent
 	tFsm.ChanMap["START"] = tFsm.ChanStartEvent
