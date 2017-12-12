@@ -47,24 +47,49 @@ func (ms *MovingStats) dmiCalc() {
 	} else {
 		ms.minusDM = float64(0)
 	}
-	//log.Debugf("DMI Prev    Low     %f: %d", previousLow, ms.windowSize)
+
+	if (downMove < float64(0)) && (upMove < float64(0)) {
+		log.Warn("DownMove && UpMove < 0 ")
+		if downMove < upMove {
+			ms.plusDM = math.Abs(downMove)
+			ms.minusDM = float64(0)
+		} else {
+			ms.minusDM = math.Abs(upMove)
+			ms.plusDM = float64(0)
+		}
+	}
 
 	pAvrTr := ms.atr.Value()
-	mAvrTr := pAvrTr
 	if pAvrTr < 1 {
 		pAvrTr = float64(1)
-		mAvrTr = float64(1)
 	}
 
 	ms.plusDMAvr.Add(ms.plusDM / pAvrTr)
-	ms.minusDMAvr.Add(ms.minusDM / mAvrTr)
+	ms.minusDMAvr.Add(ms.minusDM / pAvrTr)
 
 	//log.Debug("DMI  plusDM          %f: %d", ms.plusDM, ms.windowSize)
 
-	ms.plusDI = ms.plusDMAvr.Value() * float64(100)
-	ms.minusDI = ms.minusDMAvr.Value() * float64(100)
+	pmAvr := ms.plusDMAvr.Value() * float64(100)
+	if pmAvr < 0 {
+		log.Error("ms.plusDMAvr * 100 < 0 ", ms.windowSize)
+	}
 
-	//fmt.Println(currentHigh, previousHigh, currentLow, previousLow, upMove, downMove, ms.plusDM, ms.minusDM, ms.atr.Value(), ms.plusDI, ms.minusDI)
+	mmAvr := ms.minusDMAvr.Value() * float64(100)
+	if mmAvr < 0 {
+		log.Error("ms.minusDMAvr * 100 < 0 ", ms.windowSize)
+	}
+
+	ms.plusDI = pmAvr
+
+	if ms.plusDI < 0 {
+		log.Error("ms.plusDI < 0 ", ms.windowSize)
+	}
+
+	ms.minusDI = mmAvr
+
+	if ms.minusDI < 0 {
+		log.Error("ms.minusDI < 0 ", ms.windowSize)
+	}
 
 	pDImDI := ms.plusDI + ms.minusDI
 
@@ -89,14 +114,14 @@ func (ms *MovingStats) dmiCalc() {
 	adxAvrValue := ms.adxAvr.Value()
 
 	if adxAvrValue < float64(0) {
-		log.Error("ADXAvrValue NEGATIVE!!", ms.adx)
+		log.Error("ADXAvrValue NEGATIVE!!", ms.adx, ms.windowSize)
 		adxAvrValue = math.Abs(adxAvrValue)
 	}
 
 	ms.adx = float64(100) * adxAvrValue
 
 	if ms.adx < float64(0) {
-		log.Error("ADX NEGATIVE!!", ms.adx)
+		log.Error("ADX NEGATIVE!!", ms.adx, ms.windowSize)
 	}
 
 	const DMIDebug = false

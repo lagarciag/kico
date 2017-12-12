@@ -351,15 +351,15 @@ func (ms *MinuteStrategy) buySellUpdate() {
 	mDIBear := false
 	//diBull := false
 
-	if adx > float64(25) {
+	if adx > float64(20) {
 		adxBull = true
 	}
 
-	if pDI > float64(25) {
+	if pDI > float64(20) {
 		pDIBull = true
 	}
 
-	if mDI > float64(25) {
+	if mDI > float64(20) {
 		mDIBear = true
 	}
 
