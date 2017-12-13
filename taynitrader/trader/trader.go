@@ -1,6 +1,7 @@
 package trader
 
 import (
+	"github.com/lagarciag/tayni/kredis"
 	"github.com/lagarciag/tayni/twitter"
 	"github.com/looplab/fsm"
 	log "github.com/sirupsen/logrus"
@@ -86,6 +87,7 @@ const (
 
 type TradeFsm struct {
 	tc     *twitter.TwitterClient
+	kr     *kredis.Kredis
 	To     string
 	FSM    *fsm.FSM
 	pairID string
@@ -181,11 +183,12 @@ func NewTradeFsm(pairID string) *TradeFsm {
 	log.Info("Creating new trading fsm for pair: ", pairID)
 
 	tFsm := &TradeFsm{}
-
+	tFsm.kr = kredis.NewKredis(1000000)
+	tFsm.kr.Start()
 	config := twitter.Config{}
 
 	vTwitterConfig := viper.Get("twitter").(map[string]interface{})
-
+	config.Twit = vTwitterConfig["twit"].(bool)
 	config.ConsumerKey = vTwitterConfig["consumer_key"].(string)
 	config.ConsumerSecret = vTwitterConfig["consumer_secret"].(string)
 	config.AccessToken = vTwitterConfig["access_token"].(string)

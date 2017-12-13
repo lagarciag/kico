@@ -34,7 +34,16 @@ func (tf *TradeFsm) CallBackInDoSellState(e *fsm.Event) {
 		theTime := fmt.Sprint(t.Format("2006-01-02 15:04:05"))
 
 		twit := fmt.Sprintf("TayniBot (beta test) says: SELL %s @%s", tf.pairID, theTime)
-		tf.tc.Twit(twit)
+
+		if err := tf.tc.Twit(twit); err != nil {
+			log.Error(err.Error())
+		}
+
+		sellKey := fmt.Sprintf("%s_SELL")
+		if err := tf.kr.Publish(sellKey, "true"); err != nil {
+			log.Errorf("Publishing to: %s -> %s ", sellKey, "true")
+		}
+
 	}
 
 	message := `
@@ -62,7 +71,15 @@ func (tf *TradeFsm) CallBackInDoBuyState(e *fsm.Event) {
 		theTime := fmt.Sprint(t.Format("2006-01-02 15:04:05"))
 
 		twit := fmt.Sprintf("TayniBot (beta test) says: BUY %s @%s", tf.pairID, theTime)
-		tf.tc.Twit(twit)
+		if err := tf.tc.Twit(twit); err != nil {
+			log.Error(err.Error())
+		}
+
+		buyKey := fmt.Sprintf("%s_BUY")
+		if err := tf.kr.Publish(buyKey, "true"); err != nil {
+			log.Errorf("Publishing to: %s -> %s ", buyKey, "true")
+		}
+
 	}
 
 	message := `

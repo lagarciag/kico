@@ -11,6 +11,7 @@ import (
 )
 
 type Config struct {
+	Twit              bool
 	ConsumerKey       string
 	ConsumerSecret    string
 	AccessToken       string
@@ -27,6 +28,7 @@ type TwitterClient struct {
 	oauthToken    *oauth1.Token
 	httpClient    *http.Client
 	twitterClient *twitter.Client
+	twit          bool
 }
 
 func NewTwitterClient(config Config) *TwitterClient {
@@ -37,7 +39,7 @@ func NewTwitterClient(config Config) *TwitterClient {
 	tc.consumerSecret = config.ConsumerSecret
 	tc.accessToken = config.AccessToken
 	tc.accessTokenSecret = config.AccessTokenSecret
-
+	tc.twit = config.Twit
 	tc.oauthConfig = oauth1.NewConfig(tc.consumerKey, tc.consumerSecret)
 	tc.oauthToken = oauth1.NewToken(tc.accessToken, tc.accessTokenSecret)
 	tc.httpClient = tc.oauthConfig.Client(oauth1.NoContext, tc.oauthToken)
@@ -48,15 +50,16 @@ func NewTwitterClient(config Config) *TwitterClient {
 	return tc
 }
 
-func (tc *TwitterClient) Twit(message string) {
+func (tc *TwitterClient) Twit(message string) error {
 
-	if false {
+	if tc.twit {
 		tweet, resp, err := tc.twitterClient.Statuses.Update(message, nil)
 		log.Debug(tweet, resp, err)
+		return nil
 	} else {
 		log.Debug("Twitter in debug mode: ", message)
+		return fmt.Errorf("Twitter messages are off")
 	}
-
 }
 
 func configure() {
