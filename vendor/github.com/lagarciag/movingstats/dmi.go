@@ -64,8 +64,11 @@ func (ms *MovingStats) dmiCalc() {
 		pAvrTr = float64(1)
 	}
 
-	ms.plusDMAvr.Add(ms.plusDM / pAvrTr)
-	ms.minusDMAvr.Add(ms.minusDM / pAvrTr)
+	plusDMdiv := ms.plusDM / pAvrTr
+	minusDMdiv := ms.minusDM / pAvrTr
+
+	ms.plusDMAvr.Add(plusDMdiv)
+	ms.minusDMAvr.Add(minusDMdiv)
 
 	//log.Debug("DMI  plusDM          %f: %d", ms.plusDM, ms.windowSize)
 

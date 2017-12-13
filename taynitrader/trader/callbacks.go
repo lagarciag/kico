@@ -1,9 +1,11 @@
 package trader
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
+	"github.com/lagarciag/movingstats"
 	"github.com/looplab/fsm"
 	log "github.com/sirupsen/logrus"
 )
@@ -30,16 +32,29 @@ func (tf *TradeFsm) CallBackInDoSellState(e *fsm.Event) {
 
 	if tf.pairID != "TEST" {
 
-		t := time.Now()
-		theTime := fmt.Sprint(t.Format("2006-01-02 15:04:05"))
+		t := time.Now().UTC()
+		theTime := fmt.Sprint(t.String())
 
-		twit := fmt.Sprintf("TayniBot (beta test) says: SELL %s @%s", tf.pairID, theTime)
+		indicators := tf.indicatorsGetter(0)
+
+		ema := indicators.Ema
+		sma := indicators.Sma
+
+		twitMessage := `
+		TayniBot (beta tests) says: SELL %s
+		ema : %f
+		sma : %f
+		time: %s
+		`
+
+		twit := fmt.Sprintf(twitMessage, tf.pairID, ema, sma, theTime)
 
 		if err := tf.tc.Twit(twit); err != nil {
 			log.Error(err.Error())
+			log.Info(twit)
 		}
 
-		sellKey := fmt.Sprintf("%s_SELL")
+		sellKey := fmt.Sprintf("%s_SELL", tf.pairID)
 		if err := tf.kr.Publish(sellKey, "true"); err != nil {
 			log.Errorf("Publishing to: %s -> %s ", sellKey, "true")
 		}
@@ -65,22 +80,39 @@ func (tf *TradeFsm) CallBackInDoBuyState(e *fsm.Event) {
 		}
 	}
 
-	if tf.pairID != "TEST" {
+	//if tf.pairID != "TEST" {
 
-		t := time.Now()
-		theTime := fmt.Sprint(t.Format("2006-01-02 15:04:05"))
+	t := time.Now().UTC()
 
-		twit := fmt.Sprintf("TayniBot (beta test) says: BUY %s @%s", tf.pairID, theTime)
-		if err := tf.tc.Twit(twit); err != nil {
-			log.Error(err.Error())
-		}
+	theTime := fmt.Sprint(t.String())
 
-		buyKey := fmt.Sprintf("%s_BUY")
-		if err := tf.kr.Publish(buyKey, "true"); err != nil {
-			log.Errorf("Publishing to: %s -> %s ", buyKey, "true")
-		}
+	indicators := tf.indicatorsGetter(0)
 
+	ema := indicators.Ema
+	sma := indicators.Sma
+
+	twitMessage := `
+		TayniBot (beta tests) says: BUY %s
+		ema : %f
+		sma : %f
+		time: %s
+		`
+
+	twit := fmt.Sprintf(twitMessage, tf.pairID, ema, sma, theTime)
+
+	if err := tf.tc.Twit(twit); err != nil {
+		log.Error(err.Error())
+		log.Info(twit)
 	}
+
+	buyKey := fmt.Sprintf("%s_BUY", tf.pairID)
+	if err := tf.kr.Publish(buyKey, "true"); err != nil {
+		log.Errorf("Publishing to: %s -> %s ", buyKey, "true")
+	}
+
+	//} else {
+
+	//}
 
 	message := `
 	----------------------------------------------------
@@ -264,4 +296,22 @@ func (tf *TradeFsm) CallBackInSellCompleteState(e *fsm.Event) {
 }
 func (tf *TradeFsm) CallBackInTestSellCompleteState(e *fsm.Event) {
 	log.Info("In state :", tf.FSM.Current())
+}
+
+//TODO: This does not go here
+func (tf *TradeFsm) indicatorsGetter(index int) (indicators movingstats.Indicators) {
+
+	key := fmt.Sprintf("CEXIO_%s_MS_INDICATORS", tf.pairID)
+	indicatorsJson, err := tf.kr.GetRawString(key, index)
+
+	if err != nil {
+		log.Fatal("Fatal error getting indicators: ", err.Error())
+	}
+
+	if err = json.Unmarshal([]byte(indicatorsJson), &indicators); err != nil {
+		log.Error("unmarshaling indicators json")
+	}
+
+	return indicators
+
 }

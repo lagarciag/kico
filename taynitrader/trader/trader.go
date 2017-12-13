@@ -509,12 +509,12 @@ func NewTradeFsm(pairID string) *TradeFsm {
 	tFsm.ChanMap["CEXIO_BTCUSD_MS_30_BUY"] = tFsm.ChanMinute30BuyEvent
 	tFsm.ChanMap["CEXIO_BTCUSD_MS_60_BUY"] = tFsm.ChanMinute60BuyEvent
 	tFsm.ChanMap["CEXIO_BTCUSD_MS_120_BUY"] = tFsm.ChanMinute120BuyEvent
-	tFsm.ChanMap["CEXIO_BTCUSD_MS_1_BUY"] = tFsm.ChanMinute120BuyEvent
+	//tFsm.ChanMap["CEXIO_BTCUSD_MS_1_BUY"] = tFsm.ChanMinute120BuyEvent
 
 	tFsm.ChanMap["CEXIO_BTCUSD_MS_30_SELL"] = tFsm.ChanMinute30SellEvent
 	tFsm.ChanMap["CEXIO_BTCUSD_MS_60_SELL"] = tFsm.ChanMinute60SellEvent
 	tFsm.ChanMap["CEXIO_BTCUSD_MS_120_SELL"] = tFsm.ChanMinute120SellEvent
-	tFsm.ChanMap["CEXIO_BTCUSD_MS_1_SELL"] = tFsm.ChanMinute120SellEvent
+	//tFsm.ChanMap["CEXIO_BTCUSD_MS_1_SELL"] = tFsm.ChanMinute120SellEvent
 
 	//tFsm.ChanMap["CEXIO_BTCUSD_MS_30_BUY_NOT"] = tFsm.ChanNotMinute30BuyEvent
 	//tFsm.ChanMap["CEXIO_BTCUSD_MS_60_BUY_NOT"] = tFsm.ChanNotMinute60BuyEvent
