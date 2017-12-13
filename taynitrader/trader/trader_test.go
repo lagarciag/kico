@@ -30,7 +30,7 @@ func TestMain(m *testing.M) {
 	// Set up Viper configuration
 	// ----------------------------
 
-	viper.SetConfigName("tayni")        // name of config file (without extension)
+	viper.SetConfigName("tayniserver")  // name of config file (without extension)
 	viper.AddConfigPath("/etc/tayni/")  // path to look for the config file in
 	viper.AddConfigPath("$HOME/.tayni") // call multiple times to add many search paths
 	viper.AddConfigPath(".")            // optionally look for config in the working directory
