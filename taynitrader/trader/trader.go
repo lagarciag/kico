@@ -46,7 +46,7 @@ const (
 
 const (
 	StartEvent    = "startEvent"
-	StopEvent     = "startEvent"
+	StopEvent     = "stopEvent"
 	ShutdownEvent = "shutdownEvent"
 	TradeEvent    = "TradeEvent"
 	Test1Event    = "Test2Event"
@@ -331,7 +331,7 @@ func NewTradeFsm(pairID string) *TradeFsm {
 		Dst: TradingState}
 
 	tFsm.startEvent = startEvent
-	tFsm.startEvent = stopEvent
+	tFsm.stopEvent = stopEvent
 	tFsm.tradeEvent = tradeEvent
 	tFsm.test1Event = test1Event
 

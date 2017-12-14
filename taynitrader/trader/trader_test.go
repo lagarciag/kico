@@ -177,6 +177,8 @@ func TestTraderBasicChansLoop(t *testing.T) {
 
 	go tFsm.FsmController()
 
+	time.Sleep(time.Second)
+
 	tFsm.ChanStartEvent <- true
 	time.Sleep(time.Second)
 
@@ -191,7 +193,7 @@ func TestTraderBasicChansLoop(t *testing.T) {
 		t.Error("Bad state: ", tFsm.FSM.Current())
 	}
 
-	const countLoop = 5
+	const countLoop = 1
 
 	count := 0
 	for count < countLoop {

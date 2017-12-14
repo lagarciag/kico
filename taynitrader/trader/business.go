@@ -197,6 +197,9 @@ func (trader *Trader) startControllers() {
 
 		for exPair, _ := range exchangeMap {
 			tFsm := trader.tFsmExchangeMap[exKey][exPair]
+
+			log.Info("Starting FSM controlloer for: ", tFsm.pairID)
+
 			go tFsm.FsmController()
 
 		}
