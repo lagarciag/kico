@@ -514,6 +514,7 @@ func (ms *MinuteStrategy) updateIndicators() {
 
 		ms.indicators.TR = ms.movingStats.TrueRange()
 		ms.indicators.ATR = ms.movingStats.Atr()
+		ms.indicators.ATRP = ms.movingStats.Atrp()
 
 		//--------------------
 		//Calculate UTC time

@@ -1,6 +1,8 @@
 package trader
 
 import (
+	"fmt"
+
 	"github.com/lagarciag/tayni/kredis"
 	"github.com/lagarciag/tayni/twitter"
 	"github.com/looplab/fsm"
@@ -44,6 +46,7 @@ const (
 
 const (
 	StartEvent    = "startEvent"
+	StopEvent     = "startEvent"
 	ShutdownEvent = "shutdownEvent"
 	TradeEvent    = "TradeEvent"
 	Test1Event    = "Test2Event"
@@ -86,15 +89,17 @@ const (
 )
 
 type TradeFsm struct {
-	tc     *twitter.TwitterClient
-	kr     *kredis.Kredis
-	To     string
-	FSM    *fsm.FSM
-	pairID string
+	tc           *twitter.TwitterClient
+	kr           *kredis.Kredis
+	To           string
+	FSM          *fsm.FSM
+	pairID       string
+	holdingFunds bool
 	// ------------
 	// Events
 	// ------------
 	startEvent    fsm.EventDesc
+	stopEvent     fsm.EventDesc
 	shutdownEvent fsm.EventDesc
 	tradeEvent    fsm.EventDesc
 	test1Event    fsm.EventDesc
@@ -139,6 +144,7 @@ type TradeFsm struct {
 	callbacks fsm.Callbacks
 
 	ChanStartEvent     chan bool
+	ChanStopEvent      chan bool
 	ChanShutdownEvent  chan bool
 	ChanTradeEvent     chan bool
 	testChanTradeEvent chan bool
@@ -204,6 +210,19 @@ func NewTradeFsm(pairID string) *TradeFsm {
 	// Events
 	// ------------
 	startEvent := fsm.EventDesc{Name: StartEvent, Src: []string{StartState}, Dst: IdleState}
+
+	stopEvent := fsm.EventDesc{Name: StopEvent,
+		Src: []string{
+			TradingState,
+			Minute120BuyState,
+			Minute60BuyState,
+			Minute30BuyState,
+			HoldState,
+			Minute120SellState,
+			Minute60SellState,
+			Minute30SellState,
+		}, Dst: IdleState}
+
 	tradeEvent := fsm.EventDesc{Name: TradeEvent, Src: []string{IdleState}, Dst: TradingState}
 	test1Event := fsm.EventDesc{Name: Test1Event, Src: []string{IdleState}, Dst: TestTradingState}
 
@@ -312,6 +331,7 @@ func NewTradeFsm(pairID string) *TradeFsm {
 		Dst: TradingState}
 
 	tFsm.startEvent = startEvent
+	tFsm.startEvent = stopEvent
 	tFsm.tradeEvent = tradeEvent
 	tFsm.test1Event = test1Event
 
@@ -376,6 +396,7 @@ func NewTradeFsm(pairID string) *TradeFsm {
 	// ----------------------
 	tFsm.eventsList = fsm.Events{
 		tFsm.startEvent,
+		tFsm.stopEvent,
 		tFsm.shutdownEvent,
 		tFsm.tradeEvent,
 		tFsm.test1Event,
@@ -461,6 +482,7 @@ func NewTradeFsm(pairID string) *TradeFsm {
 	// ------------------
 
 	tFsm.ChanStartEvent = make(chan bool)
+	tFsm.ChanStopEvent = make(chan bool)
 	tFsm.ChanShutdownEvent = make(chan bool)
 	tFsm.ChanTradeEvent = make(chan bool)
 	tFsm.testChanTradeEvent = make(chan bool)
@@ -506,28 +528,20 @@ func NewTradeFsm(pairID string) *TradeFsm {
 		tFsm.callbacks)
 
 	tFsm.ChanMap = make(map[string]chan bool)
-	tFsm.ChanMap["CEXIO_BTCUSD_MS_30_BUY"] = tFsm.ChanMinute30BuyEvent
-	tFsm.ChanMap["CEXIO_BTCUSD_MS_60_BUY"] = tFsm.ChanMinute60BuyEvent
-	tFsm.ChanMap["CEXIO_BTCUSD_MS_120_BUY"] = tFsm.ChanMinute120BuyEvent
-	//tFsm.ChanMap["CEXIO_BTCUSD_MS_1_BUY"] = tFsm.ChanMinute120BuyEvent
+	tFsm.ChanMap[fmt.Sprintf("CEXIO_%s_MS_30_BUY", tFsm.pairID)] = tFsm.ChanMinute30BuyEvent
+	tFsm.ChanMap[fmt.Sprintf("CEXIO_%s_MS_60_BUY", tFsm.pairID)] = tFsm.ChanMinute60BuyEvent
+	tFsm.ChanMap[fmt.Sprintf("CEXIO_%s_MS_120_BUY", tFsm.pairID)] = tFsm.ChanMinute120BuyEvent
 
-	tFsm.ChanMap["CEXIO_BTCUSD_MS_30_SELL"] = tFsm.ChanMinute30SellEvent
-	tFsm.ChanMap["CEXIO_BTCUSD_MS_60_SELL"] = tFsm.ChanMinute60SellEvent
-	tFsm.ChanMap["CEXIO_BTCUSD_MS_120_SELL"] = tFsm.ChanMinute120SellEvent
-	//tFsm.ChanMap["CEXIO_BTCUSD_MS_1_SELL"] = tFsm.ChanMinute120SellEvent
-
-	//tFsm.ChanMap["CEXIO_BTCUSD_MS_30_BUY_NOT"] = tFsm.ChanNotMinute30BuyEvent
-	//tFsm.ChanMap["CEXIO_BTCUSD_MS_60_BUY_NOT"] = tFsm.ChanNotMinute60BuyEvent
-	//tFsm.ChanMap["CEXIO_BTCUSD_MS_120_BUY_NOT"] = tFsm.ChanNotMinute120BuyEvent
-	//tFsm.ChanMap["CEXIO_BTCUSD_MS_1_BUY_NOT"] = tFsm.ChanNotMinute120BuyEvent
-
-	//tFsm.ChanMap["CEXIO_BTCUSD_MS_30_SELL_NOT"] = tFsm.ChanNotMinute30SellEvent
-	//tFsm.ChanMap["CEXIO_BTCUSD_MS_60_SELL_NOT"] = tFsm.ChanNotMinute60SellEvent
-	//tFsm.ChanMap["CEXIO_BTCUSD_MS_120_SELL_NOT"] = tFsm.ChanNotMinute120SellEvent
-	//tFsm.ChanMap["CEXIO_BTCUSD_MS_1_SELL_NOT"] = tFsm.ChanNotMinute120SellEvent
+	tFsm.ChanMap[fmt.Sprintf("CEXIO_%s_MS_30_SELL", tFsm.pairID)] = tFsm.ChanMinute30SellEvent
+	tFsm.ChanMap[fmt.Sprintf("CEXIO_%s_MS_60_SELL", tFsm.pairID)] = tFsm.ChanMinute60SellEvent
+	tFsm.ChanMap[fmt.Sprintf("CEXIO_%s_MS_120_SELL", tFsm.pairID)] = tFsm.ChanMinute120SellEvent
+	//ChanDoBuyEvent
+	tFsm.ChanMap[fmt.Sprintf("%s_BUY", tFsm.pairID)] = tFsm.ChanDoBuyEvent
+	tFsm.ChanMap[fmt.Sprintf("%s_SELL", tFsm.pairID)] = tFsm.ChanDoSellEvent
 
 	tFsm.ChanMap["TRADE"] = tFsm.ChanTradeEvent
 	tFsm.ChanMap["START"] = tFsm.ChanStartEvent
+	tFsm.ChanMap["STOP"] = tFsm.ChanStartEvent
 
 	return tFsm
 

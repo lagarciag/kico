@@ -44,8 +44,9 @@ type IndicatorsHistory struct {
 	// --------------
 	// True Range
 	// --------------
-	TR  []float64 `json:"tr"`
-	ATR []float64 `json:"atr"`
+	TR   []float64 `json:"tr"`
+	ATR  []float64 `json:"atr"`
+	ATRP []float64 `json:"atrp"`
 
 	Buy  []bool `json:"buy"`
 	Sell []bool `json:"sell"`
@@ -87,8 +88,9 @@ type Indicators struct {
 	// --------------
 	// True Range
 	// --------------
-	TR  float64 `json:"tr"`
-	ATR float64 `json:"atr"`
+	TR   float64 `json:"tr"`
+	ATR  float64 `json:"atr"`
+	ATRP float64 `json:"atrp"`
 
 	Buy  bool `json:"buy"`
 	Sell bool `json:"sell"`
@@ -109,7 +111,8 @@ type MovingStats struct {
 
 	// True Range Average
 	//atr ewma.MovingAverage
-	atr *multiema.MultiEma
+	atr  *multiema.MultiEma
+	atrp float64
 	// Directional Movement Index
 	plusDMAvr  *multiema.MultiEma
 	minusDMAvr *multiema.MultiEma
@@ -178,7 +181,7 @@ const emaPeriod = 9
 const macD9Period = 9
 const mac12Period = 12
 const mac26Period = 26
-const atrPeriod = 14
+const atrPeriod = 9
 const smallSmaPeriod = 20
 
 func createIndicatorsHistorySlice(indHistory []Indicators) (indicatorsHistorySlices IndicatorsHistory) {
@@ -220,6 +223,7 @@ func createIndicatorsHistorySlice(indHistory []Indicators) (indicatorsHistorySli
 	// --------------
 	indicatorsHistorySlices.TR = make([]float64, size)
 	indicatorsHistorySlices.ATR = make([]float64, size)
+	indicatorsHistorySlices.ATRP = make([]float64, size)
 
 	indicatorsHistorySlices.Buy = make([]bool, size)
 	indicatorsHistorySlices.Sell = make([]bool, size)
@@ -261,6 +265,7 @@ func createIndicatorsHistorySlice(indHistory []Indicators) (indicatorsHistorySli
 		// --------------
 		indicatorsHistorySlices.TR[i] = indicator.TR
 		indicatorsHistorySlices.ATR[i] = indicator.ATR
+		indicatorsHistorySlices.ATRP[i] = indicator.ATRP
 
 		indicatorsHistorySlices.Buy[i] = indicator.Buy
 		indicatorsHistorySlices.Sell[i] = indicator.Sell
@@ -356,6 +361,8 @@ func NewMovingStats(size int, latestIndicators,
 
 	ms.ema12 = multiema.NewMultiEma(mac12Period, size, historyIndicatorsInSlices0.Macd12[0])
 	ms.ema26 = multiema.NewMultiEma(mac26Period, size, historyIndicatorsInSlices0.Macd26[0])
+
+	ms.atrp = historyIndicatorsInSlices0.ATR[0] / historyIndicatorsInSlices0.Ema[0]
 
 	return ms
 }
@@ -484,6 +491,10 @@ func (ms *MovingStats) StdDevLong() float64 {
 
 func (ms *MovingStats) Atr() float64 {
 	return ms.atr.Value()
+}
+
+func (ms *MovingStats) Atrp() float64 {
+	return ms.atrp
 }
 
 func (ms *MovingStats) Adx() float64 {

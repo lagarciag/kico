@@ -17,6 +17,8 @@ type Trader struct {
 	subscriptionMapExchanges map[string]map[string][]string
 	tFsmExchangeMap          map[string]map[string]*TradeFsm
 	tc                       *twitter.TwitterClient
+	pairs                    []string
+	cryptoPairs              []string
 }
 
 func NewTrader() *Trader {
@@ -102,18 +104,50 @@ func Start() {
 	trader.startControllers()
 	go trader.monitorSubscriptions()
 
-	log.Warn("TRADING!!")
+	// --------------------------------------
+	// Create pairs list from configuration
+	// --------------------------------------
 
-	tFsmMap := trader.tFsmExchangeMap["CEXIO"]
+	exchanges := viper.Get("exchange").(map[string]interface{})
+	for key := range exchanges {
+		pairsIntMap := exchanges[key].(map[string]interface{})
+		pairsIntList := pairsIntMap["pairs"].([]interface{})
+		trader.pairs = make([]string, len(pairsIntList))
+		for i, pair := range pairsIntList {
+			trader.pairs[i] = pair.(string)
+		}
+		pairsIntList = pairsIntMap["cryppairs"].([]interface{})
+		trader.cryptoPairs = make([]string, len(pairsIntList))
+		for i, pair := range pairsIntList {
+			trader.cryptoPairs[i] = pair.(string)
+		}
 
-	tFsm := tFsmMap["BTCUSD"]
-	chansMap := tFsm.SignalChannelsMap()
+	}
 
-	startChan := chansMap["START"]
-	startChan <- true
+	log.Info("Pairs to trade in: ", trader.pairs)
+	log.Info("CryptoPairs to trade in: ", trader.pairs)
 
-	tradeChan := chansMap["TRADE"]
-	tradeChan <- true
+	for _, pair := range trader.pairs {
+
+		tFsmMap := trader.tFsmExchangeMap["CEXIO"]
+
+		tFsm := tFsmMap[pair]
+		chansMap := tFsm.SignalChannelsMap()
+
+		startChan := chansMap["START"]
+		startChan <- true
+
+		tradeChan := chansMap["TRADE"]
+		tradeChan <- true
+
+		message := `
+		-----------------------------------
+		TRAIDING STARTED FOR PAIR : %s
+		-----------------------------------`
+
+		log.Infof(message, pair)
+
+	}
 
 }
 
@@ -167,4 +201,10 @@ func (trader *Trader) startControllers() {
 
 		}
 	}
+}
+
+func (trader *Trader) cryptoSelector() {
+
+	select {}
+
 }

@@ -16,6 +16,7 @@ func (ms *MovingStats) atrCalc(value float64) {
 
 	// Add data to Average True Range Calculation
 	ms.atr.Add(ms.TrueRange())
+	ms.atrp = (ms.atr.Value() / ms.sEma.Ema.Value()) * 100
 
 }
 
