@@ -1,0 +1,31 @@
+@startuml
+[*] --> Idle : startEvent
+
+Idle --> Trading :TradeEvent
+Trading --> [*] : ShutdownEvent
+
+
+Trading --> BuyBTCState : BuyBtcEvent
+Trading --> BuyBCHState : BuyBCHEvent
+Trading --> BuyZECState : BuyZECEvent
+Trading --> BuyBGDState : BuyBGDEvent
+Trading --> BuyETHState : BuyETHEvent
+
+BuyBTCState --> SellBTCState : SellBtcEvent
+BuyBCHState --> SellBCHState : SellBCHEvent
+BuyZECState --> SellZECState : SellZECEvent
+BuyBGDState --> SellBGDState : SellBGDEvent
+BuyETHState --> SellETHState : SellETHEvent
+
+SellBTCState --> Trading
+SellBCHState --> Trading
+SellZECState --> Trading
+SellBGDState --> Trading
+SellETHState --> Trading
+
+
+
+
+}
+
+@enduml

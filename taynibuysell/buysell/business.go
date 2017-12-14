@@ -1,6 +1,7 @@
-package trader
+package buysell
 
 import (
+	"os"
 	"strings"
 	"time"
 
@@ -12,98 +13,96 @@ import (
 	"github.com/spf13/viper"
 )
 
-type Trader struct {
-	kr                       *kredis.Kredis
-	subscriptionMapExchanges map[string]map[string][]string
-	tFsmExchangeMap          map[string]map[string]*TradeFsm
+type CryptoTrader struct {
+	kr *kredis.Kredis
+
+	//--------------------------------------------------------------
+	//Per Exchange, it provides the list to strings to subscribe to
+	//--------------------------------------------------------------
+	subscriptionMapExchanges map[string][]string
+	pairsMapExchanges        map[string][]string
+	tFsmExchangeMap          map[string]*CryptoSelectorFsm
 	tc                       *twitter.TwitterClient
 	pairs                    []string
 	cryptoPairs              []string
 }
 
-func NewTrader() *Trader {
+func NewCryptoTrader() *CryptoTrader {
 
-	trader := &Trader{}
+	trader := &CryptoTrader{}
 	trader.kr = kredis.NewKredis(1)
 	trader.kr.Start()
 	go trader.kr.SubscriberMonitor()
 
 	exchanges := viper.Get("exchange").(map[string]interface{})
-	minuteStrategiesInt := viper.Get("minute_strategies").([]interface{})
-
-	minuteStrageis := make([]int, len(minuteStrategiesInt))
-
-	for i, stat := range minuteStrategiesInt {
-		minuteStrageis[i] = int(stat.(int64))
-	}
 
 	// -------------------------------------------------------
 	// Create MAP per exchange & pair of subscriptions pairs
 	// -------------------------------------------------------
 
-	trader.subscriptionMapExchanges = make(map[string]map[string][]string) // Map index by echange of list of
-	trader.tFsmExchangeMap = make(map[string]map[string]*TradeFsm)
+	trader.subscriptionMapExchanges = make(map[string][]string) // Map index by echange of list of
+	trader.pairsMapExchanges = make(map[string][]string)        // Map index by echange of list of
+	trader.tFsmExchangeMap = make(map[string]*CryptoSelectorFsm)
 	// subscriptions
 
 	for lowExchange := range exchanges {
 		exchange := strings.ToUpper(lowExchange)
 
+		log.Info("Procesing Exchange: ", exchange)
+
 		// Map indexed by pair of list of subscriptions
-		subscriptionMapPairs := make(map[string][]string)
 
 		// Get data from configuration
 		pairsIntMap := exchanges[lowExchange].(map[string]interface{})
-		pairsIntList := pairsIntMap["pairs"].([]interface{})
+		pairsIntList := pairsIntMap["cryppairs"].([]interface{})
 		pairs := make([]string, len(pairsIntList))
+		subscriptionMapPairs := make([]string, len(pairsIntList)*2)
 
 		// Create slice of subscriptions
 
 		for i, pair := range pairsIntList {
 			pairs[i] = pair.(string)
-			subscriptionKeys := make([]string, len(minuteStrageis)*2)
-
-			j := 0
-			for _, stat := range minuteStrageis {
-				subscriptionKeys[j] = fmt.Sprintf("%s_%s_MS_%d_BUY", exchange, pairs[i], stat)
-				subscriptionKeys[j+1] = fmt.Sprintf("%s_%s_MS_%d_SELL", exchange, pairs[i], stat)
-				j = j + 2
-			}
-			subscriptionMapPairs[pair.(string)] = subscriptionKeys
+			subscriptionKey := fmt.Sprintf("%s_%s_BUY", exchange, pairs[i])
+			subscriptionMapPairs[i] = subscriptionKey
 		}
+
+		log.Info("List of PAIRS:", pairs)
+		log.Info("Subss pair map:", subscriptionMapPairs)
+
 		trader.subscriptionMapExchanges[exchange] = subscriptionMapPairs
-		trader.tFsmExchangeMap[exchange] = make(map[string]*TradeFsm)
+
+		trader.pairsMapExchanges[exchange] = pairs
 	}
 
-	//tFsmSlice := make([]*TradeFsm, len())
+	//tFsmSlice := make([]*CryptoSelectorFsm, len())
 
-	for exKey, exchangeMap := range trader.subscriptionMapExchanges {
+	for exKey, pairsList := range trader.pairsMapExchanges {
 
 		// ---------------------------
 		// Do pair subscription to db
 		// and create FSMs per pair
 		// ---------------------------
-		for exPair, pairList := range exchangeMap {
-			for _, pair := range pairList {
-				log.Infof("Exchange: %s , Pair: %s , pair list : %v", exKey, exPair, pair)
-				trader.kr.SubscribeLookup(pair)
-			}
-
-			trader.tFsmExchangeMap[exKey][exPair] = NewTradeFsm(exPair)
-		}
+		log.Infof("Exchange: %s ,  %v", exKey, pairsList)
+		trader.tFsmExchangeMap[exKey] = NewCryptoTradeFsm(pairsList)
 
 	}
+
 	return trader
 }
 
 func Start() {
-	log.Info("Tayni Trader starting...")
+	log.Info("Tayni CryptoTrader starting...")
 
 	time.Sleep(time.Second)
 
-	trader := NewTrader()
+	trader := NewCryptoTrader()
 
 	trader.startControllers()
-	go trader.monitorSubscriptions()
+
+	//go trader.monitorSubscriptions()
+
+	time.Sleep(time.Second * 10)
+	os.Exit(0)
 
 	// --------------------------------------
 	// Create pairs list from configuration
@@ -128,31 +127,23 @@ func Start() {
 	log.Info("Pairs to trade in: ", trader.pairs)
 	log.Info("CryptoPairs to trade in: ", trader.pairs)
 
-	for _, pair := range trader.pairs {
+	tFsm := trader.tFsmExchangeMap["CEXIO"]
+	chansMap := tFsm.SignalChannelsMap()
 
-		tFsmMap := trader.tFsmExchangeMap["CEXIO"]
+	startChan := chansMap["START"]
+	startChan <- true
 
-		tFsm := tFsmMap[pair]
-		chansMap := tFsm.SignalChannelsMap()
+	tradeChan := chansMap["TRADE"]
+	tradeChan <- true
 
-		startChan := chansMap["START"]
-		startChan <- true
-
-		tradeChan := chansMap["TRADE"]
-		tradeChan <- true
-
-		message := `
+	message := `
 		-----------------------------------
-		TRAIDING STARTED FOR PAIR : %s
+		TRAIDING STARTED FOR PAIR : CRYPTO
 		-----------------------------------`
-
-		log.Infof(message, pair)
-
-	}
-
+	log.Info(message)
 }
 
-func (trader *Trader) monitorSubscriptions() {
+func (trader *CryptoTrader) monitorSubscriptions() {
 	sbus := trader.kr.SubscriberChann()
 	for {
 
@@ -166,10 +157,8 @@ func (trader *Trader) monitorSubscriptions() {
 		messageSlice := strings.Split(key, "_")
 
 		exchange := messageSlice[0]
-		pair := messageSlice[1]
-		tFsmMap := trader.tFsmExchangeMap[exchange]
-
-		tFsm := tFsmMap[pair]
+		//pair := messageSlice[1]
+		tFsm := trader.tFsmExchangeMap[exchange]
 
 		chansMap := tFsm.SignalChannelsMap()
 
@@ -192,22 +181,11 @@ func (trader *Trader) monitorSubscriptions() {
 
 }
 
-func (trader *Trader) startControllers() {
+func (trader *CryptoTrader) startControllers() {
 
-	for exKey, exchangeMap := range trader.subscriptionMapExchanges {
-
-		for exPair, _ := range exchangeMap {
-			tFsm := trader.tFsmExchangeMap[exKey][exPair]
-
-			log.Info("Starting FSM controlloer for: ", tFsm.pairID)
-
-			go tFsm.FsmController()
-
-		}
-	}
 }
 
-func (trader *Trader) cryptoSelector() {
+func (trader *CryptoTrader) cryptoSelector() {
 
 	select {}
 

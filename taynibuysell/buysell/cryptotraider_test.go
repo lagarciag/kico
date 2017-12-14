@@ -1,4 +1,4 @@
-package trader_test
+package buysell_test
 
 import (
 	"fmt"
@@ -50,7 +50,7 @@ func TestTraderController(t *testing.T) {
 
 	time.Sleep(time.Second)
 
-	//tFsm.FSM.Event(trader.StartEvent)
+	//tFsm.FSM.Event(buysell.StartEvent)
 
 	tFsm.ChanStartEvent <- true
 
@@ -62,7 +62,7 @@ func TestTraderController(t *testing.T) {
 		t.Log("State : ", tFsm.FSM.Current())
 	}
 
-	//tFsm.FSM.Event(trader.TradeEvent)
+	//tFsm.FSM.Event(buysell.TradeEvent)
 	tFsm.ChanTradeEvent <- true
 
 	time.Sleep(time.Second)
@@ -95,15 +95,15 @@ func TestTraderController(t *testing.T) {
 	/*
 		fromTradingTo30MinBuy(t, tFsm)
 
-		err = tFsm.FSM.Event(trader.NotMinute120BuyEvent)
+		err = tFsm.FSM.Event(buysell.NotMinute120BuyEvent)
 		errorNotExpected(t, err)
-		checkState(t, tFsm, trader.TradingState)
+		checkState(t, tFsm, buysell.TradingState)
 
 		fromTradingTo30MinBuy(t, tFsm)
 
-		err = tFsm.FSM.Event(trader.DoBuyEvent)
+		err = tFsm.FSM.Event(buysell.DoBuyEvent)
 		errorNotExpected(t, err)
-		checkState(t, tFsm, trader.DoBuyState)
+		checkState(t, tFsm, buysell.DoBuyState)
 	*/
 }
 
@@ -385,8 +385,55 @@ func TestTraderBasic(t *testing.T) {
 
 	err = tFsm.FSM.Event(trader.Minute120SellEvent)
 	errorNotExpected(t, err)
-	//checkState(t, tFsm, trader.HoldState)
+	//checkState(t, tFsm, buysell.HoldState)
 
+}
+
+func TestTrader1Min(t *testing.T) {
+
+	tFsm := trader.NewTradeFsm("TEST")
+
+	if err := tFsm.FSM.Event(trader.StartEvent); err != nil {
+		t.Log(err.Error())
+	}
+
+	if tFsm.FSM.Current() != trader.IdleState {
+		t.Error("Bad current state: ", tFsm.FSM.Current())
+	} else {
+		t.Log("State : ", tFsm.FSM.Current())
+	}
+
+	if err := tFsm.FSM.Event(trader.Test1Event); err != nil {
+		t.Log(err.Error())
+	}
+
+	if tFsm.FSM.Current() != trader.TestTradingState {
+		t.Error("Bad current state: ", tFsm.FSM.Current())
+	} else {
+		t.Log("State : ", tFsm.FSM.Current())
+	}
+
+	err := tFsm.FSM.Event(trader.Minute1BuyEvent)
+	errorNotExpected(t, err)
+
+	err = tFsm.FSM.Event(trader.NotMinute1BuyEvent)
+	errorNotExpected(t, err)
+
+	err = tFsm.FSM.Event(trader.Minute60BuyEvent)
+	errorExpected(t, err)
+
+	checkState(t, tFsm, trader.TestTradingState)
+
+	err = tFsm.FSM.Event(trader.Minute1BuyEvent)
+	time.Sleep(time.Second)
+	errorNotExpected(t, err)
+	checkState(t, tFsm, trader.TestHoldState)
+
+	/*
+		err = tFsm.FSM.Event(buysell.Minute1SellEvent)
+		errorNotExpected(t, err)
+		checkState(t, tFsm, buysell.Minute1SellState)
+	*/
 }
 
 func fromTradingTo30MinBuy(t *testing.T, tFsm *trader.TradeFsm) {
