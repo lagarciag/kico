@@ -64,8 +64,8 @@ func (ms *MovingStats) dmiCalc() {
 		pAvrTr = float64(1)
 	}
 
-	plusDMdiv := ms.plusDM / pAvrTr
-	minusDMdiv := ms.minusDM / pAvrTr
+	plusDMdiv := ms.plusDM / math.Abs(pAvrTr)
+	minusDMdiv := ms.minusDM / math.Abs(pAvrTr)
 
 	ms.plusDMAvr.Add(plusDMdiv)
 	ms.minusDMAvr.Add(minusDMdiv)
@@ -75,11 +75,13 @@ func (ms *MovingStats) dmiCalc() {
 	pmAvr := ms.plusDMAvr.Value() * float64(100)
 	if pmAvr < 0 {
 		log.Error("ms.plusDMAvr * 100 < 0 ", ms.windowSize)
+		pmAvr = math.Abs(pmAvr)
 	}
 
 	mmAvr := ms.minusDMAvr.Value() * float64(100)
 	if mmAvr < 0 {
 		log.Error("ms.minusDMAvr * 100 < 0 ", ms.windowSize)
+		mmAvr = math.Abs(mmAvr)
 	}
 
 	ms.plusDI = pmAvr

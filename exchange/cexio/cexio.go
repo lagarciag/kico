@@ -48,8 +48,8 @@ type Bot struct {
 	// --------------------
 	// Control Structures
 	// --------------------
-	priceUpdateTimer *time.Ticker
-	statsUpdateTimer *time.Ticker
+	priceUpdateTimer map[string]*time.Ticker
+	statsUpdateTimer map[string]*time.Ticker
 	shutdownCond     *sync.Cond
 	priceUpdaterCond *sync.Cond
 	apiError         chan error
@@ -65,6 +65,10 @@ func NewBot(config CollectorConfig, kr *kredis.Kredis) (bot *Bot) {
 	//Move this to a secure location
 	//--------------------------------
 	bot = &Bot{}
+
+	bot.priceUpdateTimer = make(map[string]*time.Ticker)
+	bot.statsUpdateTimer = make(map[string]*time.Ticker)
+
 	bot.historyCount = config.HistoryCount
 	bot.name = "CEXIO"
 	bot.key = config.CexioKey
@@ -134,7 +138,10 @@ func (bot *Bot) exchangeStart() {
 
 	log.Info("Price Update timer set to : ", priceUdateTimer)
 
-	bot.priceUpdateTimer = time.NewTicker(priceUdateTimer)
+	for _, pair := range bot.pairs {
+		bot.priceUpdateTimer[fmt.Sprintf("CEXIO_%s", pair)] = time.NewTicker(priceUdateTimer)
+	}
+
 	go bot.exchangeConnect()
 
 }
@@ -144,7 +151,10 @@ func (bot *Bot) statsStart() {
 
 	statsUpdateTimer := (time.Second * time.Duration(bot.sampleRate))
 
-	bot.statsUpdateTimer = time.NewTicker(statsUpdateTimer)
+	for _, pair := range bot.pairs {
+		bot.statsUpdateTimer[fmt.Sprintf("CEXIO_%s", pair)] = time.NewTicker(statsUpdateTimer)
+	}
+
 	go bot.statsCollector()
 
 }
@@ -156,13 +166,18 @@ func (bot *Bot) PublicStart() {
 
 func (bot *Bot) PublicRestart() {
 	log.Info("Restarting public api connection...")
-	bot.api.Close("BOT")
+	if err := bot.api.Close("BOT"); err != nil {
+		log.Error(err.Error())
+	}
 	bot.apiOnline = false
 
 	//--------------------------
 	// Stop price update timer
 	//--------------------------
-	bot.priceUpdateTimer.Stop()
+	for _, pair := range bot.pairs {
+		bot.priceUpdateTimer[pair].Stop()
+	}
+
 	close(bot.apiStop)
 	time.Sleep(time.Second * 2)
 	log.Info("All conections closed, restarting...")
@@ -182,7 +197,9 @@ func (bot *Bot) Start() {
 	log.Info("Starting CEXIO collector")
 
 	bot.kr.Start()
-	bot.api.Connect()
+	if err := bot.api.Connect(); err != nil {
+		log.Error(err.Error())
+	}
 
 	bot.apiOnline = true
 
@@ -294,7 +311,9 @@ func (bot *Bot) MonitorPrice() {
 				currentPrice = lPriceUpdate.Price
 
 				pair = fmt.Sprintf("%s_RAW", pair)
-				bot.kr.Update(bot.name, pair, lPriceUpdate.Price)
+				if err := bot.kr.Update(bot.name, pair, lPriceUpdate.Price); err != nil {
+					log.Error(err.Error())
+				}
 			}
 		case <-bot.apiStop:
 			{
@@ -329,7 +348,9 @@ func (bot *Bot) MonitorPrice() {
 						avgPriceString := fmt.Sprintf("%f", priceUpdateEmaMap[key].Value())
 						emaMapLock.Unlock()
 						//log.Infof("Real Price update: %s : %s, %s", key, avgPriceString, xPriceUpdate.Price)
-						bot.kr.Update(bot.name, pair, avgPriceString)
+						if err := bot.kr.Update(bot.name, pair, avgPriceString); err != nil {
+							log.Error(err.Error())
+						}
 					}
 				}
 			}
@@ -404,7 +425,9 @@ func (bot *Bot) priceUpdater(exchange, pair string) {
 	go bot.priceAdder(pair)
 	counter := 0
 
-	for _ = range bot.statsUpdateTimer.C {
+	timer := bot.statsUpdateTimer[fmt.Sprintf("CEXIO_%s", pair)]
+
+	for _ = range timer.C {
 		//valueStr, err := bot.kr.UpdateList(exchange, pair)
 
 		valueInterface, err := bot.kr.GetPriceValue(exchange, pair)
@@ -429,7 +452,9 @@ func (bot *Bot) priceUpdater(exchange, pair string) {
 			log.Infof("Saving value, exchange: %s , pair %s , value :%f", exchange, pair, value)
 		}
 		counter++
-		daemon.SdNotify(false, "WATCHDOG=1")
+		if _, err := daemon.SdNotify(false, "WATCHDOG=1"); err != nil {
+			log.Error(err.Error())
+		}
 	}
 	log.Info("UpdatePriceLists exiting...")
 
@@ -462,8 +487,18 @@ func (bot *Bot) priceAdder(pair string) {
 }
 
 func (bot *Bot) Stop() {
-	bot.priceUpdateTimer.Stop()
-	bot.statsUpdateTimer.Stop()
+
+	for _, pair := range bot.pairs {
+
+		key := fmt.Sprintf("CEXIO_%s", pair)
+
+		timer1 := bot.priceUpdateTimer[key]
+		timer2 := bot.statsUpdateTimer[key]
+
+		timer1.Stop()
+		timer2.Stop()
+	}
+
 	err := bot.api.Close("MainStop")
 	if err != nil {
 		log.Fatal("error while stoping bot:", err.Error())

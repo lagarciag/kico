@@ -593,12 +593,12 @@ func (ms *MinuteStrategy) indicatorsHistoryGetter(size int) (indicators []moving
 
 func (ms *MinuteStrategy) indicatorsStorer() {
 	for indicator := range ms.indicatorsChan {
-		//logrus.Info("Store indicator: ", indicator)
+		//log.Info("Store indicator: ", indicator, ms.ID, ms.)
 		indicatorsJSON, err := json.Marshal(indicator)
 		if err != nil {
 			log.Error("indicators marshall: ", err.Error())
 		}
-		//logrus.Infof("STORE: %s , %f", ms.ID, indicator.LastValue)
+		//log.Infof("STORE: %s , %f", ms.ID, indicator.LastValue)
 
 		err = ms.kr.AddString(ms.ID, "INDICATORS", indicatorsJSON)
 
