@@ -41,15 +41,19 @@ func (tf *TradeFsm) CallBackInDoSellState(e *fsm.Event) {
 
 		ema := indicators.Ema
 		sma := indicators.Sma
+		last := indicators.LastValue
+		atrp := indicators.ATRP
 
 		twitMessage := `
 		TayniBot (beta tests) says: SELL %s
 		ema : %f
 		sma : %f
+		last: %f
+		ATRP: %f
 		time: %s
 		`
 
-		twit := fmt.Sprintf(twitMessage, tf.pairID, ema, sma, theTime)
+		twit := fmt.Sprintf(twitMessage, tf.pairID, ema, sma, last, atrp, theTime)
 
 		if err := tf.tc.Twit(twit); err != nil {
 			log.Error(err.Error())
@@ -93,15 +97,19 @@ func (tf *TradeFsm) CallBackInDoBuyState(e *fsm.Event) {
 
 	ema := indicators.Ema
 	sma := indicators.Sma
+	last := indicators.LastValue
+	atrp := indicators.ATRP
 
 	twitMessage := `
 		TayniBot (beta tests) says: BUY %s
 		ema : %f
 		sma : %f
+	    last: %f
+	    atrp: %f
 		time: %s
-		`
 
-	twit := fmt.Sprintf(twitMessage, tf.pairID, ema, sma, theTime)
+		`
+	twit := fmt.Sprintf(twitMessage, tf.pairID, ema, sma, last, atrp, theTime)
 
 	if err := tf.tc.Twit(twit); err != nil {
 		log.Error(err.Error())
