@@ -374,8 +374,17 @@ func (ms *MinuteStrategy) buySellUpdate() {
 	buyKey := fmt.Sprintf("%s_BUY", ms.ID)
 	sellKey := fmt.Sprintf("%s_SELL", ms.ID)
 
+	atrLimitOk := false
+
+	if ms.movingStats.Atrp() > ms.movingStats.AtrLimit() {
+		atrLimitOk = true
+		//log.Debug("AtrLimit OK ", ms.movingStats.Atrp())
+	} else {
+		//log.Debug("AtrLimit NOT ok, ", ms.movingStats.Atrp())
+	}
+
 	if ms.doDbUpdate {
-		if pDirectionalBull && ms.MacdBullish() && ms.EmaDirectionUp() {
+		if pDirectionalBull && ms.MacdBullish() && ms.EmaDirectionUp() && atrLimitOk {
 			if ms.buy == false {
 				log.Infof("BUY CHANGE for %s :%v", buyKey, true)
 			}

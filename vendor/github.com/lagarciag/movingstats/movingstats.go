@@ -101,6 +101,8 @@ type MovingStats struct {
 	dirtyHistory bool
 	windowSize   int
 
+	atrLimit float64
+
 	currentWindowHistory *ringbuffer.RingBuffer
 	lastWindowHistory    *ringbuffer.RingBuffer
 
@@ -183,6 +185,7 @@ const mac12Period = 12
 const mac26Period = 26
 const atrPeriod = 9
 const smallSmaPeriod = 20
+const atrDivisor = float64(320)
 
 func createIndicatorsHistorySlice(indHistory []Indicators) (indicatorsHistorySlices IndicatorsHistory) {
 
@@ -290,7 +293,7 @@ func NewMovingStats(size int, latestIndicators,
 	ms.dirtyHistory = dirtyHistory
 	ms.mu = &sync.Mutex{}
 	ms.windowSize = size
-
+	ms.atrLimit = float64(size) / atrDivisor
 	prevHigh := prevIndicators.PHigh
 	prevLow := prevIndicators.PLow
 
@@ -316,7 +319,17 @@ func NewMovingStats(size int, latestIndicators,
 
 	ms.mema9 = multiema.NewMultiEma(emaPeriod, size, historyIndicatorsInSlices0.Mema9[0])
 
-	log.Info("xxx: ", len(historyIndicatorsInSlices0.ATR))
+	if historyIndicatorsInSlices0.ATR[0] < 0 {
+		historyIndicatorsInSlices0.ATR[0] = 0
+	}
+
+	if historyIndicatorsInSlices0.PDM[0] < 0 {
+		historyIndicatorsInSlices0.PDM[0] = 0
+	}
+
+	if historyIndicatorsInSlices0.MDM[0] < 0 {
+		historyIndicatorsInSlices0.MDM[0] = 0
+	}
 
 	ms.atr = multiema.NewMultiEma(atrPeriod, size, historyIndicatorsInSlices0.ATR[0])
 
@@ -327,6 +340,7 @@ func NewMovingStats(size int, latestIndicators,
 	if tmpAtr < 1 {
 		tmpAtr = 2
 	}
+
 	ms.plusDMAvr = multiema.NewMultiEma(atrPeriod, size, historyIndicatorsInSlices0.PDM[0]/tmpAtr)
 	log.Debug("MDM Init value: ", historyIndicatorsInSlices0.MDM[0])
 	ms.minusDMAvr = multiema.NewMultiEma(atrPeriod, size, historyIndicatorsInSlices0.MDM[0]/tmpAtr)
@@ -495,6 +509,10 @@ func (ms *MovingStats) Atr() float64 {
 
 func (ms *MovingStats) Atrp() float64 {
 	return ms.atrp
+}
+
+func (ms *MovingStats) AtrLimit() float64 {
+	return ms.atrLimit
 }
 
 func (ms *MovingStats) Adx() float64 {

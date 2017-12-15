@@ -31,7 +31,7 @@ func (ms *MovingStats) CurrentLow() float64 {
 func (ms *MovingStats) trueRangeCurrentHighCurrentLow() float64 {
 	currentHigh := ms.currentWindowHistory.High()
 	currentLow := ms.currentWindowHistory.Low()
-	return currentHigh - currentLow
+	return math.Abs(currentHigh - currentLow)
 }
 
 func (ms *MovingStats) trueRangeCurrentHighPreviousClose() float64 {
