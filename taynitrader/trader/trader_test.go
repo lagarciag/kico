@@ -107,6 +107,12 @@ func TestTraderController(t *testing.T) {
 	*/
 }
 
+func TestTraderNewFsm(t *testing.T) {
+
+	_ = trader.NewTradeFsm("TEST")
+
+}
+
 func TestTraderBasicChans(t *testing.T) {
 
 	tFsm := trader.NewTradeFsm("TEST")
