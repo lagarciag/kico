@@ -185,7 +185,7 @@ const mac12Period = 12
 const mac26Period = 26
 const atrPeriod = 9
 const smallSmaPeriod = 20
-const atrDivisor = float64(320)
+const atrDivisor = float64(360)
 
 func createIndicatorsHistorySlice(indHistory []Indicators) (indicatorsHistorySlices IndicatorsHistory) {
 
