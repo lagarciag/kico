@@ -184,7 +184,7 @@ const macD9Period = 9
 const mac12Period = 12
 const mac26Period = 26
 const atrPeriod = 9
-const smallSmaPeriod = 20
+const smallSmaPeriod = 6
 const atrDivisor = float64(360)
 
 func createIndicatorsHistorySlice(indHistory []Indicators) (indicatorsHistorySlices IndicatorsHistory) {
@@ -308,11 +308,11 @@ func NewMovingStats(size int, latestIndicators,
 
 	ms.lastWindowHistory.PushBuffer(reverseBuffer(historyIndicatorsInSlices1.LastValue))
 
-	ms.sma = movingaverage.New(6)
+	ms.sma = movingaverage.New(size / smallSmaPeriod)
 
-	for _, value := range reverseBuffer(historyIndicatorsInSlices0.LastValue) {
+	/*for _, value := range reverseBuffer(historyIndicatorsInSlices0.LastValue) {
 		ms.sma.Add(value)
-	}
+	}*/
 
 	//ms.sema = ewma.NewMovingAverage(30)
 	ms.sema = multiema.NewDema(30, latestIndicators.Sema)
@@ -416,7 +416,7 @@ func (ms *MovingStats) add(value float64) {
 	// ------------------------------------------
 	// Calculate True Range & Average True Range
 	// ------------------------------------------
-	ms.atrCalc(value)
+	ms.atrCalc(ms.sma.SimpleMovingAverage())
 
 	// -----------------------------------------
 	// Calculate Directional Movement Indicator

@@ -17,11 +17,15 @@ type MovingAverage struct {
 	avg2Sum     float64
 	variance    float64
 	varHistBuff *ringbuffer.RingBuffer
+
+	init bool
+
 }
 
 func New(period int) *MovingAverage {
 
 	avg := &MovingAverage{}
+	avg.init = false
 	avg.period = period
 	avg.avgHistBuff = ringbuffer.NewBuffer(period, false, 0, 0)
 	avg.varHistBuff = ringbuffer.NewBuffer(period, false, 0, 0)
@@ -29,6 +33,14 @@ func New(period int) *MovingAverage {
 }
 
 func (avg *MovingAverage) Add(value float64) {
+
+	if !avg.init {
+		for i := 0; i< avg.period; i -- {
+			avg.Add(value)
+		}
+		avg.init = false
+	}
+
 	avg.avg(value)
 }
 
