@@ -57,6 +57,7 @@ type Indicators struct {
 	Date      string  `json:"date"`
 	LastValue float64 `json:"last_value"`
 	Sma       float64 `json:"sma"`
+	SmaLong   float64 `json:"sma_long"`
 	Sema      float64 `json:"sema"`
 	Mema9     float64 `json:"mema_9"`
 	Ema       float64 `json:"ema"`
@@ -186,6 +187,7 @@ const mac26Period = 26
 const atrPeriod = 9
 const smallSmaPeriod = 6
 const atrDivisor = float64(360)
+const smaLongPeriodMultiplier = 2
 
 func createIndicatorsHistorySlice(indHistory []Indicators) (indicatorsHistorySlices IndicatorsHistory) {
 
@@ -360,7 +362,7 @@ func NewMovingStats(size int, latestIndicators,
 	ms.adxAvr = multiema.NewMultiEma(atrPeriod, size, historyIndicatorsInSlices0.Adx[0]/100)
 	log.Warn("ADX Value:", ms.adxAvr.Value())
 
-	ms.smaLong = movingaverage.New(size * smallSmaPeriod)
+	ms.smaLong = movingaverage.New(size * smaLongPeriodMultiplier)
 
 	/*
 		ms.sEma = ewma.NewMovingAverage(size)
@@ -497,8 +499,12 @@ func (ms *MovingStats) MacdEma26() float64 {
 	return ms.ema26.Value()
 }
 
-func (ms *MovingStats) SMA1() float64 {
+func (ms *MovingStats) SmaShort() float64 {
 	return ms.sma.SimpleMovingAverage()
+}
+
+func (ms *MovingStats) SmaLong() float64 {
+	return ms.smaLong.SimpleMovingAverage()
 }
 
 func (ms *MovingStats) StdDev1() float64 {

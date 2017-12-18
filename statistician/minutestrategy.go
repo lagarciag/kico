@@ -279,7 +279,7 @@ func (ms *MinuteStrategy) StdDevPercentage() float64 {
 	stDev := ms.movingStats.StdDevLong()
 	stDev100 := stDev * float64(100)
 
-	sma := ms.movingStats.SMA1()
+	sma := ms.movingStats.SmaShort()
 	//logrus.Debugf("STDEV: %f, STDEV100: %f , SMA: %f , PER: %f", stDev, stDev100, sma, stDev100/sma)
 
 	return stDev100 / sma
@@ -449,7 +449,9 @@ func (ms *MinuteStrategy) updateIndicators() {
 
 		ms.indicators.LastValue = ms.LatestValue
 
-		ms.indicators.Sma = ms.movingStats.SMA1()
+		ms.indicators.Sma = ms.movingStats.SmaShort()
+
+		ms.indicators.SmaLong = ms.movingStats.SmaLong()
 
 		ms.indicators.Ema = ms.Ema()
 
@@ -623,7 +625,7 @@ func (ms *MinuteStrategy) indicatorsStorer() {
 
 func (ms *MinuteStrategy) PrintCsv() string {
 	lastValue := ms.LatestValue
-	sma := ms.movingStats.SMA1()
+	sma := ms.movingStats.SmaShort()
 	ema := ms.Ema()
 	emaUup := ms.EmaDirectionUp()
 	slope := ms.EmaSlope()

@@ -125,7 +125,7 @@ func (st *Statistician) EMA(size int) (val float64, err error) {
 func (st *Statistician) StdDev(size int) (val float64, err error) {
 	aStat, ok := st.statsHash[size]
 	dev := aStat.movingStats.StdDevLong()
-	price := aStat.movingStats.SMA1()
+	price := aStat.movingStats.SmaShort()
 	percentageDev := dev / price * (float64(100))
 	if ok {
 		return percentageDev, nil
@@ -135,7 +135,7 @@ func (st *Statistician) StdDev(size int) (val float64, err error) {
 
 func (st *Statistician) Sma(size int) (val float64, err error) {
 	aStat, ok := st.statsHash[size]
-	average := aStat.movingStats.SMA1()
+	average := aStat.movingStats.SmaShort()
 	if ok {
 		return average, nil
 	}
