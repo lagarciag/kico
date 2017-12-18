@@ -137,7 +137,7 @@ func (kr *Kredis) DeleteList(exchange, pair string) error {
 	_, err := kr.conn.Do("DEL", key)
 	kr.mu.Unlock()
 	if err != nil {
-		return fmt.Errorf("While deleting list %s: %s", key, err.Error)
+		return fmt.Errorf("While deleting list %s: %s", key, err.Error())
 	}
 
 	return nil
@@ -160,7 +160,7 @@ func (kr *Kredis) Add(exchange, pair string, value float64) error {
 		_, err := kr.conn.Do("RPOP", key)
 		kr.mu.Unlock()
 		if err != nil {
-			return fmt.Errorf("While poping the last element: %s", err.Error)
+			return fmt.Errorf("While poping the last element: %s", err.Error())
 		}
 
 	}
@@ -169,10 +169,17 @@ func (kr *Kredis) Add(exchange, pair string, value float64) error {
 
 	kr.mu.Lock()
 	_, err = kr.conn.Do("LPUSH", key, valueStr)
-	kr.mu.Unlock()
 	if err != nil {
+		kr.mu.Unlock()
 		return err
 	}
+	_, err = kr.conn.Do("LTRIM", key, 0, 12000)
+	if err != nil {
+		kr.mu.Unlock()
+		return err
+	}
+
+	kr.mu.Unlock()
 
 	return err
 }
@@ -193,17 +200,25 @@ func (kr *Kredis) AddString(exchange, pair string, value interface{}) error {
 		_, err := kr.connUpdateList.Do("RPOP", key)
 		kr.mu.Unlock()
 		if err != nil {
-			return fmt.Errorf("While poping the last element: %s", err.Error)
+			return fmt.Errorf("While poping the last element: %s", err.Error())
 		}
 
 	}
 
 	kr.mu.Lock()
 	_, err = kr.connUpdateList.Do("LPUSH", key, value)
-	kr.mu.Unlock()
+
 	if err != nil {
+		kr.mu.Unlock()
 		return err
 	}
+
+	_, err = kr.conn.Do("LTRIM", key, 0, 12000)
+	if err != nil {
+		kr.mu.Unlock()
+		return err
+	}
+	kr.mu.Unlock()
 
 	kr.mu.Lock()
 	_, err = kr.connUpdateList.Do("PUBLISH", key, value)
@@ -235,10 +250,19 @@ func (kr *Kredis) AddStringLong(exchange, pair string, value interface{}) error 
 	kr.mu.Lock()
 	//log.Info("LPUSH: ", key, value)
 	_, err := kr.connUpdateList.Do("LPUSH", key, value)
-	kr.mu.Unlock()
+
 	if err != nil {
+		kr.mu.Unlock()
 		return err
 	}
+
+	_, err = kr.conn.Do("LTRIM", key, 0, 12000)
+	if err != nil {
+		kr.mu.Unlock()
+		return err
+	}
+
+	kr.mu.Unlock()
 
 	kr.mu.Lock()
 	_, err = kr.connUpdateList.Do("PUBLISH", key, value)
@@ -340,7 +364,7 @@ func (kr *Kredis) GetLatest(exchange, pair string) (float64, error) {
 	value, err := strconv.ParseFloat(valueStr, 64)
 
 	if err != nil {
-		err = fmt.Errorf("whie converting string to float:", err.Error())
+		err = fmt.Errorf("whie converting string to float: %s", err.Error())
 	}
 
 	return value, err
@@ -394,7 +418,7 @@ func (kr *Kredis) GetLatestValue(key string) (string, error) {
 	kr.mu.Unlock()
 
 	if err != nil {
-		err = fmt.Errorf("while getting value:", err.Error())
+		err = fmt.Errorf("while getting value: %s", err.Error())
 	}
 
 	valueStr := string(valueInt.([]uint8))
@@ -426,7 +450,7 @@ func (kr *Kredis) GetRange(key string, size int) (retList []string, err error) {
 	kr.mu.Unlock()
 
 	if err != nil {
-		err = fmt.Errorf("while getting value:", err.Error())
+		err = fmt.Errorf("while getting value: %s", err.Error())
 	}
 
 	for ID, element := range rawList.([]interface{}) {

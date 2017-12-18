@@ -35,7 +35,7 @@ func New(period int) *MovingAverage {
 func (avg *MovingAverage) Add(value float64) {
 
 	if !avg.init {
-		for i := 0; i< avg.period; i -- {
+		for i := 0; i< avg.period; i ++ {
 			avg.Add(value)
 		}
 		avg.init = false
