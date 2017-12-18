@@ -185,7 +185,7 @@ const macD9Period = 9
 const mac12Period = 12
 const mac26Period = 26
 const atrPeriod = 9
-const smallSmaPeriod = 6
+const smallSmaPeriod = 120
 const atrDivisor = float64(360)
 const smaLongPeriodMultiplier = 2
 
@@ -310,7 +310,7 @@ func NewMovingStats(size int, latestIndicators,
 
 	ms.lastWindowHistory.PushBuffer(reverseBuffer(historyIndicatorsInSlices1.LastValue))
 
-	smaPeriod := size / smallSmaPeriod
+	smaPeriod := smallSmaPeriod
 
 	if smaPeriod < 2 {
 		smaPeriod = 2
