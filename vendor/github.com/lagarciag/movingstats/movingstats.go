@@ -308,7 +308,13 @@ func NewMovingStats(size int, latestIndicators,
 
 	ms.lastWindowHistory.PushBuffer(reverseBuffer(historyIndicatorsInSlices1.LastValue))
 
-	ms.sma = movingaverage.New(size / smallSmaPeriod)
+	smaPeriod := size / smallSmaPeriod
+
+	if smaPeriod < 2 {
+		smaPeriod = 2
+	}
+
+	ms.sma = movingaverage.New(smaPeriod)
 
 	/*for _, value := range reverseBuffer(historyIndicatorsInSlices0.LastValue) {
 		ms.sma.Add(value)
