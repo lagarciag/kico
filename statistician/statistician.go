@@ -122,6 +122,7 @@ func (st *Statistician) EMA(size int) (val float64, err error) {
 	return float64(0), fmt.Errorf("Invalid size request")
 }
 
+/*
 func (st *Statistician) StdDev(size int) (val float64, err error) {
 	aStat, ok := st.statsHash[size]
 	dev := aStat.movingStats.StdDevLong()
@@ -132,7 +133,9 @@ func (st *Statistician) StdDev(size int) (val float64, err error) {
 	}
 	return float64(percentageDev), fmt.Errorf("Invalid size request")
 }
+*/
 
+/*
 func (st *Statistician) Sma(size int) (val float64, err error) {
 	aStat, ok := st.statsHash[size]
 	average := aStat.movingStats.SmaShort()
@@ -141,6 +144,7 @@ func (st *Statistician) Sma(size int) (val float64, err error) {
 	}
 	return float64(average), fmt.Errorf("Invalid size request")
 }
+*/
 
 func (st *Statistician) MacdDivBullish(size int) (bool, error) {
 	aStat, ok := st.statsHash[size]

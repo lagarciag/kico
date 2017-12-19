@@ -13,6 +13,7 @@ import (
 type IndicatorsHistory struct {
 	LastValue []float64 `json:"last_value"`
 	Sma       []float64 `json:"sma"`
+	SmaLong   []float64 `json:"sma_long"`
 	Sema      []float64 `json:"sema"`
 	Mema9     []float64 `json:"mema_9"`
 	Ema       []float64 `json:"ema"`
@@ -108,7 +109,8 @@ type MovingStats struct {
 	lastWindowHistory    *ringbuffer.RingBuffer
 
 	// Simple Moving Average
-	sma *movingaverage.MovingAverage
+	sma     *movingaverage.MovingAverage
+	smaLong *movingaverage.MovingAverage
 
 	mema9 *multiema.MultiEma
 
@@ -120,8 +122,6 @@ type MovingStats struct {
 	plusDMAvr  *multiema.MultiEma
 	minusDMAvr *multiema.MultiEma
 	adxAvr     *multiema.MultiEma
-
-	smaLong *movingaverage.MovingAverage
 
 	/*
 		sEma        *multiema.MultiEma
@@ -185,7 +185,8 @@ const macD9Period = 9
 const mac12Period = 12
 const mac26Period = 26
 const atrPeriod = 9
-const smallSmaPeriod = 120
+const smallSmaPeriod = 60
+const longSmaPeriod = 120
 const atrDivisor = float64(360)
 const smaLongPeriodMultiplier = 2
 
@@ -310,17 +311,9 @@ func NewMovingStats(size int, latestIndicators,
 
 	ms.lastWindowHistory.PushBuffer(reverseBuffer(historyIndicatorsInSlices1.LastValue))
 
-	smaPeriod := smallSmaPeriod
+	ms.sma = movingaverage.New(smallSmaPeriod)
 
-	if smaPeriod < 2 {
-		smaPeriod = 2
-	}
-
-	ms.sma = movingaverage.New(smaPeriod)
-
-	/*for _, value := range reverseBuffer(historyIndicatorsInSlices0.LastValue) {
-		ms.sma.Add(value)
-	}*/
+	ms.smaLong = movingaverage.New(longSmaPeriod)
 
 	//ms.sema = ewma.NewMovingAverage(30)
 	ms.sema = multiema.NewDema(30, latestIndicators.Sema)
@@ -361,8 +354,6 @@ func NewMovingStats(size int, latestIndicators,
 
 	ms.adxAvr = multiema.NewMultiEma(atrPeriod, size, historyIndicatorsInSlices0.Adx[0]/100)
 	log.Warn("ADX Value:", ms.adxAvr.Value())
-
-	ms.smaLong = movingaverage.New(size * smaLongPeriodMultiplier)
 
 	/*
 		ms.sEma = ewma.NewMovingAverage(size)

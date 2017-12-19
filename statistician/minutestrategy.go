@@ -622,36 +622,3 @@ func (ms *MinuteStrategy) indicatorsStorer() {
 	}
 
 }
-
-func (ms *MinuteStrategy) PrintCsv() string {
-	lastValue := ms.LatestValue
-	sma := ms.movingStats.SmaShort()
-	ema := ms.Ema()
-	emaUup := ms.EmaDirectionUp()
-	slope := ms.EmaSlope()
-	macdDiv := ms.movingStats.MacdDiv()
-	macdBull := ms.MacdBullish()
-	macd := ms.movingStats.Macd()
-
-	stdDev := ms.StdDev()
-	stdDevPercentage := ms.StdDevPercentage()
-	//stdDevBuy := ms.StdDevBuy()
-
-	adx := ms.movingStats.Adx()
-	mDI := ms.movingStats.MinusDI()
-	pDI := ms.movingStats.PlusDI()
-
-	md9 := ms.movingStats.EmaMacd9()
-	buy := ms.Buy()
-	encode := `%s,%-10d,%-4.2f,%-4.2f,%-4.2f,%-4.2f,%-4.2f,%+4.2f,%4.2f,%4.2f,%4.2f,%-4v,%4.2f,%4.2f,%-4.2f,%t,%4.2f,%4.2f,%4.2f,%t`
-
-	toPrint := fmt.Sprintf(encode, time.Now().String(),
-		ms.currentSampleCount, lastValue,
-		sma, stdDev, stdDevPercentage,
-		ema, slope, ms.movingStats.HistNow, ms.movingStats.HistMostRecent,
-		ms.movingStats.HistOldest, emaUup, macd,
-		md9, macdDiv, macdBull, adx, mDI, pDI, buy)
-
-	return toPrint
-
-}
