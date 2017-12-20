@@ -348,7 +348,7 @@ func (tf *TradeFsm) CallBackInTestSellCompleteState(e *fsm.Event) {
 //TODO: This does not go here
 func (tf *TradeFsm) indicatorsGetter(index int) (indicators movingstats.Indicators) {
 
-	key := fmt.Sprintf("CEXIO_%s_MS_30_INDICATORS", tf.pairID)
+	key := fmt.Sprintf("CEXIO_%s_MS_120_INDICATORS", tf.pairID)
 	indicatorsJson, err := tf.kr.GetRawString(key, index)
 
 	if err != nil {
