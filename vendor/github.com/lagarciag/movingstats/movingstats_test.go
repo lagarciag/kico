@@ -26,10 +26,8 @@ func TestSimpleMovingAverage(t *testing.T) {
 	period := rand.Intn(10) + rand.Intn(10)
 	period = 5
 
-	t.Log("period:", period)
 	size := period + rand.Intn(10)
 	size = 15
-	t.Log("size:", size)
 	movingStats := movingstats.NewAverage(period)
 	movingAverage := movingaverage.New(int(period))
 
@@ -62,12 +60,7 @@ func TestSimpleMovingAverage(t *testing.T) {
 func TestSimpleMovingAverageFromStats(t *testing.T) {
 
 	period := rand.Intn(10) + rand.Intn(1000000)
-	//period = 2
-
-	t.Log("period:", period)
 	size := period + rand.Intn(1000000)
-	//size = 5
-	t.Log("size:", size)
 
 	ind1 := movingstats.Indicators{}
 	ind2 := movingstats.Indicators{}

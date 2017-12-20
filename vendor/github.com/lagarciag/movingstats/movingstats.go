@@ -353,7 +353,7 @@ func NewMovingStats(size int, latestIndicators,
 	}
 
 	ms.adxAvr = multiema.NewMultiEma(atrPeriod, size, historyIndicatorsInSlices0.Adx[0]/100)
-	log.Warn("ADX Value:", ms.adxAvr.Value())
+	log.Debug("ADX Init Value:", ms.adxAvr.Value())
 
 	/*
 		ms.sEma = ewma.NewMovingAverage(size)

@@ -49,7 +49,7 @@ func (ms *MovingStats) dmiCalc() {
 	}
 
 	if (downMove < float64(0)) && (upMove < float64(0)) {
-		log.Warn("DownMove && UpMove < 0 ")
+		//log.Warn("DownMove && UpMove < 0 ")
 		if downMove < upMove {
 			ms.plusDM = math.Abs(downMove)
 			ms.minusDM = float64(0)

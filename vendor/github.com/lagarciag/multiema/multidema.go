@@ -1,10 +1,8 @@
 package multiema
 
-import (
-	"github.com/sirupsen/logrus"
-)
+import "github.com/sirupsen/logrus"
 
-type MultiEma struct {
+type MultiDEma struct {
 	initCount  int
 	init       bool
 	count      int
@@ -12,18 +10,18 @@ type MultiEma struct {
 	periodSize int
 	//emaSlice   []ewma.MovingAverage
 	//intEma     ewma.MovingAverage
-	emaSlice []SimpleEma
-	intEma   SimpleEma
+	emaSlice []DoubleEma
+	intEma   DoubleEma
 }
 
-func NewMultiEma(periods int, periodSize int, initValue float64) (mema *MultiEma) {
+func NewMultiDEma(periods int, periodSize int, initValue float64) (mema *MultiDEma) {
 
-	mema = &MultiEma{}
+	mema = &MultiDEma{}
 	mema.init = false
 	if initValue != float64(0) {
 		mema.init = true
 	} else {
-		logrus.Debug("NewMultiEma initval :", initValue)
+		logrus.Debug("NewMultiDEma initval :", initValue)
 	}
 
 	mema.count = 0
@@ -31,18 +29,18 @@ func NewMultiEma(periods int, periodSize int, initValue float64) (mema *MultiEma
 	mema.periodSize = periodSize
 	//mema.emaSlice = make([]ewma.MovingAverage, periodSize)
 	//mema.intEma = ewma.NewMovingAverage(float64(30))
-	mema.emaSlice = make([]SimpleEma, periodSize)
-	mema.intEma = NewSema(30, initValue)
+	mema.emaSlice = make([]DoubleEma, periodSize)
+	mema.intEma = NewDema(30, initValue)
 
 	//logrus.Info("NewEma Init: ", len(initValues), len(mema.emaSlice))
 
 	for i := range mema.emaSlice {
-		mema.emaSlice[i] = NewSema(periods, initValue)
+		mema.emaSlice[i] = NewDema(periods, initValue)
 	}
 	return mema
 }
 
-func (mema *MultiEma) Add(valule float64) {
+func (mema *MultiDEma) Add(valule float64) {
 	if !mema.init {
 		mema.emaSlice[mema.count].Set(valule)
 	} else {
@@ -61,7 +59,7 @@ func (mema *MultiEma) Add(valule float64) {
 	mema.initCount++
 }
 
-func (mema *MultiEma) inVal() (val float64) {
+func (mema *MultiDEma) inVal() (val float64) {
 	valueCount := mema.count - 1
 	if mema.count == 0 {
 		valueCount = mema.periodSize - 1
@@ -70,6 +68,6 @@ func (mema *MultiEma) inVal() (val float64) {
 	return val
 }
 
-func (mema *MultiEma) Value() (val float64) {
+func (mema *MultiDEma) Value() (val float64) {
 	return mema.intEma.Value()
 }

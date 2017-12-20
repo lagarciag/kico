@@ -119,7 +119,7 @@ func NewMinuteStrategy(name string, minuteWindowSize int, stdLimit float64, doLo
 
 	if indicatorsSaved < ps.movingSampleWindowSize {
 		dirtyHistory = true
-		log.Warn("XXXX Indicators History is to shallow, setting dirty bit XXXX ")
+		log.Warn("Indicators History is to shallow, setting dirty bit")
 	}
 
 	if err != nil {
@@ -582,8 +582,6 @@ func (ms *MinuteStrategy) indicatorsHistoryGetter(size int) (indicators []moving
 	}
 
 	indicators = make([]movingstats.Indicators, size)
-
-	fmt.Println("SIZE: ", len(indicatorsJson), size)
 
 	for i, indicatorJson := range indicatorsJson {
 		anIndicator := movingstats.Indicators{}

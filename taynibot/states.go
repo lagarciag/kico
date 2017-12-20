@@ -69,7 +69,7 @@ func (bot *Bot) runEventManager() {
 				if err != nil {
 					panic("event error")
 				}
-				log.Info("xxx sent warmup event")
+
 				continue
 			}
 
@@ -80,5 +80,4 @@ func (bot *Bot) runEventManager() {
 			}
 		}
 	}
-	log.Info("ending event manager...")
 }
