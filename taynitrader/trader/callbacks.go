@@ -10,6 +10,49 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+func (tf *TradeFsm) CallBackInGenericState(e *fsm.Event) {
+	log.Infof("In state %s --> %s:", tf.FSM.Current(), tf.pairID)
+
+	switch {
+
+	case tf.FSM.Current() == Minute30BuyState:
+		{
+
+			done := func() {
+				if err := tf.FSM.Event(DoBuyEvent); err != nil {
+					log.Warn(err.Error())
+				}
+			}
+			log.Info("Test executing buy for ", tf.pairID)
+			time.Sleep(time.Millisecond * 100)
+			go done()
+			log.Infof("CallBack done: %s, %s", tf.FSM.Current(), tf.pairID)
+
+		}
+
+	case tf.FSM.Current() == Minute30SellState:
+		{
+			log.Infof("In state %s --> %s:", tf.FSM.Current(), tf.pairID)
+			//log.Info("In state :", tf.FSM.Current())
+			done := func() {
+				if err := tf.FSM.Event(DoSellEvent); err != nil {
+					log.Warn(err.Error())
+				}
+
+			}
+			log.Info("Executing buy for ", tf.pairID)
+			time.Sleep(time.Millisecond * 100)
+			go done()
+			log.Infof("CallBack done: %s, %s", tf.FSM.Current(), tf.pairID)
+		}
+
+	default:
+		log.Infof("No action state")
+
+	}
+
+}
+
 func (tf *TradeFsm) CallBackInStartState(e *fsm.Event) {
 	log.Infof("In state %s --> %s:", tf.FSM.Current(), tf.pairID)
 }
@@ -46,8 +89,16 @@ func (tf *TradeFsm) CallBackInDoSellState(e *fsm.Event) {
 		pDmi := indicators.PDI
 		mDmi := indicators.MDI
 
-		twitMessage := `
-		TayniBot (beta tests) says: SELL %s
+		var twitMessage string
+
+		switch {
+
+		case tf.pairID == "ETHBTC":
+			{
+
+				twitMessage = `
+		TayniBot (beta tests) says: ETH is downperforming BTC.
+		Watch for BTC buy signal
 		ema : %f
 		sma : %f
 		last: %f
@@ -56,6 +107,85 @@ func (tf *TradeFsm) CallBackInDoSellState(e *fsm.Event) {
 		MDMI: %f
 		time: %s
 		`
+			}
+
+		case tf.pairID == "BCHBTC":
+			{
+
+				twitMessage = `
+		TayniBot (beta tests) says: BCH is downperforming BTC.
+		Watch for BTC buy signal
+		ema : %f
+		sma : %f
+		last: %f
+		ATRP: %f
+		PDMI: %f
+		MDMI: %f
+		time: %s
+		`
+			}
+		case tf.pairID == "DASHBTC":
+			{
+
+				twitMessage = `
+		TayniBot (beta tests) says: DASH is downperforming BTC.
+		Watch for BTC buy signal
+		ema : %f
+		sma : %f
+		last: %f
+		ATRP: %f
+		PDMI: %f
+		MDMI: %f
+		time: %s
+		`
+			}
+		case tf.pairID == "ZECBTC":
+			{
+
+				twitMessage = `
+		TayniBot (beta tests) says: ZEC is downperforming BTC.
+		Watch for BTC buy signal
+		ema : %f
+		sma : %f
+		last: %f
+		ATRP: %f
+		PDMI: %f
+		MDMI: %f
+		time: %s
+		`
+			}
+
+		case tf.pairID == "XRPBTC":
+			{
+
+				twitMessage = `
+		TayniBot (beta tests) says: XRP is downperforming BTC.
+		Watch for BTC buy signal
+		ema : %f
+		sma : %f
+		last: %f
+		ATRP: %f
+		PDMI: %f
+		MDMI: %f
+		time: %s
+		`
+			}
+
+		default:
+			{
+				twitMessage = `
+		TayniBot (beta tests) says: BUY %s
+		ema : %f
+		sma : %f
+		last: %f
+		ATRP: %f
+		PDMI: %f
+		MDMI: %f
+		time: %s
+		`
+			}
+
+		}
 
 		twit := fmt.Sprintf(twitMessage, tf.pairID, ema, sma, last, atrp, pDmi, mDmi, theTime)
 
@@ -106,7 +236,91 @@ func (tf *TradeFsm) CallBackInDoBuyState(e *fsm.Event) {
 	pDmi := indicators.PDI
 	mDmi := indicators.MDI
 
-	twitMessage := `
+	var twitMessage string
+
+	switch {
+
+	case tf.pairID == "ETHBTC":
+		{
+
+			twitMessage = `
+		TayniBot (beta tests) says: ETH is outperforming BTC.
+		Watch for ETH buy signal
+		ema : %f
+		sma : %f
+		last: %f
+		ATRP: %f
+		PDMI: %f
+		MDMI: %f
+		time: %s
+		`
+		}
+
+	case tf.pairID == "BCHBTC":
+		{
+
+			twitMessage = `
+		TayniBot (beta tests) says: BCH is outperforming BTC.
+		Watch for BCH buy signal
+		ema : %f
+		sma : %f
+		last: %f
+		ATRP: %f
+		PDMI: %f
+		MDMI: %f
+		time: %s
+		`
+		}
+	case tf.pairID == "DASHBTC":
+		{
+
+			twitMessage = `
+		TayniBot (beta tests) says: DASH is outperforming BTC.
+		Watch for DASH buy signal
+		ema : %f
+		sma : %f
+		last: %f
+		ATRP: %f
+		PDMI: %f
+		MDMI: %f
+		time: %s
+		`
+		}
+	case tf.pairID == "ZECBTC":
+		{
+
+			twitMessage = `
+		TayniBot (beta tests) says: ZEC is outperforming BTC.
+		Watch for ZEC buy signal
+		ema : %f
+		sma : %f
+		last: %f
+		ATRP: %f
+		PDMI: %f
+		MDMI: %f
+		time: %s
+		`
+		}
+
+	case tf.pairID == "XRPBTC":
+		{
+
+			twitMessage = `
+		TayniBot (beta tests) says: XRP is outperforming BTC.
+		Watch for XRP buy signal
+		ema : %f
+		sma : %f
+		last: %f
+		ATRP: %f
+		PDMI: %f
+		MDMI: %f
+		time: %s
+		`
+		}
+
+	default:
+		{
+			twitMessage = `
 		TayniBot (beta tests) says: BUY %s
 		ema : %f
 		sma : %f
@@ -116,6 +330,9 @@ func (tf *TradeFsm) CallBackInDoBuyState(e *fsm.Event) {
 		MDMI: %f
 		time: %s
 		`
+		}
+
+	}
 
 	twit := fmt.Sprintf(twitMessage, tf.pairID, ema, sma, last, atrp, pDmi, mDmi, theTime)
 
@@ -154,192 +371,17 @@ func (tf *TradeFsm) CallBackInShutdownState(e *fsm.Event) {
 	//log.Info("In state :", tf.FSM.Current())
 }
 
-func (tf *TradeFsm) CallBackInMinute1BuyState(e *fsm.Event) {
-	log.Infof("In state %s --> %s:", tf.FSM.Current(), tf.pairID)
-	//log.Info("In state :", tf.FSM.Current(), tf.pairID)
-
-	done := func() {
-		if err := tf.FSM.Event(TestDoBuyEvent); err != nil {
-			log.Warn(err.Error())
-		}
-	}
-	log.Info("Test executing buy for ", tf.pairID)
-
-	time.Sleep(time.Millisecond * 100)
-	go done()
-	log.Infof("CallBack done: %s, %s", tf.FSM.Current(), tf.pairID)
-
-}
-
-func (tf *TradeFsm) CallBackInMinute120BuyState(e *fsm.Event) {
-	log.Infof("In state %s --> %s:", tf.FSM.Current(), tf.pairID)
-	//log.Info("In state :", tf.FSM.Current())
-}
-
-func (tf *TradeFsm) CallBackInMinute60BuyState(e *fsm.Event) {
-	log.Infof("In state %s --> %s:", tf.FSM.Current(), tf.pairID)
-	//log.Info("In state :", tf.FSM.Current())
-}
-
-func (tf *TradeFsm) CallBackInMinute30BuyState(e *fsm.Event) {
-	log.Infof("In state %s --> %s:", tf.FSM.Current(), tf.pairID)
-	//log.Info("In state :", tf.FSM.Current())
-
-	done := func() {
-		if err := tf.FSM.Event(DoBuyEvent); err != nil {
-			log.Warn(err.Error())
-		}
-	}
-	log.Info("Test executing buy for ", tf.pairID)
-	time.Sleep(time.Millisecond * 100)
-	go done()
-	log.Infof("CallBack done: %s, %s", tf.FSM.Current(), tf.pairID)
-
-}
-
-func (tf *TradeFsm) CallBackInMinute1SellState(e *fsm.Event) {
-	log.Infof("In state %s --> %s:", tf.FSM.Current(), tf.pairID)
-	//log.Info("In state :", tf.FSM.Current())
-
-	done := func() {
-		if err := tf.FSM.Event(TestDoSellEvent); err != nil {
-			log.Warn(err.Error())
-		}
-	}
-	log.Info("Executing buy for ", tf.pairID)
-	time.Sleep(time.Millisecond * 100)
-	go done()
-	log.Infof("CallBack done: %s, %s", tf.FSM.Current(), tf.pairID)
-
-}
-
-func (tf *TradeFsm) CallBackInMinute120SellState(e *fsm.Event) {
-	log.Infof("In state %s --> %s:", tf.FSM.Current(), tf.pairID)
-	//log.Info("In state :", tf.FSM.Current())
-}
-
-func (tf *TradeFsm) CallBackInMinute60SellState(e *fsm.Event) {
-	log.Infof("In state %s --> %s:", tf.FSM.Current(), tf.pairID)
-	//log.Info("In state :", tf.FSM.Current())
-}
-
-func (tf *TradeFsm) CallBackInMinute30SellState(e *fsm.Event) {
-	log.Infof("In state %s --> %s:", tf.FSM.Current(), tf.pairID)
-	//log.Info("In state :", tf.FSM.Current())
-	done := func() {
-		if err := tf.FSM.Event(DoSellEvent); err != nil {
-			log.Warn(err.Error())
-		}
-
-	}
-	log.Info("Executing buy for ", tf.pairID)
-	time.Sleep(time.Millisecond * 100)
-	go done()
-	log.Infof("CallBack done: %s, %s", tf.FSM.Current(), tf.pairID)
-
-}
-
-// -----------
-// Not Events
-// -----------
-
-func (tf *TradeFsm) CallBackInNotMinute1BuyState(e *fsm.Event) {
-	log.Infof("In state %s --> %s:", tf.FSM.Current(), tf.pairID)
-	//log.Info("In state :", tf.FSM.Current())
-}
-
-func (tf *TradeFsm) CallBackInNotMinute120BuyState(e *fsm.Event) {
-	log.Infof("In state %s --> %s:", tf.FSM.Current(), tf.pairID)
-	//log.Info("In state :", tf.FSM.Current())
-}
-
-func (tf *TradeFsm) CallBackInNotMinute60BuyState(e *fsm.Event) {
-	log.Infof("In state %s --> %s:", tf.FSM.Current(), tf.pairID)
-	//log.Info("In state :", tf.FSM.Current())
-}
-
-func (tf *TradeFsm) CallBackInNotMinute30BuyState(e *fsm.Event) {
-	log.Infof("In state %s --> %s:", tf.FSM.Current(), tf.pairID)
-	//log.Info("In state :", tf.FSM.Current())
-}
-
-func (tf *TradeFsm) CallBackInNotMinute1SellState(e *fsm.Event) {
-	log.Infof("In state %s --> %s:", tf.FSM.Current(), tf.pairID)
-	//log.Info("In state :", tf.FSM.Current())
-}
-
-func (tf *TradeFsm) CallBackInNotMinute120SellState(e *fsm.Event) {
-	log.Infof("In state %s --> %s:", tf.FSM.Current(), tf.pairID)
-	//log.Info("In state :", tf.FSM.Current())
-}
-
-func (tf *TradeFsm) CallBackInNotMinute60SellState(e *fsm.Event) {
-	log.Infof("In state %s --> %s:", tf.FSM.Current(), tf.pairID)
-	//log.Info("In state :", tf.FSM.Current())
-}
-
-func (tf *TradeFsm) CallBackInNotMinute30SellState(e *fsm.Event) {
-	log.Infof("In state %s --> %s:", tf.FSM.Current(), tf.pairID)
-	//log.Info("In state :", tf.FSM.Current())
-}
-
-func (tf *TradeFsm) CallBackInTestHoldState(e *fsm.Event) {
-	log.Infof("In state %s --> %s:", tf.FSM.Current(), tf.pairID)
-	//log.Info("In state :", tf.FSM.Current())
-	time.Sleep(time.Millisecond * 100)
-
-}
-
-func (tf *TradeFsm) CallBackInTestDoSellState(e *fsm.Event) {
-	log.Infof("In state %s --> %s:", tf.FSM.Current(), tf.pairID)
-	//log.Info("In state :", tf.FSM.Current())
-
-	done := func() {
-		if err := tf.FSM.Event(SellCompleteEvent); err != nil {
-			log.Warn(err.Error())
-		}
-	}
-	time.Sleep(time.Millisecond * 100)
-	go done()
-
-}
-
-func (tf *TradeFsm) CallBackInTestDoBuyState(e *fsm.Event) {
-	log.Infof("In state %s --> %s:", tf.FSM.Current(), tf.pairID)
-	//log.Info("In state :", tf.FSM.Current(), tf.pairID)
-
-	done := func() {
-		if err := tf.FSM.Event(TestBuyCompleteEvent); err != nil {
-			log.Warn(err.Error())
-		}
-	}
-	time.Sleep(time.Millisecond * 100)
-	go done()
-
-}
-
-func (tf *TradeFsm) CallBackInTestTradingState(e *fsm.Event) {
-	log.Infof("In state %s --> %s:", tf.FSM.Current(), tf.pairID)
-	//log.Info("In state :", tf.FSM.Current())
-}
-
-func (tf *TradeFsm) CallBackInDoTestDoSellState(e *fsm.Event) {
-	log.Infof("In state %s --> %s:", tf.FSM.Current(), tf.pairID)
-	//log.Info("In state :", tf.FSM.Current())
-}
 func (tf *TradeFsm) CallBackInBuyCompleteState(e *fsm.Event) {
 	log.Infof("In state %s --> %s:", tf.FSM.Current(), tf.pairID)
 	//log.Info("In state :", tf.FSM.Current())
 
 }
-func (tf *TradeFsm) CallBackInTestBuyCompleteState(e *fsm.Event) {
-	log.Infof("In state %s --> %s:", tf.FSM.Current(), tf.pairID)
-	//log.Info("In state :", tf.FSM.Current())
-}
+
 func (tf *TradeFsm) CallBackInSellCompleteState(e *fsm.Event) {
 	log.Infof("In state %s --> %s:", tf.FSM.Current(), tf.pairID)
 	//log.Info("In state :", tf.FSM.Current())
 }
+
 func (tf *TradeFsm) CallBackInTestSellCompleteState(e *fsm.Event) {
 	log.Infof("In state %s --> %s:", tf.FSM.Current(), tf.pairID)
 	//log.Info("In state :", tf.FSM.Current())

@@ -220,7 +220,7 @@ func NewTradeFsm(pairID string) *TradeFsm {
 	tFsm.TradingStates = []string{DoBuyState, DoSellState}
 
 	tFsm.AllStates = make([]string, len(tFsm.BuyStates))
-	copy(tFsm.AllEvents, tFsm.BuyStates)
+	copy(tFsm.AllStates, tFsm.BuyStates)
 	tFsm.AllStates = append(tFsm.AllStates, tFsm.SellStates...)
 	tFsm.AllStates = append(tFsm.AllStates, tFsm.ControlStates...)
 	tFsm.AllStates = append(tFsm.AllStates, tFsm.TradingStates...)
@@ -293,7 +293,7 @@ func NewTradeFsm(pairID string) *TradeFsm {
 				Dst: tFsm.BuyStates[ID]}
 		} else {
 			tFsm.fsmBuyEventsDescriptors[ID] = fsm.EventDesc{Name: eventName,
-				Src: []string{tFsm.BuyEvents[ID-1]},
+				Src: []string{tFsm.BuyStates[ID-1]},
 				Dst: tFsm.BuyStates[ID]}
 		}
 
@@ -311,7 +311,7 @@ func NewTradeFsm(pairID string) *TradeFsm {
 				Dst: tFsm.SellStates[ID]}
 		} else {
 			tFsm.fsmSellEventsDescriptors[ID] = fsm.EventDesc{Name: eventName,
-				Src: []string{tFsm.SellEvents[ID-1]},
+				Src: []string{tFsm.SellStates[ID-1]},
 				Dst: tFsm.SellStates[ID]}
 		}
 
@@ -326,15 +326,15 @@ func NewTradeFsm(pairID string) *TradeFsm {
 		if ID == 0 {
 			dstState = TradingState
 		} else {
-			dstState = tFsm.SellStates[ID-1]
+			dstState = tFsm.BuyStates[ID-1]
 		}
 
 		tFsm.fsmNotBuyEventsDescriptors[ID] = fsm.EventDesc{Name: eventName,
 			Src: []string{},
 			Dst: dstState}
 
-		for i := len(tFsm.NotBuyEvents) - 1; i >= ID; i-- {
-			tFsm.fsmNotBuyEventsDescriptors[ID].Src = append(tFsm.fsmNotBuyEventsDescriptors[ID].Src, tFsm.NotBuyEvents[i])
+		for i := len(tFsm.BuyEvents) - 1; i >= ID; i-- {
+			tFsm.fsmNotBuyEventsDescriptors[ID].Src = append(tFsm.fsmNotBuyEventsDescriptors[ID].Src, tFsm.BuyStates[i])
 		}
 	}
 
@@ -355,64 +355,16 @@ func NewTradeFsm(pairID string) *TradeFsm {
 			Dst: dstState}
 
 		for i := len(tFsm.NotSellEvents) - 1; i >= ID; i-- {
-			tFsm.fsmNotSellEventsDescriptors[ID].Src = append(tFsm.fsmNotSellEventsDescriptors[ID].Src, tFsm.NotSellEvents[i])
+			tFsm.fsmNotSellEventsDescriptors[ID].Src = append(tFsm.fsmNotSellEventsDescriptors[ID].Src, tFsm.SellStates[i])
 		}
 	}
 
-	log.Info("NotBuyEvents Autogen List: ", tFsm.fsmNotBuyEventsDescriptors)
-	log.Info("NotSellEvents Autogen List: ", tFsm.fsmNotSellEventsDescriptors)
-
-	minute120BuyEvent := fsm.EventDesc{Name: Minute120BuyEvent,
-		Src: []string{TradingState},
-		Dst: Minute120BuyState}
-
-	minute60BuyEvent := fsm.EventDesc{Name: Minute60BuyEvent,
-		Src: []string{Minute120BuyState},
-		Dst: Minute60BuyState}
-
-	minute30BuyEvent := fsm.EventDesc{Name: Minute30BuyEvent,
-		Src: []string{Minute60BuyState},
-		Dst: Minute30BuyState}
-
-	notMinute120BuyEvent := fsm.EventDesc{Name: NotMinute120BuyEvent,
-		Src: []string{Minute120BuyState, Minute60BuyState, Minute30BuyState},
-		Dst: TradingState}
-
-	notMinute60BuyEvent := fsm.EventDesc{Name: NotMinute60BuyEvent,
-		Src: []string{Minute60BuyState, Minute30BuyState},
-		Dst: Minute120BuyState}
-
-	notMinute30BuyEvent := fsm.EventDesc{Name: NotMinute30BuyEvent,
-		Src: []string{Minute30BuyState},
-		Dst: Minute60BuyState}
+	log.Debug("NotBuyEvents Autogen List: ", tFsm.fsmNotBuyEventsDescriptors)
+	log.Debug("NotSellEvents Autogen List: ", tFsm.fsmNotSellEventsDescriptors)
 
 	// ----------------------
 	// Selling related events
 	// ----------------------
-
-	minute120SellEvent := fsm.EventDesc{Name: Minute120SellEvent,
-		Src: []string{HoldState},
-		Dst: Minute120SellState}
-
-	minute60SellEvent := fsm.EventDesc{Name: Minute60SellEvent,
-		Src: []string{Minute120SellState},
-		Dst: Minute60SellState}
-
-	minute30SellEvent := fsm.EventDesc{Name: Minute30SellEvent,
-		Src: []string{Minute60SellState},
-		Dst: Minute30SellState}
-
-	notMinute120SellEvent := fsm.EventDesc{Name: NotMinute120SellEvent,
-		Src: []string{Minute120SellState, Minute60SellState, Minute30SellState},
-		Dst: HoldState}
-
-	notMinute60SellEvent := fsm.EventDesc{Name: NotMinute60SellEvent,
-		Src: []string{Minute60SellState, Minute30SellState},
-		Dst: Minute120SellState}
-
-	notMinute30SellEvent := fsm.EventDesc{Name: NotMinute30SellEvent,
-		Src: []string{Minute30SellState},
-		Dst: Minute60SellState}
 
 	doBuyEvent := fsm.EventDesc{Name: DoBuyEvent,
 		Src: []string{Minute30BuyState},
@@ -434,44 +386,11 @@ func NewTradeFsm(pairID string) *TradeFsm {
 	tFsm.stopEvent = stopEvent
 	tFsm.tradeEvent = tradeEvent
 
-	tFsm.minute120BuyEvent = minute120BuyEvent
-	tFsm.minute60BuyEvent = minute60BuyEvent
-	tFsm.minute120SellEvent = minute120SellEvent
-	tFsm.notMinute120BuyEvent = notMinute120BuyEvent
-	tFsm.notMinute120SellEvent = notMinute120SellEvent
-
-	tFsm.notMinute120BuyEvent = notMinute120BuyEvent
-	tFsm.minute60SellEvent = minute60SellEvent
-	tFsm.notMinute60BuyEvent = notMinute60BuyEvent
-	tFsm.minute30BuyEvent = minute30BuyEvent
-	tFsm.notMinute30SellEvent = notMinute30SellEvent
-
-	tFsm.notMinute60BuyEvent = notMinute60BuyEvent
-	tFsm.minute30SellEvent = minute30SellEvent
-	tFsm.notMinute30BuyEvent = notMinute30BuyEvent
-	tFsm.minute60BuyEvent = minute60BuyEvent
-	tFsm.notMinute60SellEvent = notMinute60SellEvent
-
 	tFsm.doBuyEvent = doBuyEvent
 	tFsm.doSellEvent = doSellEvent
 
 	tFsm.buyCompleteEvent = buyCompleteEvent
 	tFsm.sellCompleteEvent = sellCompleteEvent
-
-	//minute60BuyEvent  fsm.EventDesc
-	//minute30BuyEvent  fsm.EventDesc
-
-	//notMinute120BuyEvent fsm.EventDesc
-	//notMinute60BuyEvent  fsm.EventDesc
-	//notMinute300BuyEvent fsm.EventDesc
-
-	//minute120EventEvent fsm.EventDesc
-	//minute60EventEvent  fsm.EventDesc
-	//minute30EventEvent  fsm.EventDesc
-
-	//notMinute120EventEvent fsm.EventDesc
-	//notMinute60EventEvent  fsm.EventDesc
-	//notMinute300EventEvent fsm.EventDesc
 
 	tFsm.shutdownEvent = fsm.EventDesc{Name: ShutdownEvent,
 		Src: []string{StartState,
@@ -487,28 +406,6 @@ func NewTradeFsm(pairID string) *TradeFsm {
 		tFsm.shutdownEvent,
 		tFsm.tradeEvent,
 
-		tFsm.notMinute1BuyEvent,
-		tFsm.minute1SellEvent,
-		tFsm.notMinute1SellEvent,
-
-		tFsm.minute120BuyEvent,
-		tFsm.minute60BuyEvent,
-		tFsm.minute120SellEvent,
-		tFsm.notMinute120BuyEvent,
-		tFsm.notMinute120SellEvent,
-
-		tFsm.notMinute120BuyEvent,
-		tFsm.minute60SellEvent,
-		tFsm.notMinute60BuyEvent,
-		tFsm.minute30BuyEvent,
-		tFsm.notMinute30SellEvent,
-
-		tFsm.notMinute60BuyEvent,
-		tFsm.minute30SellEvent,
-		tFsm.notMinute30BuyEvent,
-		tFsm.minute60BuyEvent,
-		tFsm.notMinute60SellEvent,
-
 		tFsm.doBuyEvent,
 		tFsm.doSellEvent,
 
@@ -516,42 +413,30 @@ func NewTradeFsm(pairID string) *TradeFsm {
 		tFsm.sellCompleteEvent,
 	}
 
+	tFsm.eventsList = append(tFsm.eventsList, tFsm.fsmBuyEventsDescriptors...)
+	tFsm.eventsList = append(tFsm.eventsList, tFsm.fsmSellEventsDescriptors...)
+	tFsm.eventsList = append(tFsm.eventsList, tFsm.fsmNotBuyEventsDescriptors...)
+	tFsm.eventsList = append(tFsm.eventsList, tFsm.fsmNotSellEventsDescriptors...)
 	// -------------------
 	// Callbacks registry
 	// -------------------
 	tFsm.callbacks = fsm.Callbacks{
-		StartState:       tFsm.CallBackInStartState,
-		IdleState:        tFsm.CallBackInIdleState,
-		ShutdownState:    tFsm.CallBackInShutdownState,
-		TradingState:     tFsm.CallBackInTradingState,
-		TestTradingState: tFsm.CallBackInTestTradingState,
+		StartState:    tFsm.CallBackInGenericState,
+		IdleState:     tFsm.CallBackInGenericState,
+		ShutdownState: tFsm.CallBackInGenericState,
+		TradingState:  tFsm.CallBackInGenericState,
 
-		Minute1BuyEvent:   tFsm.CallBackInMinute1BuyState,
-		Minute120BuyEvent: tFsm.CallBackInMinute120BuyState,
-		Minute60BuyEvent:  tFsm.CallBackInMinute60BuyState,
-		Minute30BuyEvent:  tFsm.CallBackInMinute30BuyState,
+		Minute120BuyState: tFsm.CallBackInGenericState,
+		Minute60BuyState:  tFsm.CallBackInGenericState,
+		Minute30BuyState:  tFsm.CallBackInGenericState, //tFsm.CallBackInMinute30BuyState,
 
-		Minute1SellEvent:   tFsm.CallBackInMinute1SellState,
-		Minute120SellEvent: tFsm.CallBackInMinute120SellState,
-		Minute60SellEvent:  tFsm.CallBackInMinute60SellState,
-		Minute30SellEvent:  tFsm.CallBackInMinute30SellState,
-
-		NotMinute1BuyEvent:   tFsm.CallBackInNotMinute1BuyState,
-		NotMinute120BuyEvent: tFsm.CallBackInNotMinute120BuyState,
-		NotMinute60BuyEvent:  tFsm.CallBackInNotMinute60BuyState,
-		NotMinute30BuyEvent:  tFsm.CallBackInNotMinute30BuyState,
-
-		NotMinute1SellEvent:   tFsm.CallBackInNotMinute1SellState,
-		NotMinute120SellEvent: tFsm.CallBackInNotMinute120SellState,
-		NotMinute60SellEvent:  tFsm.CallBackInNotMinute60SellState,
-		NotMinute30SellEvent:  tFsm.CallBackInNotMinute30SellState,
+		Minute120SellState: tFsm.CallBackInGenericState,
+		Minute60SellState:  tFsm.CallBackInGenericState,
+		Minute30SellState:  tFsm.CallBackInGenericState, //tFsm.CallBackInMinute30SellState,
 
 		DoBuyEvent:            tFsm.CallBackInDoBuyState,
-		TestDoBuyEvent:        tFsm.CallBackInTestDoBuyState,
 		DoSellEvent:           tFsm.CallBackInDoSellState,
-		TestDoSellEvent:       tFsm.CallBackInDoTestDoSellState,
 		BuyCompleteEvent:      tFsm.CallBackInBuyCompleteState,
-		TestBuyCompleteEvent:  tFsm.CallBackInTestBuyCompleteState,
 		SellCompleteEvent:     tFsm.CallBackInSellCompleteState,
 		TestSellCompleteEvent: tFsm.CallBackInTestSellCompleteState,
 	}
@@ -575,19 +460,11 @@ func NewTradeFsm(pairID string) *TradeFsm {
 	tFsm.ChanMinute30BuyEvent = make(chan bool)
 
 	tFsm.ChanNotMinute1BuyEvent = make(chan bool)
-	//tFsm.ChanNotMinute120BuyEvent = make(chan bool)
-	//tFsm.ChanNotMinute60BuyEvent = make(chan bool)
-	//tFsm.ChanNotMinute30BuyEvent = make(chan bool)
 
 	tFsm.ChanMinute1SellEvent = make(chan bool)
 	tFsm.ChanMinute120SellEvent = make(chan bool)
 	tFsm.ChanMinute60SellEvent = make(chan bool)
 	tFsm.ChanMinute30SellEvent = make(chan bool)
-
-	//tFsm.ChanNotMinute1SellEvent = make(chan bool)
-	//tFsm.ChanNotMinute120SellEvent = make(chan bool)
-	//tFsm.ChanNotMinute60SellEvent = make(chan bool)
-	//tFsm.ChanNotMinute30SellEvent = make(chan bool)
 
 	tFsm.ChanDoBuyEvent = make(chan bool, 1)
 	tFsm.ChanDoSellEvent = make(chan bool, 1)
