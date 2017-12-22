@@ -112,7 +112,7 @@ func Start() {
 	exchanges := viper.Get("exchange").(map[string]interface{})
 	for key := range exchanges {
 		pairsIntMap := exchanges[key].(map[string]interface{})
-		pairsIntList := pairsIntMap["pairs"].([]interface{})
+		pairsIntList := pairsIntMap["trade_pairs"].([]interface{})
 		trader.pairs = make([]string, len(pairsIntList))
 		for i, pair := range pairsIntList {
 			trader.pairs[i] = pair.(string)

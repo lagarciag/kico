@@ -24,6 +24,10 @@ import (
 */
 func (ms *MovingStats) dmiCalc() {
 
+	// -------------------------------
+	// Obtain current highs and lows
+	// -------------------------------
+
 	currentHigh := ms.currentWindowHistory.High()
 	previousHigh := ms.lastWindowHistory.High()
 	currentLow := ms.currentWindowHistory.Low()
@@ -33,6 +37,11 @@ func (ms *MovingStats) dmiCalc() {
 	ms.cLow = currentLow
 	ms.pHigh = previousHigh
 	ms.pLow = previousLow
+
+	// --------------------------------
+	// Calculate up and down moves
+	// --------------------------------
+
 	upMove := currentHigh - previousHigh
 	downMove := previousLow - currentLow
 
@@ -48,21 +57,23 @@ func (ms *MovingStats) dmiCalc() {
 		ms.minusDM = float64(0)
 	}
 
-	if (downMove < float64(0)) && (upMove < float64(0)) {
-		//log.Warn("DownMove && UpMove < 0 ")
-		if downMove < upMove {
-			ms.plusDM = math.Abs(downMove)
-			ms.minusDM = float64(0)
-		} else {
-			ms.minusDM = math.Abs(upMove)
-			ms.plusDM = float64(0)
-		}
+	if upMove < 0 && downMove < 0 {
+		ms.minusDM = float64(0)
+		ms.plusDM = float64(0)
 	}
+
+	// ---------------------------
+	// Obtain Average True Range
+	// ----------------------------
 
 	pAvrTr := ms.atr.Value()
 	if pAvrTr < 1 {
 		pAvrTr = float64(1)
 	}
+
+	// ----------------------------------------
+	// Calculate plus & minus DM exp averages
+	// ----------------------------------------
 
 	plusDMdiv := ms.plusDM / math.Abs(pAvrTr)
 	minusDMdiv := ms.minusDM / math.Abs(pAvrTr)
@@ -71,6 +82,10 @@ func (ms *MovingStats) dmiCalc() {
 	ms.minusDMAvr.Add(minusDMdiv)
 
 	//log.Debug("DMI  plusDM          %f: %d", ms.plusDM, ms.windowSize)
+
+	// -------------------------------
+	// Caluclate +-Directional Index
+	// -------------------------------
 
 	pmAvr := ms.plusDMAvr.Value() * float64(100)
 	if pmAvr < 0 {
