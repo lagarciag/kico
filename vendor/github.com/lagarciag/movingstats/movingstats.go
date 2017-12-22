@@ -297,8 +297,9 @@ func NewMovingStats(size int, latestIndicators,
 	ms.mu = &sync.Mutex{}
 	ms.windowSize = size
 	ms.atrLimit = float64(size) / atrDivisor
-	prevHigh := prevIndicators.PHigh
-	prevLow := prevIndicators.PLow
+
+	prevHigh := latestIndicators.PHigh
+	prevLow := latestIndicators.PLow
 
 	currHigh := latestIndicators.CHigh
 	currLow := latestIndicators.CLow
