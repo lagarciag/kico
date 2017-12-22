@@ -138,7 +138,23 @@ func Start() {
 		startChan := chansMap["START"]
 		startChan <- true
 
-		tradeChan := chansMap["TRADE"]
+		key := fmt.Sprintf("%s_TRADE_FSM_STATE", pair)
+		state, err := trader.kr.GetString(key)
+
+		if err != nil {
+			log.Error("While Geting string: ", key)
+		}
+
+		var stateMessage string
+
+		if state == HoldState {
+			stateMessage = "HOLD"
+		} else {
+			stateMessage = "TRADE"
+		}
+
+		tradeChan := chansMap[stateMessage]
+
 		tradeChan <- true
 
 		message := `

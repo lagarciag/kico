@@ -49,6 +49,7 @@ const (
 	StopEvent     = "stopEvent"
 	ShutdownEvent = "shutdownEvent"
 	TradeEvent    = "TradeEvent"
+	HoldEvent     = "HoldEvent"
 	Test1Event    = "Test2Event"
 	// --------------
 	// Buy Events
@@ -122,7 +123,7 @@ type TradeFsm struct {
 	stopEvent     fsm.EventDesc
 	shutdownEvent fsm.EventDesc
 	tradeEvent    fsm.EventDesc
-	test1Event    fsm.EventDesc
+	holdEvent     fsm.EventDesc
 
 	minute1BuyEvent   fsm.EventDesc
 	minute120BuyEvent fsm.EventDesc
@@ -163,11 +164,11 @@ type TradeFsm struct {
 	// Fsm Callbacks
 	callbacks fsm.Callbacks
 
-	ChanStartEvent     chan bool
-	ChanStopEvent      chan bool
-	ChanShutdownEvent  chan bool
-	ChanTradeEvent     chan bool
-	testChanTradeEvent chan bool
+	ChanStartEvent    chan bool
+	ChanStopEvent     chan bool
+	ChanShutdownEvent chan bool
+	ChanTradeEvent    chan bool
+	ChanHoldEvent     chan bool
 
 	// --------------
 	// Buy Events
@@ -231,7 +232,7 @@ func NewTradeFsm(pairID string) *TradeFsm {
 	tFsm.NotBuyEvents = []string{NotMinute120BuyEvent, NotMinute60BuyEvent, NotMinute30BuyEvent}
 	tFsm.NotSellEvents = []string{NotMinute120SellEvent, NotMinute60SellEvent, NotMinute30SellEvent}
 
-	tFsm.ControlEvents = []string{StartEvent, StopEvent, TradeEvent, ShutdownEvent}
+	tFsm.ControlEvents = []string{StartEvent, StopEvent, TradeEvent, HoldEvent, ShutdownEvent}
 	tFsm.TradingEvents = []string{DoBuyEvent, DoSellEvent}
 
 	tFsm.AllEvents = make([]string, len(tFsm.BuyEvents))
@@ -278,6 +279,7 @@ func NewTradeFsm(pairID string) *TradeFsm {
 	stopEvent.Src = append(stopEvent.Src, tFsm.SellStates...)
 
 	tradeEvent := fsm.EventDesc{Name: TradeEvent, Src: []string{IdleState}, Dst: TradingState}
+	holdEvent := fsm.EventDesc{Name: HoldEvent, Src: []string{IdleState}, Dst: HoldState}
 
 	// ----------------------
 	// Buying related events
@@ -385,6 +387,7 @@ func NewTradeFsm(pairID string) *TradeFsm {
 	tFsm.startEvent = startEvent
 	tFsm.stopEvent = stopEvent
 	tFsm.tradeEvent = tradeEvent
+	tFsm.holdEvent = holdEvent
 
 	tFsm.doBuyEvent = doBuyEvent
 	tFsm.doSellEvent = doSellEvent
@@ -405,7 +408,7 @@ func NewTradeFsm(pairID string) *TradeFsm {
 		tFsm.stopEvent,
 		tFsm.shutdownEvent,
 		tFsm.tradeEvent,
-
+		tFsm.holdEvent,
 		tFsm.doBuyEvent,
 		tFsm.doSellEvent,
 
@@ -425,6 +428,7 @@ func NewTradeFsm(pairID string) *TradeFsm {
 		IdleState:     tFsm.CallBackInGenericState,
 		ShutdownState: tFsm.CallBackInGenericState,
 		TradingState:  tFsm.CallBackInGenericState,
+		HoldState:     tFsm.CallBackInGenericState,
 
 		Minute120BuyState: tFsm.CallBackInGenericState,
 		Minute60BuyState:  tFsm.CallBackInGenericState,
@@ -449,7 +453,7 @@ func NewTradeFsm(pairID string) *TradeFsm {
 	tFsm.ChanStopEvent = make(chan bool)
 	tFsm.ChanShutdownEvent = make(chan bool)
 	tFsm.ChanTradeEvent = make(chan bool)
-	tFsm.testChanTradeEvent = make(chan bool)
+	tFsm.ChanHoldEvent = make(chan bool)
 
 	// --------------
 	// Buy Events
@@ -496,11 +500,16 @@ func NewTradeFsm(pairID string) *TradeFsm {
 	tFsm.ChanMap[fmt.Sprintf("%s_SELL", tFsm.pairID)] = tFsm.ChanDoSellEvent
 
 	tFsm.ChanMap["TRADE"] = tFsm.ChanTradeEvent
+	tFsm.ChanMap["HOLD"] = tFsm.ChanHoldEvent
 	tFsm.ChanMap["START"] = tFsm.ChanStartEvent
 	tFsm.ChanMap["STOP"] = tFsm.ChanStartEvent
 
 	return tFsm
 
+}
+
+func (tFsm *TradeFsm) Kredis() *kredis.Kredis {
+	return tFsm.kr
 }
 
 func (tFsm *TradeFsm) SignalChannelsMap() map[string]chan bool {
@@ -542,14 +551,30 @@ func (tFsm *TradeFsm) FsmController() {
 		case _ = <-tFsm.ChanShutdownEvent:
 			{
 				log.Infof("tFsm %s Controller Event: %s", tFsm.pairID, ShutdownEvent)
-				if err := tFsm.FSM.Event(ShutdownState); err != nil {
+				if err := tFsm.FSM.Event(ShutdownEvent); err != nil {
 					//log.Warn(err.Error())
 				}
 			}
+
+		case _ = <-tFsm.ChanStopEvent:
+			{
+				log.Infof("tFsm %s Controller Event: %s", tFsm.pairID, ShutdownEvent)
+				if err := tFsm.FSM.Event(StopEvent); err != nil {
+					//log.Warn(err.Error())
+				}
+			}
+
 		case _ = <-tFsm.ChanTradeEvent:
 			{
 				log.Infof("tFsm %s Controller Event: %s", tFsm.pairID, TradeEvent)
 				if err := tFsm.FSM.Event(TradeEvent); err != nil {
+					//log.Warn(err.Error())
+				}
+			}
+		case _ = <-tFsm.ChanHoldEvent:
+			{
+				log.Infof("tFsm %s Controller Event: %s", tFsm.pairID, HoldEvent)
+				if err := tFsm.FSM.Event(HoldEvent); err != nil {
 					//log.Warn(err.Error())
 				}
 			}

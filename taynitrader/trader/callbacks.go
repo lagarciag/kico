@@ -13,6 +13,9 @@ import (
 func (tf *TradeFsm) CallBackInGenericState(e *fsm.Event) {
 	log.Infof("In state %s --> %s:", tf.FSM.Current(), tf.pairID)
 
+	key := fmt.Sprintf("%s_TRADE_FSM_STATE", tf.pairID)
+	tf.kr.Set(key, tf.FSM.Current())
+
 	switch {
 
 	case tf.FSM.Current() == Minute30BuyState:
@@ -50,19 +53,6 @@ func (tf *TradeFsm) CallBackInGenericState(e *fsm.Event) {
 		log.Infof("No action state")
 
 	}
-
-}
-
-func (tf *TradeFsm) CallBackInStartState(e *fsm.Event) {
-	log.Infof("In state %s --> %s:", tf.FSM.Current(), tf.pairID)
-}
-
-func (tf *TradeFsm) CallBackInIdleState(e *fsm.Event) {
-	log.Infof("In state %s --> %s:", tf.FSM.Current(), tf.pairID)
-}
-
-func (tf *TradeFsm) CallBackInHoldState(e *fsm.Event) {
-	log.Infof("In state %s --> %s:", tf.FSM.Current(), tf.pairID)
 
 }
 

@@ -177,6 +177,49 @@ func TestTraderBasicChans(t *testing.T) {
 
 }
 
+func TestTraderInitialStates(t *testing.T) {
+
+	tFsm := trader.NewTradeFsm("TEST")
+
+	go tFsm.FsmController()
+
+	time.Sleep(time.Second)
+
+	tFsm.ChanStartEvent <- true
+	time.Sleep(time.Second)
+
+	if tFsm.FSM.Current() != trader.IdleState {
+		t.Error("Bad state: ", tFsm.FSM.Current())
+	}
+
+	tFsm.ChanTradeEvent <- true
+	time.Sleep(time.Second)
+
+	if tFsm.FSM.Current() != trader.TradingState {
+		t.Error("Bad state: ", tFsm.FSM.Current())
+	}
+
+	time.Sleep(time.Second)
+	checkState(t, tFsm, trader.TradingState)
+
+	time.Sleep(time.Millisecond * 100)
+
+	tFsm.ChanStopEvent <- true
+	time.Sleep(time.Millisecond * 100)
+	checkState(t, tFsm, trader.IdleState)
+
+	tFsm.ChanHoldEvent <- true
+	time.Sleep(time.Millisecond * 100)
+
+	if tFsm.FSM.Current() != trader.HoldState {
+		t.Error("Bad state: ", tFsm.FSM.Current())
+	}
+
+	time.Sleep(time.Second)
+	checkState(t, tFsm, trader.HoldState)
+
+}
+
 func TestTraderBasicChansLoop(t *testing.T) {
 
 	tFsm := trader.NewTradeFsm("TEST")
@@ -421,6 +464,20 @@ func checkState(t *testing.T, tFsm *trader.TradeFsm, state string) {
 	} else {
 		t.Log("State : ", tFsm.FSM.Current())
 	}
+
+	kr := tFsm.Kredis()
+
+	key := fmt.Sprintf("%s_TRADE_FSM_STATE", "TEST")
+	rstate, err := kr.GetString(key)
+
+	if err != nil {
+		log.Error("While Geting string: ", key)
+	}
+
+	if rstate != state {
+		t.Error("Bad state in redis: ", rstate)
+	}
+
 }
 
 func errorNotExpected(t *testing.T, err error) {

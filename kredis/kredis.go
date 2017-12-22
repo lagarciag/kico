@@ -274,6 +274,49 @@ func (kr *Kredis) AddStringLong(exchange, pair string, value interface{}) error 
 	return err
 }
 
+func (kr *Kredis) Set(key string, value string) error {
+
+	kr.mu.Lock()
+	_, err := kr.conn.Do("SET", key, value)
+	kr.mu.Unlock()
+	if err != nil {
+		return err
+	}
+
+	return err
+}
+
+func (kr *Kredis) GetString(key string) (value string, err error) {
+
+	kr.mu.Lock()
+	currentValue, err := kr.connUpdateList.Do("GET", key)
+	kr.mu.Unlock()
+	if err != nil {
+		log.Errorf("UpdateList on GET %s: %s ", key, err.Error())
+	}
+
+	switch v := currentValue.(type) {
+
+	case nil:
+		{
+			err = fmt.Errorf("type is nil")
+			value = "err"
+			if false {
+				log.Info(v)
+			}
+
+		}
+	case []uint8:
+		{
+			valueUint8 := currentValue.([]uint8)
+			value = string(valueUint8)
+		}
+	}
+
+	return value, err
+
+}
+
 func (kr *Kredis) Update(exchange, pair string, value string) error {
 
 	key := fmt.Sprintf("PRICE_%s_%s", exchange, pair)
