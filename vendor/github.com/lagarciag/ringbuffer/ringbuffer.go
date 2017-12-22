@@ -10,11 +10,26 @@ type RingBuffer struct {
 	recordHighLow bool
 	init          bool
 	counter       int
+	initHighSet   bool
+	initLowSet    bool
+	initHighValue float64
+	initLowValue  float64
 }
 
 func NewBuffer(size int, recordHighLow bool, initHigh, initLow float64) *RingBuffer {
 
 	rb := &RingBuffer{}
+
+	if initHigh != 0 {
+		rb.initHighSet = true
+		rb.initHighValue = initHigh
+	}
+
+	if initLow != 0 {
+		rb.initLowSet = true
+		rb.initLowValue = initLow
+	}
+
 	rb.recordHighLow = recordHighLow
 	rb.size = size
 	rb.buff = make([]float64, rb.size)
@@ -40,8 +55,27 @@ func (rb *RingBuffer) PushBuffer(values []float64) {
 	}
 }
 
+func (rb *RingBuffer) SetInitHigh(highValue float64) {
+	rb.initHighValue = highValue
+	rb.initHighSet = true
+	rb.counter = 0
+}
+
+func (rb *RingBuffer) SetInitLow(value float64) {
+	rb.initLowValue = value
+	rb.initLowSet = true
+	rb.counter = 0
+}
+
 //Push adds a new element to the buffer
 func (rb *RingBuffer) Push(value float64) {
+	if value > rb.initHighValue || rb.counter >= rb.size {
+		rb.initHighSet = false
+	}
+
+	if value < rb.initLowValue || rb.counter >= rb.size {
+		rb.initHighSet = false
+	}
 
 	highAtTail := false
 	lowAtTail := false
@@ -153,12 +187,26 @@ func (rb *RingBuffer) Oldest() float64 {
 
 //Tail returns the element at the buffer tail
 func (rb *RingBuffer) High() float64 {
-	return rb.buff[rb.high]
+
+	value := rb.buff[rb.high]
+
+	if rb.initHighSet {
+		value = rb.initHighValue
+	}
+
+	return value
 }
 
 //Head returns the element at the buffer tail
 func (rb *RingBuffer) Low() float64 {
-	return rb.buff[rb.low]
+
+	value := rb.buff[rb.low]
+
+	if rb.initLowSet {
+		value = rb.initLowValue
+	}
+
+	return value
 }
 
 func (rb *RingBuffer) tailNext() int {

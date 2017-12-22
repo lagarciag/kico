@@ -307,9 +307,14 @@ func NewMovingStats(size int, latestIndicators,
 
 	ms.currentWindowHistory.PushBuffer(reverseBuffer(historyIndicatorsInSlices0.LastValue))
 
+	ms.currentWindowHistory.SetInitHigh(currHigh)
+	ms.currentWindowHistory.SetInitLow(currLow)
+
 	ms.lastWindowHistory = ringbuffer.NewBuffer(size, true, prevHigh, prevLow)
 
 	ms.lastWindowHistory.PushBuffer(reverseBuffer(historyIndicatorsInSlices1.LastValue))
+	ms.lastWindowHistory.SetInitHigh(prevHigh)
+	ms.lastWindowHistory.SetInitLow(prevLow)
 
 	ms.sma = movingaverage.New(smallSmaPeriod)
 
