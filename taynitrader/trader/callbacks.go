@@ -164,7 +164,7 @@ func (tf *TradeFsm) CallBackInDoSellState(e *fsm.Event) {
 		default:
 			{
 				twitMessage = `
-		TayniBot (beta tests) says: BUY %s
+		TayniBot (beta tests) says: SELL %s
 		ema : %f
 		sma : %f
 		last: %f

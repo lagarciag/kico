@@ -54,7 +54,7 @@ func Start() {
 	exchanges := viper.Get("exchange").(map[string]interface{})
 	//historyCount := int(viper.Get("history").(int64)) / 100
 
-	historyCount := int(1000)
+	historyCount := int(10000)
 
 	exchangesCount := len(exchanges)
 

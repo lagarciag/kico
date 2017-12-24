@@ -74,7 +74,7 @@ func (rb *RingBuffer) Push(value float64) {
 	}
 
 	if value < rb.initLowValue || rb.counter >= rb.size {
-		rb.initHighSet = false
+		rb.initLowSet = false
 	}
 
 	highAtTail := false

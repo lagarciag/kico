@@ -4,7 +4,7 @@ Description=tayini server
 [Service]
 Type=notify
 ExecStart=/usr/local/bin/tayniserver start 
-WatchdogSec=30s
+WatchdogSec=120s
 Restart=on-failure
 User=galuisal
 
