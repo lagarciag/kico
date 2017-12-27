@@ -1,7 +1,6 @@
 package buysell
 
 import (
-	"os"
 	"strings"
 	"time"
 
@@ -31,7 +30,7 @@ func NewCryptoTrader() *CryptoTrader {
 
 	trader := &CryptoTrader{}
 	trader.kr = kredis.NewKredis(1)
-	trader.kr.Start()
+	//trader.kr.Start()
 	go trader.kr.SubscriberMonitor()
 
 	exchanges := viper.Get("exchange").(map[string]interface{})
@@ -90,8 +89,14 @@ func NewCryptoTrader() *CryptoTrader {
 	return trader
 }
 
-func Start() {
+func Start(ID string) {
 	log.Info("Tayni CryptoTrader starting...")
+
+	// -------------------------------
+	// Start a new instance of kredis
+	// -------------------------------
+	kr := kredis.NewKredis(20000)
+	kr.Start()
 
 	time.Sleep(time.Second)
 
@@ -99,52 +104,45 @@ func Start() {
 
 	trader.startControllers()
 
-	//go trader.monitorSubscriptions()
-
-	time.Sleep(time.Second * 10)
-	os.Exit(0)
+	go trader.MonitorSubscriptions()
 
 	// --------------------------------------
 	// Create pairs list from configuration
 	// --------------------------------------
+	trader.cryptoPairs, trader.pairs = GetPairsLists()
 
-	exchanges := viper.Get("exchange").(map[string]interface{})
-	for key := range exchanges {
-		pairsIntMap := exchanges[key].(map[string]interface{})
-		pairsIntList := pairsIntMap["pairs"].([]interface{})
-		trader.pairs = make([]string, len(pairsIntList))
-		for i, pair := range pairsIntList {
-			trader.pairs[i] = pair.(string)
-		}
-		pairsIntList = pairsIntMap["cryppairs"].([]interface{})
-		trader.cryptoPairs = make([]string, len(pairsIntList))
-		for i, pair := range pairsIntList {
-			trader.cryptoPairs[i] = pair.(string)
-		}
+	_ = NewCryptoSelector(ID, kr, trader.cryptoPairs, trader.pairs, nil)
 
-	}
+	time.Sleep(time.Second * 5)
 
-	log.Info("Pairs to trade in: ", trader.pairs)
-	log.Info("CryptoPairs to trade in: ", trader.pairs)
+	/*
 
-	tFsm := trader.tFsmExchangeMap["CEXIO"]
-	chansMap := tFsm.SignalChannelsMap()
+		log.Info("Pairs to trade in: ", trader.pairs)
+		log.Info("CryptoPairs to trade in: ", trader.pairs)
 
-	startChan := chansMap["START"]
-	startChan <- true
+		tFsm := trader.tFsmExchangeMap["CEXIO"]
+		chansMap := tFsm.SignalChannelsMap()
 
-	tradeChan := chansMap["TRADE"]
-	tradeChan <- true
+		startChan := chansMap["START"]
+		startChan <- Message{StartEvent, true}
 
-	message := `
-		-----------------------------------
-		TRAIDING STARTED FOR PAIR : CRYPTO
-		-----------------------------------`
-	log.Info(message)
+		tradeChan := chansMap["TRADE"]
+		tradeChan <- Message{TradeEvent, true}
+
+		message := `
+			-----------------------------------
+			TRAIDING STARTED FOR PAIR : CRYPTO
+			-----------------------------------`
+		log.Info(message)
+
+	*/
 }
 
-func (trader *CryptoTrader) monitorSubscriptions() {
+func (trader *CryptoTrader) MonitorSubscriptions() {
 	sbus := trader.kr.SubscriberChann()
+
+	log.Info("Monitoring subscriptions...")
+
 	for {
 
 		message := <-sbus
@@ -152,30 +150,7 @@ func (trader *CryptoTrader) monitorSubscriptions() {
 		key := message[0]
 		val := message[1]
 
-		//log.Debugf("Message: %s -> %v ", key, val)
-
-		messageSlice := strings.Split(key, "_")
-
-		exchange := messageSlice[0]
-		//pair := messageSlice[1]
-		tFsm := trader.tFsmExchangeMap[exchange]
-
-		chansMap := tFsm.SignalChannelsMap()
-
-		signalChannel, ok := chansMap[key]
-
-		if ok {
-
-			switch val {
-			case "true":
-				signalChannel <- true
-			case "false":
-				signalChannel <- false
-			}
-
-		} else {
-			//log.Warn("unknown signal: ", key)
-		}
+		log.Debugf("Message: %s -> %v ", key, val)
 
 	}
 
@@ -189,4 +164,24 @@ func (trader *CryptoTrader) cryptoSelector() {
 
 	select {}
 
+}
+
+func GetPairsLists() (cryptoPairs []string, tradePairs []string) {
+
+	exchanges := viper.Get("exchange").(map[string]interface{})
+	for key := range exchanges {
+		pairsIntMap := exchanges[key].(map[string]interface{})
+		pairsIntList := pairsIntMap["trade_pairs"].([]interface{})
+		tradePairs = make([]string, len(pairsIntList))
+		for i, pair := range pairsIntList {
+			tradePairs[i] = pair.(string)
+		}
+		pairsIntList = pairsIntMap["cryppairs"].([]interface{})
+		cryptoPairs = make([]string, len(pairsIntList))
+		for i, pair := range pairsIntList {
+			cryptoPairs[i] = pair.(string)
+		}
+
+	}
+	return cryptoPairs, tradePairs
 }

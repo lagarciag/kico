@@ -7,12 +7,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/lagarciag/tayni/kredis"
+	"github.com/lagarciag/tayni/taynibuysell/buysell"
 	"github.com/lagarciag/tayni/taynitrader/trader"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
+//var kr *kredis.Kredis
+
 func TestMain(m *testing.M) {
+
 	// call flag.Parse() here if TestMain uses flags
 	seed := time.Now().UTC().UnixNano()
 	rand.Seed(seed)
@@ -23,7 +28,7 @@ func TestMain(m *testing.M) {
 	formatter := &log.TextFormatter{}
 	formatter.FullTimestamp = true
 	formatter.ForceColors = true
-	log.SetLevel(log.InfoLevel)
+	log.SetLevel(log.DebugLevel)
 	log.SetFormatter(formatter)
 
 	// ----------------------------
@@ -42,6 +47,49 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
+func TestBasicNew(t *testing.T) {
+	buysell.Start("TEST")
+
+}
+
+func TestCryptoSelectorBasic(t *testing.T) {
+	// -------------------------------
+	// Start a new instance of kredis
+	// -------------------------------
+	kr := kredis.NewKredis(20000)
+	kr.Start()
+
+	crytpPairs, tradePairs := buysell.GetPairsLists()
+
+	testPair := "XRPBTC"
+
+	key := fmt.Sprintf(buysell.CryptoPairString, "TEST", testPair)
+	err := kr.Set(key, "true")
+	if err != nil {
+		t.Error(err.Error())
+	}
+
+	time.Sleep(time.Second)
+
+	_ = buysell.NewCryptoSelector("TEST", kr, crytpPairs, tradePairs, nil)
+
+	time.Sleep(time.Second)
+	buyKey := fmt.Sprintf("TEST_%s_BUY", testPair)
+	if err := kr.Publish(buyKey, "true"); err != nil {
+		t.Errorf("Publishing to: %s -> %s ", buyKey, "true")
+	}
+
+	time.Sleep(time.Second * 5)
+
+	// ------------
+	// Test END
+	// ------------
+
+	_ = kr.Set(key, "false")
+
+}
+
+/*
 func TestTraderController(t *testing.T) {
 
 	tFsm := trader.NewTradeFsm("TEST")
@@ -92,19 +140,6 @@ func TestTraderController(t *testing.T) {
 	time.Sleep(time.Second)
 	checkState(t, tFsm, trader.TradingState)
 
-	/*
-		fromTradingTo30MinBuy(t, tFsm)
-
-		err = tFsm.FSM.Event(buysell.NotMinute120BuyEvent)
-		errorNotExpected(t, err)
-		checkState(t, tFsm, buysell.TradingState)
-
-		fromTradingTo30MinBuy(t, tFsm)
-
-		err = tFsm.FSM.Event(buysell.DoBuyEvent)
-		errorNotExpected(t, err)
-		checkState(t, tFsm, buysell.DoBuyState)
-	*/
 }
 
 func TestTraderBasicChans(t *testing.T) {
@@ -389,53 +424,6 @@ func TestTraderBasic(t *testing.T) {
 
 }
 
-func TestTrader1Min(t *testing.T) {
-
-	tFsm := trader.NewTradeFsm("TEST")
-
-	if err := tFsm.FSM.Event(trader.StartEvent); err != nil {
-		t.Log(err.Error())
-	}
-
-	if tFsm.FSM.Current() != trader.IdleState {
-		t.Error("Bad current state: ", tFsm.FSM.Current())
-	} else {
-		t.Log("State : ", tFsm.FSM.Current())
-	}
-
-	if err := tFsm.FSM.Event(trader.Test1Event); err != nil {
-		t.Log(err.Error())
-	}
-
-	if tFsm.FSM.Current() != trader.TestTradingState {
-		t.Error("Bad current state: ", tFsm.FSM.Current())
-	} else {
-		t.Log("State : ", tFsm.FSM.Current())
-	}
-
-	err := tFsm.FSM.Event(trader.Minute1BuyEvent)
-	errorNotExpected(t, err)
-
-	err = tFsm.FSM.Event(trader.NotMinute1BuyEvent)
-	errorNotExpected(t, err)
-
-	err = tFsm.FSM.Event(trader.Minute60BuyEvent)
-	errorExpected(t, err)
-
-	checkState(t, tFsm, trader.TestTradingState)
-
-	err = tFsm.FSM.Event(trader.Minute1BuyEvent)
-	time.Sleep(time.Second)
-	errorNotExpected(t, err)
-	checkState(t, tFsm, trader.TestHoldState)
-
-	/*
-		err = tFsm.FSM.Event(buysell.Minute1SellEvent)
-		errorNotExpected(t, err)
-		checkState(t, tFsm, buysell.Minute1SellState)
-	*/
-}
-
 func fromTradingTo30MinBuy(t *testing.T, tFsm *trader.TradeFsm) {
 
 	err := tFsm.FSM.Event(trader.Minute120BuyEvent)
@@ -454,6 +442,7 @@ func fromTradingTo30MinBuy(t *testing.T, tFsm *trader.TradeFsm) {
 	checkState(t, tFsm, trader.HoldState)
 
 }
+*/
 
 func checkState(t *testing.T, tFsm *trader.TradeFsm, state string) {
 	t.Log(state, tFsm.FSM.Current())

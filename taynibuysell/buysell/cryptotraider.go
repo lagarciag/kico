@@ -28,7 +28,7 @@ const (
 	BuyZECState = "BuyZECState"
 	BuyBGDState = "BuyBGDState"
 	BuyETHState = "BuyETHState"
-
+	BuyXRPState = "BuyXRPState"
 	// -------------
 	//   Sell Sates
 	// -------------
@@ -38,20 +38,7 @@ const (
 	SellZECState = "SellZECState"
 	SellBGDState = "SellBGDState"
 	SellETHState = "SellETHState"
-
-/*
-	BuyBTCState
-	BuyBCHState
-	BuyZECState
-	BuyBGDState
-	BuyETHState
-
-	SellBTCState
-	SellBCHState
-	SellZECState
-	SellBGDState
-	SellETHState
-*/
+	SellXRPState = "SellXRPState"
 )
 
 const (
@@ -59,7 +46,6 @@ const (
 	StopEvent     = "stopEvent"
 	ShutdownEvent = "shutdownEvent"
 	TradeEvent    = "TradeEvent"
-	Test1Event    = "Test2Event"
 
 	DoBuyEvent        = "DoBuyEvent"
 	DoSellEvent       = "DoSellEvent"
@@ -84,19 +70,18 @@ const (
 )
 
 type Message struct {
-	Event string
+	Event  string
 	Signal bool
 }
-
 
 type CryptoSelectorFsm struct {
 	tc *twitter.TwitterClient
 	kr *kredis.Kredis
 	To string
 
-	eventsStringList    []string
-	statesStringList    []string
-	redisMessagesBuyMap map[string]string
+	eventsStringList     []string
+	statesStringList     []string
+	redisMessagesBuyMap  map[string]string
 	redisMessagesSellMap map[string]string
 
 	FSM *fsm.FSM
@@ -130,32 +115,32 @@ type CryptoSelectorFsm struct {
 	// Fsm Callbacks
 	callbacks fsm.Callbacks
 
-	ChanStartEvent     chan bool
-	ChanStopEvent      chan bool
-	ChanShutdownEvent  chan bool
-	ChanTradeEvent     chan bool
-	testChanTradeEvent chan bool
+	ChanStartEvent     chan Message
+	ChanStopEvent      chan Message
+	ChanShutdownEvent  chan Message
+	ChanTradeEvent     chan Message
+	testChanTradeEvent chan Message
 
 	// --------------
 	// Buy Events
 	// --------------
 
-	ChanDoBuyEvent        chan bool
-	ChanDoSellEvent       chan bool
-	ChanBuyCompleteEvent  chan bool
-	ChanSellCompleteEvent chan bool
+	ChanDoBuyEvent        chan Message
+	ChanDoSellEvent       chan Message
+	ChanBuyCompleteEvent  chan Message
+	ChanSellCompleteEvent chan Message
 
-	ChanBuyBTCEvent chan bool
-	ChanBuyBCHEvent chan bool
-	ChanBuyZECEvent chan bool
-	ChanBuyBGDEvent chan bool
-	ChanBuyETHEvent chan bool
+	ChanBuyBTCEvent chan Message
+	ChanBuyBCHEvent chan Message
+	ChanBuyZECEvent chan Message
+	ChanBuyBGDEvent chan Message
+	ChanBuyETHEvent chan Message
 
-	ChanSellBTCEvent      chan bool
-	ChanSellBCHEvent      chan bool
-	ChanSellZECEvent      chan bool
-	ChanSellBGDEvent      chan bool
-	ChanSellETHEvent      chan bool
+	ChanSellBTCEvent      chan Message
+	ChanSellBCHEvent      chan Message
+	ChanSellZECEvent      chan Message
+	ChanSellBGDEvent      chan Message
+	ChanSellETHEvent      chan Message
 	ChanMessageMap        map[string]chan Message
 	ChanMapForRedisEvents map[string]chan Message
 }
@@ -363,39 +348,38 @@ func NewCryptoTradeFsm(pairList []string) *CryptoSelectorFsm {
 	// ------------------
 
 	/*
-	tFsm.ChanStartEvent = make(chan bool)
-	tFsm.ChanStopEvent = make(chan bool)
-	tFsm.ChanShutdownEvent = make(chan bool)
-	tFsm.ChanTradeEvent = make(chan bool)
-	tFsm.testChanTradeEvent = make(chan bool)
+		tFsm.ChanStartEvent = make(chan bool)
+		tFsm.ChanStopEvent = make(chan bool)
+		tFsm.ChanShutdownEvent = make(chan bool)
+		tFsm.ChanTradeEvent = make(chan bool)
+		tFsm.testChanTradeEvent = make(chan bool)
 
-	// --------------
-	// Buy Events
-	// --------------
+		// --------------
+		// Buy Events
+		// --------------
 
-	tFsm.ChanDoBuyEvent = make(chan bool, 1)
-	tFsm.ChanDoSellEvent = make(chan bool, 1)
-	tFsm.ChanBuyCompleteEvent = make(chan bool, 1)
-	tFsm.ChanSellCompleteEvent = make(chan bool, 1)
+		tFsm.ChanDoBuyEvent = make(chan bool, 1)
+		tFsm.ChanDoSellEvent = make(chan bool, 1)
+		tFsm.ChanBuyCompleteEvent = make(chan bool, 1)
+		tFsm.ChanSellCompleteEvent = make(chan bool, 1)
 
-	tFsm.ChanBuyBTCEvent = make(chan bool, 1)
-	tFsm.ChanBuyBCHEvent = make(chan bool, 1)
-	tFsm.ChanBuyZECEvent = make(chan bool, 1)
-	tFsm.ChanBuyBGDEvent = make(chan bool, 1)
-	tFsm.ChanBuyETHEvent = make(chan bool, 1)
+		tFsm.ChanBuyBTCEvent = make(chan bool, 1)
+		tFsm.ChanBuyBCHEvent = make(chan bool, 1)
+		tFsm.ChanBuyZECEvent = make(chan bool, 1)
+		tFsm.ChanBuyBGDEvent = make(chan bool, 1)
+		tFsm.ChanBuyETHEvent = make(chan bool, 1)
 
-	tFsm.ChanSellBTCEvent = make(chan bool, 1)
-	tFsm.ChanSellBCHEvent = make(chan bool, 1)
-	tFsm.ChanSellZECEvent = make(chan bool, 1)
-	tFsm.ChanSellBGDEvent = make(chan bool, 1)
-	tFsm.ChanSellETHEvent = make(chan bool, 1)
-    */
+		tFsm.ChanSellBTCEvent = make(chan bool, 1)
+		tFsm.ChanSellBCHEvent = make(chan bool, 1)
+		tFsm.ChanSellZECEvent = make(chan bool, 1)
+		tFsm.ChanSellBGDEvent = make(chan bool, 1)
+		tFsm.ChanSellETHEvent = make(chan bool, 1)
+	*/
 	tFsm.ChanMessageMap = make(map[string]chan Message)
 
-	for _, event  := range tFsm.eventsStringList {
+	for _, event := range tFsm.eventsStringList {
 		tFsm.ChanMessageMap[event] = make(chan Message)
 	}
-
 
 	// -------------
 	// FSM creation
@@ -406,268 +390,33 @@ func NewCryptoTradeFsm(pairList []string) *CryptoSelectorFsm {
 
 	tFsm.ChanMapForRedisEvents = make(map[string]chan Message)
 
+	/*
+		tFsm.ChanMapForRedisEvents[fmt.Sprintf("CEXIO_BTC_BUY")] = tFsm.ChanBuyBTCEvent
+		tFsm.ChanMapForRedisEvents[fmt.Sprintf("CEXIO_BCH_BUY")] = tFsm.ChanBuyBTCEvent
+		tFsm.ChanMapForRedisEvents[fmt.Sprintf("CEXIO_ZEC_BUY")] = tFsm.ChanBuyBTCEvent
+		tFsm.ChanMapForRedisEvents[fmt.Sprintf("CEXIO_BGD_BUY")] = tFsm.ChanBuyBTCEvent
+		tFsm.ChanMapForRedisEvents[fmt.Sprintf("CEXIO_ETH_BUY")] = tFsm.ChanBuyBTCEvent
+		tFsm.ChanMapForRedisEvents[fmt.Sprintf("CEXIO_DASH_BUY")] = tFsm.ChanBuyBTCEvent
 
-
-
-	tFsm.ChanMapForRedisEvents[fmt.Sprintf("CEXIO_BTC_BUY")] = tFsm.ChanBuyBTCEvent
-	tFsm.ChanMapForRedisEvents[fmt.Sprintf("CEXIO_BCH_BUY")] = tFsm.ChanBuyBTCEvent
-	tFsm.ChanMapForRedisEvents[fmt.Sprintf("CEXIO_ZEC_BUY")] = tFsm.ChanBuyBTCEvent
-	tFsm.ChanMapForRedisEvents[fmt.Sprintf("CEXIO_BGD_BUY")] = tFsm.ChanBuyBTCEvent
-	tFsm.ChanMapForRedisEvents[fmt.Sprintf("CEXIO_ETH_BUY")] = tFsm.ChanBuyBTCEvent
-	tFsm.ChanMapForRedisEvents[fmt.Sprintf("CEXIO_DASH_BUY")] = tFsm.ChanBuyBTCEvent
-
-	tFsm.ChanMapForRedisEvents[fmt.Sprintf("CEXIO_BTC_SELL")] = tFsm.ChanSellBTCEvent
-	tFsm.ChanMapForRedisEvents[fmt.Sprintf("CEXIO_BCH_SELL")] = tFsm.ChanSellBTCEvent
-	tFsm.ChanMapForRedisEvents[fmt.Sprintf("CEXIO_ZEC_SELL")] = tFsm.ChanSellBTCEvent
-	tFsm.ChanMapForRedisEvents[fmt.Sprintf("CEXIO_BGD_SELL")] = tFsm.ChanSellBTCEvent
-	tFsm.ChanMapForRedisEvents[fmt.Sprintf("CEXIO_ETH_SELL")] = tFsm.ChanSellBTCEvent
-	tFsm.ChanMapForRedisEvents[fmt.Sprintf("CEXIO_DASH_SELL")] = tFsm.ChanSellBTCEvent
-
+		tFsm.ChanMapForRedisEvents[fmt.Sprintf("CEXIO_BTC_SELL")] = tFsm.ChanSellBTCEvent
+		tFsm.ChanMapForRedisEvents[fmt.Sprintf("CEXIO_BCH_SELL")] = tFsm.ChanSellBTCEvent
+		tFsm.ChanMapForRedisEvents[fmt.Sprintf("CEXIO_ZEC_SELL")] = tFsm.ChanSellBTCEvent
+		tFsm.ChanMapForRedisEvents[fmt.Sprintf("CEXIO_BGD_SELL")] = tFsm.ChanSellBTCEvent
+		tFsm.ChanMapForRedisEvents[fmt.Sprintf("CEXIO_ETH_SELL")] = tFsm.ChanSellBTCEvent
+		tFsm.ChanMapForRedisEvents[fmt.Sprintf("CEXIO_DASH_SELL")] = tFsm.ChanSellBTCEvent
+	*/
 	tFsm.ChanMapForRedisEvents["TRADE"] = tFsm.ChanTradeEvent
 	tFsm.ChanMapForRedisEvents["START"] = tFsm.ChanStartEvent
 	tFsm.ChanMapForRedisEvents["STOP"] = tFsm.ChanStartEvent
-
-
 
 	return tFsm
 
 }
 
-func (tFsm *CryptoSelectorFsm) SignalChannelsMap() map[string]chan bool {
+func (tFsm *CryptoSelectorFsm) SignalChannelsMap() map[string]chan Message {
 	return tFsm.ChanMapForRedisEvents
 }
 
 func (tFsm *CryptoSelectorFsm) FsmController() {
 
-	logMap := make(map[string]bool)
-
-	for _ , event := range tFsm.eventsStringList {
-		logMap[event] = false
-	}
-
-		log.Info("Starting tFsm controlloer for : ", tFsm.pairID)
-
-		for {
-			select {
-
-			case _ = <-tFsm.ChanStartEvent:
-				{
-					log.Infof("tFsm %s Controller Event: %s", tFsm.pairID, StartEvent)
-					if err := tFsm.FSM.Event(StartEvent); err != nil {
-						//log.Warn(err.Error())
-					}
-
-				}
-			case _ = <-tFsm.ChanShutdownEvent:
-				{
-					log.Infof("tFsm %s Controller Event: %s", tFsm.pairID, ShutdownEvent)
-					if err := tFsm.FSM.Event(ShutdownState); err != nil {
-						//log.Warn(err.Error())
-					}
-				}
-			case _ = <-tFsm.ChanTradeEvent:
-				{
-					log.Infof("tFsm %s Controller Event: %s", tFsm.pairID, TradeEvent)
-					if err := tFsm.FSM.Event(TradeEvent); err != nil {
-						//log.Warn(err.Error())
-					}
-				}
-
-			case ev := <-tFsm.ChanMinute120BuyEvent:
-				{
-
-					doLog := false
-					if logMap[Minute120BuyEvent] != ev {
-						doLog = true
-					}
-					logMap[Minute120BuyEvent] = ev
-
-					if ev {
-						if doLog {
-							log.Infof("tFsm %s Controller Event: %s , %v", tFsm.pairID, Minute120BuyEvent, ev)
-						}
-						if err := tFsm.FSM.Event(Minute120BuyEvent); err != nil {
-							//log.Warn(err.Error())
-						}
-					} else {
-						if doLog {
-							log.Infof("tFsm %s Controller Event: %s , %v", tFsm.pairID, NotMinute120BuyEvent, ev)
-						}
-						if err := tFsm.FSM.Event(NotMinute120BuyEvent); err != nil {
-							//log.Warn(err.Error())
-						}
-					}
-
-				}
-			case ev := <-tFsm.ChanMinute60BuyEvent:
-				{
-
-					doLog := false
-					if logMap[Minute60BuyEvent] != ev {
-						doLog = true
-					}
-					logMap[Minute60BuyEvent] = ev
-
-					if ev {
-						if doLog {
-							log.Infof("tFsm %s Controller Event: %s, %v", tFsm.pairID, Minute60BuyEvent, ev)
-						}
-
-						if err := tFsm.FSM.Event(Minute60BuyEvent); err != nil {
-							//log.Warn(err.Error())
-						}
-					} else {
-						if doLog {
-							log.Infof("tFsm %s Controller Event: %s, %v", tFsm.pairID, NotMinute60BuyEvent, ev)
-						}
-
-						if err := tFsm.FSM.Event(NotMinute60BuyEvent); err != nil {
-							//log.Warn(err.Error())
-						}
-					}
-
-				}
-			case ev := <-tFsm.ChanMinute30BuyEvent:
-				{
-					doLog := false
-					if logMap[Minute30BuyEvent] != ev {
-						doLog = true
-					}
-					logMap[Minute30BuyEvent] = ev
-
-					if ev {
-						if doLog {
-							log.Infof("tFsm %s Controller Event: %s, %v", tFsm.pairID, Minute30BuyEvent, ev)
-						}
-
-						if err := tFsm.FSM.Event(Minute30BuyEvent); err != nil {
-							//log.Warn(err.Error())
-						}
-					} else {
-						if doLog {
-							log.Infof("tFsm %s Controller Event: %s, %v", tFsm.pairID, NotMinute30BuyEvent, ev)
-						}
-
-						if err := tFsm.FSM.Event(NotMinute30BuyEvent); err != nil {
-							//log.Warn(err.Error())
-						}
-					}
-				}
-
-			case ev := <-tFsm.ChanMinute120SellEvent:
-				{
-
-					doLog := false
-					if logMap[Minute120SellEvent] != ev {
-						doLog = true
-					}
-					logMap[Minute120SellEvent] = ev
-
-					if ev {
-						if doLog {
-							log.Infof("tFsm %s Controller Event: %s, %v", tFsm.pairID, Minute120SellEvent, ev)
-						}
-
-						if err := tFsm.FSM.Event(Minute120SellEvent); err != nil {
-							//log.Warn(err.Error())
-						}
-					} else {
-						if doLog {
-							log.Infof("tFsm %s Controller Event: %s, %v", tFsm.pairID, NotMinute120SellEvent, ev)
-						}
-						if err := tFsm.FSM.Event(NotMinute120SellEvent); err != nil {
-							//log.Warn(err.Error())
-						}
-					}
-
-				}
-			case ev := <-tFsm.ChanMinute60SellEvent:
-				{
-
-					doLog := false
-					if logMap[Minute60SellEvent] != ev {
-						doLog = true
-					}
-					logMap[Minute60SellEvent] = ev
-
-					if ev {
-						if doLog {
-							log.Infof("tFsm %s Controller Event: %s, %v", tFsm.pairID, Minute60SellEvent, ev)
-						}
-
-						if err := tFsm.FSM.Event(Minute60SellEvent); err != nil {
-							//log.Warn(err.Error())
-						}
-
-					} else {
-						if doLog {
-							log.Infof("tFsm %s Controller Event: %s, %v", tFsm.pairID, NotMinute60SellEvent, ev)
-						}
-
-						if err := tFsm.FSM.Event(NotMinute60SellEvent); err != nil {
-							//log.Warn(err.Error())
-						}
-
-					}
-				}
-			case ev := <-tFsm.ChanMinute30SellEvent:
-				{
-
-					doLog := false
-					if logMap[Minute30SellEvent] != ev {
-						doLog = true
-					}
-					logMap[Minute30SellEvent] = ev
-
-					if ev {
-						if doLog {
-							log.Infof("tFsm %s Controller Event: %s, %v", tFsm.pairID, Minute30SellEvent, ev)
-						}
-
-						if err := tFsm.FSM.Event(Minute30SellEvent); err != nil {
-							//log.Warn(err.Error())
-						}
-					} else {
-						if doLog {
-							log.Infof("tFsm %s Controller Event: %s, %v", tFsm.pairID, NotMinute30SellEvent, ev)
-						}
-						if err := tFsm.FSM.Event(NotMinute30SellEvent); err != nil {
-							//log.Warn(err.Error())
-						}
-					}
-				}
-
-			case _ = <-tFsm.ChanDoBuyEvent:
-				{
-					log.Infof("tFsm %s Controller Event: %s, %v", tFsm.pairID, DoBuyEvent)
-					if err := tFsm.FSM.Event(DoBuyEvent); err != nil {
-						//log.Warn(err.Error())
-					}
-				}
-			case _ = <-tFsm.ChanDoSellEvent:
-				{
-					log.Infof("tFsm %s Controller Event: %s", tFsm.pairID, DoSellEvent)
-					if err := tFsm.FSM.Event(DoSellEvent); err != nil {
-						//log.Warn(err.Error())
-					}
-				}
-			case _ = <-tFsm.ChanBuyCompleteEvent:
-				{
-					log.Infof("tFsm %s Controller Event: %s", tFsm.pairID, BuyCompleteEvent)
-					if err := tFsm.FSM.Event(BuyCompleteEvent); err != nil {
-						//log.Warn(err.Error())
-					}
-				}
-			case _ = <-tFsm.ChanSellCompleteEvent:
-				{
-					log.Infof("tFsm %s Controller Event: %s", tFsm.pairID, SellCompleteEvent)
-					if err := tFsm.FSM.Event(SellCompleteEvent); err != nil {
-						//log.Warn(err.Error())
-					}
-				}
-
-			}
-			//time.Sleep(time.Second)
-		}
-	*/
 }
