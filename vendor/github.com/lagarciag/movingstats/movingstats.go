@@ -344,8 +344,8 @@ func NewMovingStats(size int, latestIndicators,
 
 	tmpAtr := ms.atr.Value()
 
-	if tmpAtr < 1 {
-		tmpAtr = 2
+	if tmpAtr < 0.0000001 {
+		tmpAtr = 0.0000001
 	}
 
 	ms.plusDMAvr = multiema.NewMultiEma(atrPeriod, size, historyIndicatorsInSlices0.PDM[0]/tmpAtr)
