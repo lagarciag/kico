@@ -57,7 +57,7 @@ type requestGetBalance struct {
 
 type ResponseTicker struct {
 	E    string             `json:"e"`
-	Data responseTickerData `json:"data"`
+	Data ResponseTickerData `json:"data"`
 	OK   string             `json:"ok"`
 	Oid  string             `json:"oid"`
 }
@@ -75,7 +75,7 @@ type ResponseTickerSubData struct {
 	Price   string `json:"price"`
 }
 
-type responseTickerData struct {
+type ResponseTickerData struct {
 	Bid   float64  `json:"bid"`
 	Ask   float64  `json:"ask"`
 	Pair  []string `json:"pair"`
@@ -103,10 +103,15 @@ type responseOrderBookSubscribe struct {
 
 type responseGetBalance struct {
 	E    string      `json:"e"`
-	Data balanceData `json:"data"`
+	Data BalanceData `json:"data"`
 	Time int64       `json:"time"`
 	Oid  string      `json:"oid"`
 	OK   string      `json:"ok"`
+}
+
+type BalanceData struct {
+	Balance  map[string]string `json:"balance"`
+	OBalance map[string]string `json:"o_balance"`
 }
 
 type balanceData struct {
@@ -177,4 +182,74 @@ type responseOrderBookUnsubscribe struct {
 	Data orderBookPair `json:"data"`
 	OK   string        `json:"ok"`
 	Oid  string        `json:"oid"`
+}
+
+type RequestOrderPlacement struct {
+	E    string                    `json:"e"`
+	Data RequestOrderPlacementData `json:"data"`
+	Oid  string                    `json:"oid"`
+}
+
+type ResponseOrderPlacement struct {
+	E    string                     `json:"e"`
+	Data ResponseOrderPlacementData `json:"data"`
+	Oid  string                     `json:"oid"`
+	OK   string                     `json:"ok"`
+}
+
+type RequestOrderPlacementData struct {
+	Pair   []string `json:"pair"`
+	Amount string   `json:"amount"`
+	Price  string   `json:"price"`
+	Type   string   `json:"type"`
+}
+
+type ResponseOrderPlacementData struct {
+	Complete bool    `json:"complete"`
+	ID       string  `json:"id"`
+	Time     float64 `json:"time"`
+	Pending  string  `json:"pending"`
+	Amount   string  `json:"amount"`
+	Type     string  `json:"type"`
+	Price    string  `json:"price"`
+	Error    string  `json:"error"`
+}
+
+type RequestOpenOrders struct {
+	E    string                `json:"e"`
+	Data RequestOpenOrdersData `json:"data"`
+	Oid  string                `json:"oid"`
+}
+
+type RequestOpenOrdersData struct {
+	Pair []string `json:"pair"`
+}
+
+type ResponseOpenOrders struct {
+	E    string                   `json:"e"`
+	Data []ResponseOpenOrdersData `json:"data"`
+	Oid  string                   `json:"oid"`
+	OK   string                   `json:"ok"`
+}
+
+type ResponseOpenOrdersData struct {
+	ID      string `json:"id"`
+	Time    string `json:"time"`
+	Pending string `json:"pending"`
+	Amount  string `json:"amount"`
+	Type    string `json:"type"`
+	Price   string `json:"price"`
+}
+
+type ResponseOrder struct {
+	E    string            `json:"e"`
+	Data ResponseOrderData `json:"data"`
+}
+
+type ResponseOrderData struct {
+	ID       string            `json:"id"`
+	Remains  string            `json:"remains"`
+	Fremains string            `json:"fremains"`
+	Cancel   bool              `json:"cancel"`
+	Pair     map[string]string `json:"pair"`
 }

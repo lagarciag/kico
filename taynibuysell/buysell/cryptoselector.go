@@ -2,6 +2,7 @@ package buysell
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/lagarciag/tayni/kredis"
 	log "github.com/sirupsen/logrus"
@@ -10,6 +11,7 @@ import (
 const (
 	TradePairString  = "%s_CRYPTO_SELECTOR_TRPAIR_STATE_%s"
 	CryptoPairString = "%s_CRYPTO_SELECTOR_CRPAIR_STATE_%s"
+	TradeMessageKey  = "%s_%s_BUY"
 )
 
 type CryptoSelector struct {
@@ -26,8 +28,7 @@ type CryptoSelector struct {
 func NewCryptoSelector(ID string,
 	kr *kredis.Kredis,
 	cryptoPairs []string,
-	tradePairs []string,
-	tradesMessage chan Message) *CryptoSelector {
+	tradePairs []string) *CryptoSelector {
 
 	log.Debug("Creating crypto selector")
 	cs := &CryptoSelector{}
@@ -38,7 +39,7 @@ func NewCryptoSelector(ID string,
 	cs.ID = ID
 	cs.cryptoPairs = cryptoPairs
 	cs.tradePairs = tradePairs
-	cs.tradeMessage = tradesMessage
+	cs.tradeMessage = make(chan Message)
 
 	// --------------------
 	// Initialize buy maps
@@ -53,6 +54,7 @@ func NewCryptoSelector(ID string,
 			log.Error(err.Error())
 		}
 		if state == "true" {
+			log.Debugf("Setting initial state for %s , to %v, key: %s", pair, state, key)
 			cs.cryptoPairsBuyMap[pair] = true
 		} else {
 			cs.cryptoPairsBuyMap[pair] = false
@@ -101,12 +103,12 @@ func NewCryptoSelector(ID string,
 	log.Debug("TradePairsBuyMap: ", cs.tradePairsBuyMap)
 
 	for pair, _ := range cs.cryptoPairsBuyMap {
-		buyKey := fmt.Sprintf("%s_%s_BUY", cs.ID, pair)
+		buyKey := fmt.Sprintf(TradeMessageKey, cs.ID, pair)
 		cs.kr.SubscribeLookup(buyKey)
 	}
 
 	for pair, _ := range cs.tradePairsBuyMap {
-		buyKey := fmt.Sprintf("%s_%s_BUY", cs.ID, pair)
+		buyKey := fmt.Sprintf(TradeMessageKey, cs.ID, pair)
 		cs.kr.SubscribeLookup(buyKey)
 	}
 
@@ -117,14 +119,47 @@ func NewCryptoSelector(ID string,
 
 func (cs *CryptoSelector) Select() {
 
-	/*
-		for message := range cs.tradeMessage {
+	for message := range cs.tradeMessage {
 
-			pair := strings.Split(message.Event, "_")
-			buy := message.Signal
+		eventMessage := strings.Split(message.Event, "_")
+		pair := eventMessage[1]
+		buy := message.Signal
 
+		log.Infof("Select pair: %s -> %v", pair, buy)
+
+		if _, is := cs.cryptoPairsBuyMap[pair]; is {
+
+			singleTicker := strings.Split(pair, "BTC")
+			usdTicker := fmt.Sprintf("%sUSD", singleTicker[0])
+
+			if buy {
+
+				log.Debugf("Select BTC out due to %s in", pair)
+
+				log.Debugf("Select crypto %s in, ticker: %s", pair, usdTicker)
+
+				cs.tradePairsBuyMap[usdTicker] = true
+
+			} else {
+
+				log.Debugf("Select crypto %s out", pair)
+				log.Debugf("Select crypto %s out, ticker: %s", pair, usdTicker)
+				cs.tradePairsBuyMap[usdTicker] = false
+				cs.tradePairsBuyMap["BTCUSD"] = true
+
+				for pair, buy := range cs.tradePairsBuyMap {
+					if buy && (pair != "BTCUSD") {
+						cs.tradePairsBuyMap["BTCUSD"] = false
+					}
+				}
+
+			}
+
+		} else {
+			log.Debug("Not cryptopair message")
 		}
-	*/
+
+	}
 
 }
 
@@ -143,5 +178,36 @@ func (cs *CryptoSelector) MonitorSubscriptions() {
 
 		log.Debugf("Message: %s -> %v ", key, val)
 
+		messToSend := Message{}
+
+		messToSend.Event = key
+
+		if val == "true" {
+			messToSend.Signal = true
+		} else {
+			messToSend.Signal = false
+		}
+
+		cs.tradeMessage <- messToSend
 	}
+}
+
+func (cs *CryptoSelector) ShowStatus() {
+
+	printList := "\n"
+	for key, value := range cs.tradePairsBuyMap {
+		printList = printList + fmt.Sprintf("%s -> %v\n", key, value)
+
+	}
+
+	log.Infof("\nTrade Pairs: \n %s", printList)
+
+	printList2 := "\n"
+	for key, value := range cs.cryptoPairsBuyMap {
+		printList2 = printList2 + fmt.Sprintf("%s -> %v\n", key, value)
+
+	}
+
+	log.Infof("Crypto Pairs: \n %s", printList2)
+
 }

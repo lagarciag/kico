@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/coreos/go-systemd/daemon"
-	"github.com/lagarciag/tayni/exchange/cexio"
+	"github.com/lagarciag/tayni/exchange/cexiopublic"
 	"github.com/lagarciag/tayni/kredis"
 	"github.com/lagarciag/tayni/taynibot"
 	log "github.com/sirupsen/logrus"
@@ -40,7 +40,7 @@ func Start(shutdownCond *sync.Cond) {
 		// ---------------------------
 		// Set up bot configuration
 		// -------------------------
-		botConfig := cexio.CollectorConfig{}
+		botConfig := cexiopublic.CollectorConfig{}
 		botConfig.HistoryCount = historyCount
 		botConfig.SampleRate = sampleRate
 		pairsIntMap := exchanges[key].(map[string]interface{})
@@ -59,10 +59,10 @@ func Start(shutdownCond *sync.Cond) {
 
 		//TODO: kredis instance should be externally specified for the bot
 
-		exchangesBots[key] = cexio.NewBot(botConfig, kr)
+		exchangesBots[key] = cexiopublic.NewBot(botConfig, kr)
 
 		//TODO: This should run in it's own independent routine.
-		exchangesBots[key].PublicStart()
+		exchangesBots[key].Start()
 
 	}
 

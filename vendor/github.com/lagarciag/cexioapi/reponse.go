@@ -14,7 +14,7 @@ func (a *API) ResponseCollector() {
 	a.stopDataCollector = false
 
 	resp := &responseAction{}
-	log.Info("running response collector...")
+	log.Debug("responseCollector | running ")
 	for a.stopDataCollector == false {
 		a.cond.L.Lock()
 		for !a.connected {
@@ -31,7 +31,7 @@ func (a *API) ResponseCollector() {
 			a.cond.L.Lock()
 			a.connected = false
 			a.cond.L.Unlock()
-			log.Debug("ResponseCollector shutting down due to error: ", localErr.Error())
+			log.Debug("responseCollector | shutting down due to error: ", localErr.Error())
 			return
 		}
 
@@ -43,7 +43,7 @@ func (a *API) ResponseCollector() {
 			localErr := fmt.Errorf("%s, Unmarshal :%s", funcName, err.Error())
 			log.Error(localErr)
 			a.errorChan <- localErr
-			log.Debug("ResponseCollector shutting down: ", localErr.Error())
+			log.Debug("responseCollector | shutting down: ", localErr.Error())
 			return
 		}
 
@@ -54,7 +54,7 @@ func (a *API) ResponseCollector() {
 		case "ping":
 			{
 				a.HeartBeat <- true
-				log.Info("PONG!!")
+				log.Debug("responseCollector | PONG!!")
 				go a.pong()
 				continue
 			}
@@ -70,13 +70,13 @@ func (a *API) ResponseCollector() {
 		case "connected":
 			{
 				a.HeartBeat <- true
-				log.Debug("Conection message detected...")
+				log.Debug("responseCollector | conection message detected...")
 				sub, err := a.subscriber(subscriberIdentifier)
 				if err != nil {
 					log.Infof("No response handler for message: %s", string(msg))
 					continue // don't know how to handle message so just skip it
 				}
-				log.Debug("Connection response: ", string(msg))
+				log.Debug("responseCollector | connection response: ", string(msg))
 				sub <- msg
 			}
 
@@ -94,7 +94,7 @@ func (a *API) ResponseCollector() {
 
 				sub, err := a.subscriber(subscriberIdentifier)
 				if err != nil {
-					log.Error("No response handler for message: %s", string(msg))
+					log.Errorf("No response handler for message: %s", string(msg))
 					continue // don't know how to handle message so just skip it
 				}
 
@@ -124,6 +124,7 @@ func (a *API) ResponseCollector() {
 			}
 		case "get-balance":
 			{
+				name := "get-balance"
 				a.HeartBeat <- true
 				ob := &responseGetBalance{}
 				err = json.Unmarshal(msg, ob)
@@ -136,7 +137,7 @@ func (a *API) ResponseCollector() {
 
 				sub, err := a.subscriber(subscriberIdentifier)
 				if err != nil {
-					log.Infof("No response handler for message: %s", string(msg))
+					log.Errorf("responseCollector | %s: No response handler for message: %s", name, string(msg))
 					continue // don't know how to handle message so just skip it
 				}
 
@@ -144,11 +145,112 @@ func (a *API) ResponseCollector() {
 				continue
 			}
 
+		case "place-order":
+			{
+				a.HeartBeat <- true
+				resp := &ResponseOrderPlacement{}
+				err = json.Unmarshal(msg, resp)
+				if err != nil {
+					localError := fmt.Errorf("%s Error: Conn Unmarshal: %s", "place-order", err.Error())
+					a.errorChan <- localError
+					continue
+				} else {
+
+					// ----------------------------
+					// Check for errors, if error
+					// reported send error back
+					// ----------------------------
+					if resp.OK != "ok" {
+						repErr := fmt.Errorf("PlaceOrder Error reported: %s", resp.Data.Error)
+						log.Error(repErr)
+					}
+
+					orderID := resp.Oid
+					subscriberIdentifier = fmt.Sprintf("place-order-%s", orderID)
+
+					log.Debug("ResponseCollector: checking subscriber: ", subscriberIdentifier)
+
+					sub, err := a.subscriber(subscriberIdentifier)
+					if err != nil {
+						log.Infof("No response handler for message: %s", string(msg))
+						continue // don't know how to handle message so just skip it
+					}
+					sub <- msg
+					continue
+				}
+
+			}
+
+		case "open-orders":
+			{
+				name := "open-orders"
+				a.HeartBeat <- true
+				resp := &ResponseOpenOrders{}
+				err = json.Unmarshal(msg, resp)
+				if err != nil {
+					localError := fmt.Errorf("%s Error: Conn Unmarshal: %s", name, err.Error())
+					a.errorChan <- localError
+					continue
+				} else {
+
+					// ----------------------------
+					// Check for errors, if error
+					// reported send error back
+					// ----------------------------
+					if resp.OK != "ok" {
+						repErr := fmt.Errorf("%s Error reported: %s", name, "unspecified")
+						log.Error(repErr)
+					}
+
+					transactionID := resp.Oid
+					subscriberIdentifier = fmt.Sprintf("%s-%s", name, transactionID)
+
+					log.Debug("ResponseCollector: checking subscriber: ", subscriberIdentifier)
+
+					sub, err := a.subscriber(subscriberIdentifier)
+					if err != nil {
+						log.Infof("No response handler for message: %s", string(msg))
+						continue // don't know how to handle message so just skip it
+					}
+					sub <- msg
+					continue
+				}
+
+			}
+
+		case "order":
+			{
+				name := "order"
+				a.HeartBeat <- true
+				ob := &ResponseOrder{}
+				err = json.Unmarshal(msg, ob)
+				if err != nil {
+					log.Errorf("responseCollector | %s : %s:  %s\n", name, err, string(msg))
+					continue
+				}
+
+				orderData := ob.Data
+				orderID := orderData.ID
+				a.ordersMapMutex.Lock()
+				a.OrdersMap[orderID] = orderData
+				a.ordersMapMutex.Unlock()
+
+				subscriberIdentifier = fmt.Sprintf("%s-%s", name, orderID)
+
+				sub, err := a.subscriber(subscriberIdentifier)
+				if err != nil {
+					log.Errorf("responseCollector | %s: No response handler for message: %s", name, string(msg))
+					continue // don't know how to handle message so just skip it
+				}
+				sub <- ob.Data
+				continue
+			}
+
 		default:
 			a.HeartBeat <- true
 			sub, err := a.subscriber(subscriberIdentifier)
 			if err != nil {
-				log.Errorf("No response handler for message: %s", string(msg))
+				log.Errorf("responseCollector | No response handler for message: %s", string(msg))
 				continue // don't know how to handle message so just skip it
 			}
 			//log.Debug("Sending response:", string(msg))
@@ -173,7 +275,7 @@ func (a *API) connectionResponse(expectAuth bool) {
 		}
 		err = json.Unmarshal(msg, resp)
 		if err != nil {
-			log.Fatal("connection start error response: %s\n  Data: %s\n", err, string(msg))
+			log.Fatalf("connection start error response: %s\n  Data: %s\n", err, string(msg))
 		}
 
 		subscriberIdentifier := resp.Action

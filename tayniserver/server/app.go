@@ -12,7 +12,7 @@ import (
 
 	"net/http"
 
-	"github.com/lagarciag/tayni/taynibot"
+	//"github.com/lagarciag/tayni/taynibot"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
@@ -47,9 +47,9 @@ func Serve() {
 	viper.SetConfigName("tayni")        // name of config file (without extension)
 	viper.AddConfigPath("/etc/tayni/")  // path to look for the config file in
 	viper.AddConfigPath("$HOME/.tayni") // call multiple times to add many search paths
-	viper.AddConfigPath(".")           // optionally look for config in the working directory
-	err = viper.ReadInConfig()         // Find and read the config file
-	if err != nil {                    // Handle errors reading the config file
+	viper.AddConfigPath(".")            // optionally look for config in the working directory
+	err = viper.ReadInConfig()          // Find and read the config file
+	if err != nil {                     // Handle errors reading the config file
 		panic(fmt.Errorf("Fatal error config file: %s \n", err))
 	}
 
@@ -91,7 +91,6 @@ func Serve() {
 			log.Info("Failed to log to file, using default stderr")
 		}
 	}
-
 
 	pprof.StopCPUProfile()
 

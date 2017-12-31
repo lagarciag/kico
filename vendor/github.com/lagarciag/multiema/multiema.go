@@ -32,7 +32,7 @@ func NewMultiEma(periods int, periodSize int, initValue float64) (mema *MultiEma
 	//mema.emaSlice = make([]ewma.MovingAverage, periodSize)
 	//mema.intEma = ewma.NewMovingAverage(float64(30))
 	mema.emaSlice = make([]SimpleEma, periodSize)
-	mema.intEma = NewSema(30, initValue)
+	mema.intEma = NewSema(periods, initValue)
 
 	//logrus.Info("NewEma Init: ", len(initValues), len(mema.emaSlice))
 

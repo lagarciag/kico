@@ -604,7 +604,7 @@ func (kr *Kredis) SubscriberMonitor() {
 			log.Infof("Subscribed to data updates for : %s", v.Channel)
 			//fmt.Printf("%s: %s %d\n", v.Channel, v.Kind, v.Count)
 		case error:
-			log.Error("SubscriberMonitor Error")
+			log.Error("SubscriberMonitor Error: ", v.Error())
 			return
 		}
 	}

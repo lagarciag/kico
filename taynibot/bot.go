@@ -1,10 +1,9 @@
 package taynibot
 
 type Automata interface {
-	Start()
 	Stop()
-	PublicStart()
-	PublicRestart()
+	Start()
+	Restart()
 	UpdatePriceLists(exchange, pair string)
 	MonitorPrice()
 }

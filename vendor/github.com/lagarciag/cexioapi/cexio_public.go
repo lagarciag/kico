@@ -4,33 +4,57 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
+	"strconv"
 	"sync"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/gorilla/websocket"
 	log "github.com/sirupsen/logrus"
 )
 
 //NewAPI returns new API instance with default settings
-func NewAPI(key string, secret string) (*API, chan error) {
+func NewAPI(key string, secret string, auth bool) (*API, chan error) {
 
 	api := &API{
-		Key:                 key,
-		Secret:              secret,
-		Dialer:              websocket.DefaultDialer,
+
+		Dialer: websocket.DefaultDialer,
+
+		// ------------------------
+		// Authentication control
+		// ------------------------
+		Key:          key,
+		Secret:       secret,
+		authenticate: auth,
+
 		responseSubscribers: map[string]chan subscriberType{},
 		subscriberMutex:     sync.Mutex{},
 		orderBookHandlers:   map[string]chan bool{},
 		stopDataCollector:   false,
 		ReceiveDone:         make(chan bool),
-		authenticate:        true,
-		reconAtempts:        100,
+
+		reconAtempts: 100,
+
+		// --------------------------
+		// ordersChan Api related vars
+		// --------------------------
+		ordersMapMutex:       &sync.Mutex{},
+		orderSubscriberMutex: &sync.Mutex{},
+		ordersChan:           make(chan ResponseOrderData, 100),
+		OrdersMap:            make(map[string]ResponseOrderData),
 	}
 	locker := &sync.Mutex{}
+
+	// --------------
+	// Watchdog vars
+	// --------------
 	api.cond = sync.NewCond(locker)
 	api.HeartMonitor = make(chan bool)
 	api.HeartBeat = make(chan bool, 100)
+
+	// --------------
+	// Error control
+	// --------------
 	api.errorChan = make(chan error, 1)
 
 	return api, api.errorChan
@@ -38,24 +62,8 @@ func NewAPI(key string, secret string) (*API, chan error) {
 
 //NewAPI returns new API instance with default settings
 func NewPublicAPI() (*API, chan error) {
-
-	api := &API{
-		Dialer:              websocket.DefaultDialer,
-		responseSubscribers: map[string]chan subscriberType{},
-		subscriberMutex:     sync.Mutex{},
-		orderBookHandlers:   map[string]chan bool{},
-		stopDataCollector:   false,
-		ReceiveDone:         make(chan bool),
-		authenticate:        false,
-		reconAtempts:        100,
-	}
-	locker := &sync.Mutex{}
-	api.cond = sync.NewCond(locker)
-	api.HeartMonitor = make(chan bool)
-	api.HeartBeat = make(chan bool, 100)
-	api.errorChan = make(chan error, 1)
-
-	return api, api.errorChan
+	api, errChan := NewAPI("", "", false)
+	return api, errChan
 }
 
 //Connect connects to cex.io websocket API server
@@ -79,11 +87,12 @@ func (a *API) Connect() error {
 	// Attempt to connect to websocket
 	// --------------------------------
 	errCounter := a.reconAtempts
+	log.Debug("Dialing websocket...")
 	conn, _, err := a.Dialer.Dial(apiURL, nil)
 	for err != nil {
+		log.Error("Error connecting, reattempting connection...", err.Error())
 		conn, _, err = a.Dialer.Dial(apiURL, nil)
 		if err == nil {
-
 			break
 		}
 		errCounter--
@@ -107,6 +116,8 @@ func (a *API) Connect() error {
 		err = a.auth()
 		if err != nil {
 			return err
+		} else {
+			go a.openOrdersSubscribe()
 		}
 	}
 	log.Info("Connection complete!!")
@@ -148,27 +159,6 @@ func (a *API) Close(ID string) error {
 
 //Ticker send ticker request
 func (a *API) Ticker(cCode1 string, cCode2 string) (*ResponseTicker, error) {
-	//Signal that the transaction was completed
-	msgDone := false
-	timeOut := make(chan bool)
-
-	// --------------------------------------------------------------
-	// Time closure to monitor that the transaction gets completed
-	// --------------------------------------------------------------
-	timer := func() {
-		startTime := time.Now()
-		for !msgDone {
-			elapsed := time.Since(startTime)
-			if elapsed > time.Second*10 {
-				msgDone = true
-				timeOut <- true
-				log.Warn("Ticker msg timeout !!")
-
-			}
-			time.Sleep(time.Second)
-		}
-	}
-
 	a.cond.L.Lock()
 	for !a.connected {
 		a.cond.Wait()
@@ -185,54 +175,12 @@ func (a *API) Ticker(cCode1 string, cCode2 string) (*ResponseTicker, error) {
 		Oid:  fmt.Sprintf("%d_%s:%s", timestamp, cCode1, cCode2),
 	}
 
-	/*
-		err := a.conn.SetReadDeadline(time.Now().Add(10 * time.Second))
-
-		if err != nil {
-			myError, _ := fmt.Printf("read deadline:%s\n ", err.Error())
-			log.Error(myError)
-		}
-
-		err = a.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
-
-		if err != nil {
-			myError, _ := fmt.Printf("write deadline:%s\n ", err.Error())
-			log.Error(myError)
-		}
-	*/
-
-	// ------------
-	// Start Timer
-	// -----------
-	go timer()
-
 	err := a.conn.WriteJSON(msg)
 	if err != nil {
 		log.Error("Ticker WriteJSON:", err.Error())
-		msgDone = true
-		doRestart := false
-
-		if strings.Contains(err.Error(), "use of closed connection") {
-			doRestart = true
-			log.Warn("use of closed connection detected, handling error")
-		}
-
-		if doRestart {
-			log.Warn("restarting conn...")
-			a.reconnect()
-			log.Warn("Rewriting jsjon...")
-			err := a.conn.WriteJSON(msg)
-			if err != nil {
-				log.Fatal("Could not WriteJSON after reconnection...")
-			}
-			log.Warn("Rewriting jsjon...done!!")
-		} else {
-			//a.mu.Unlock()
-			log.Error("Con WriteJson: ", err.Error())
-			a.cond.L.Unlock()
-			return nil, err
-		}
-
+		log.Error("Con WriteJson: ", err.Error())
+		a.cond.L.Unlock()
+		return nil, err
 	}
 	a.cond.L.Unlock()
 	/*
@@ -243,36 +191,22 @@ func (a *API) Ticker(cCode1 string, cCode2 string) (*ResponseTicker, error) {
 		}
 	*/
 
-	// wait for response from sever
-	select {
+	respFromServer := <-sub
 
-	case resp := <-sub:
-		{
-			respMsg := resp.([]byte)
-			msgDone = true
-			resp := &ResponseTicker{}
-			err = json.Unmarshal(respMsg, resp)
-			if err != nil {
-				log.Error("Ticker Error: Conn Unmarshal: ", err.Error())
-				return nil, err
-			}
-
-			// check if authentication was successfull
-			if resp.OK != "ok" {
-				log.Error("Ticker Error: Conn Authentication: ", resp.Data)
-				return nil, errors.New(resp.Data.Error)
-			}
-			return resp, nil
-		}
-	case _ = <-timeOut:
-		{
-			msgDone = true
-			log.Error("Ticker Time out")
-			return &ResponseTicker{}, nil
-		}
-
+	respMsg := respFromServer.([]byte)
+	resp := &ResponseTicker{}
+	err = json.Unmarshal(respMsg, resp)
+	if err != nil {
+		log.Error("Ticker Error: Conn Unmarshal: ", err.Error())
+		return nil, err
 	}
 
+	// check if authentication was successfull
+	if resp.OK != "ok" {
+		log.Error("Ticker Error: Conn Authentication: ", resp.Data)
+		return nil, errors.New(resp.Data.Error)
+	}
+	return resp, nil
 }
 
 //Ticker send ticker request
@@ -296,17 +230,10 @@ func (a *API) GetBalance() (*responseGetBalance, error) {
 		a.cond.L.Unlock()
 		return nil, err
 	}
-
+	// -----------------------------
 	// wait for response from sever
+	//------------------------------
 	resp := (<-sub).(*responseGetBalance)
-
-	/*
-		resp := &responseGetBalance{}
-		err = json.Unmarshal(respMsg, resp)
-		if err != nil {
-			return nil, err
-		}
-	*/
 
 	// check if authentication was successfull
 	if resp.OK != "ok" {
@@ -315,6 +242,203 @@ func (a *API) GetBalance() (*responseGetBalance, error) {
 	}
 	a.cond.L.Unlock()
 	return resp, nil
+}
+
+func (a *API) PlaceOrder(cCode1 string, cCode2 string, amount, price float64, theType string) (*ResponseOrderPlacement, error) {
+	a.cond.L.Lock()
+	for !a.connected {
+		a.cond.Wait()
+	}
+
+	// ------------------
+	// Create order ID
+	// ------------------
+	timestamp := time.Now().UnixNano()
+	transactionID := fmt.Sprintf("%d_%s:%s", timestamp, cCode1, cCode2)
+
+	// -------------------------------
+	// Create Action & subscriberID
+	// -------------------------------
+	action := "place-order"
+	subscriberIdentifier := fmt.Sprintf("place-order-%s", transactionID)
+	log.Debug("PlaceOrder: subscriberIdentifier -> ", subscriberIdentifier)
+
+	sub := a.subscribe(subscriberIdentifier)
+	defer a.unsubscribe(subscriberIdentifier)
+
+	amountString := strconv.FormatFloat(amount, 'f', 4, 64)
+	priceString := strconv.FormatFloat(price, 'f', 4, 64)
+
+	log.Debug("cexioapi: amountString:", amountString)
+	log.Debug("cexioapi: priceString:", priceString)
+
+	dataRequest := RequestOrderPlacementData{
+		Pair:   []string{cCode1, cCode2},
+		Amount: amountString,
+		Price:  priceString,
+		Type:   theType,
+	}
+
+	msg := RequestOrderPlacement{
+		E:    action,
+		Data: dataRequest,
+		Oid:  transactionID,
+	}
+
+	log.Debug("PlaceOrder request: ", msg)
+
+	resp := &ResponseOrderPlacement{}
+
+	err := a.conn.WriteJSON(msg)
+	if err != nil {
+		log.Error("PlaceOrder WriteJSON:", err.Error())
+		log.Error("Con WriteJson: ", err.Error())
+		a.cond.L.Unlock()
+		return nil, err
+	}
+	a.cond.L.Unlock()
+
+	respFromServer := <-sub
+
+	respMsg := respFromServer.([]byte)
+
+	// ---------------------------
+	// Unmarshal and check result
+	// ---------------------------
+	err = json.Unmarshal(respMsg, resp)
+	if err != nil {
+		log.Error("PlaceOrder Error: Conn Unmarshal: ", err.Error())
+		return resp, err
+	}
+
+	// ----------------------------
+	// Check for errors, if error
+	// reported send error back
+	// ----------------------------
+	if resp.OK != "ok" {
+		repErr := fmt.Errorf("PlaceOrder Error reported: %s", resp.Data.Error)
+		log.Error(repErr)
+		return resp, repErr
+	}
+
+	// ----------------
+	// Store result
+	// ----------------
+	a.ordersMapMutex.Lock()
+	respData := ResponseOrderData{}
+	respData.ID = resp.Data.ID
+
+	if resp.Data.Complete {
+		respData.Remains = "0"
+		respData.Fremains = "0"
+	}
+	respData.Cancel = false
+
+	orderID := resp.Data.ID
+	a.OrdersMap[orderID] = respData
+	a.ordersMapMutex.Unlock()
+
+	// ----------------------------
+	// Check if order placement is
+	// complete, if not wait
+	// ----------------------------
+	if resp.Data.Complete {
+		return resp, nil
+	} else {
+
+		message := `
+	ID       :%s
+	Time     :%f
+	Pending  :%s
+	Amount   :%s
+	Type     :%s
+	Price    :%s
+`
+		dmessage := fmt.Sprintf(message,
+			resp.Data.ID,
+			resp.Data.Time,
+			resp.Data.Pending,
+			resp.Data.Amount,
+			resp.Data.Type,
+			resp.Data.Price)
+		log.Debug("Order Placement not complete:", dmessage)
+	}
+
+	return resp, nil
+}
+
+func (a *API) GetOpenOrdersList(cCode1 string, cCode2 string) ([]ResponseOpenOrdersData, error) {
+	a.cond.L.Lock()
+	for !a.connected {
+		a.cond.Wait()
+	}
+
+	// ------------------
+	// Create order ID
+	// ------------------
+	timestamp := time.Now().UnixNano()
+	transactionID := fmt.Sprintf("%d_%s:%s", timestamp, cCode1, cCode2)
+
+	// -------------------------------
+	// Create Action & subscriberID
+	// -------------------------------
+	action := "open-orders"
+	subscriberIdentifier := fmt.Sprintf("%s-%s", action, transactionID)
+	log.Debugf("%s: subscriberIdentifier -> %s", action, subscriberIdentifier)
+
+	sub := a.subscribe(subscriberIdentifier)
+	defer a.unsubscribe(subscriberIdentifier)
+
+	dataRequest := RequestOpenOrdersData{
+		Pair: []string{cCode1, cCode2},
+	}
+
+	msg := RequestOpenOrders{
+		E:    action,
+		Data: dataRequest,
+		Oid:  transactionID,
+	}
+
+	log.Debugf("%s: %s", transactionID, spew.Sdump(msg))
+
+	resp := &ResponseOpenOrders{}
+
+	err := a.conn.WriteJSON(msg)
+	if err != nil {
+		log.Error("PlaceOrder WriteJSON:", err.Error())
+		log.Error("Con WriteJson: ", err.Error())
+		a.cond.L.Unlock()
+		return nil, err
+	}
+	a.cond.L.Unlock()
+
+	respFromServer := <-sub
+
+	respMsg := respFromServer.([]byte)
+
+	// ---------------------------
+	// Unmarshal and check result
+	// ---------------------------
+	err = json.Unmarshal(respMsg, resp)
+	if err != nil {
+		log.Error("PlaceOrder Error: Conn Unmarshal: ", err.Error())
+		return nil, err
+	}
+
+	// ----------------------------
+	// Check for errors, if error
+	// reported send error back
+	// ----------------------------
+	if resp.OK != "ok" {
+		repErr := fmt.Errorf("%s error reported: unknown", action)
+		log.Error(repErr)
+		return nil, repErr
+	}
+
+	log.Debugf("%s response: ", spew.Sdump(resp))
+
+	return resp.Data, nil
+
 }
 
 //OrderBookSubscribe subscribes to order book updates.
@@ -411,4 +535,152 @@ func (a *API) TickerSub(tickerChan chan ResponseTickerSubData) {
 
 		}
 	}
+}
+
+func (a *API) WaitOrderComplete(orderID string) (completeOrCanceled bool, err error) {
+	const name = "waitOrderComplete"
+	a.cond.L.Lock()
+	for !a.connected {
+		a.cond.Wait()
+	}
+
+	// --------------
+	// Create Action
+	// --------------
+	action := "order"
+	subscriptionID := fmt.Sprintf("%s-%s", action, orderID)
+	sub := a.subscribe(subscriptionID)
+	defer a.unsubscribe(subscriptionID)
+	a.cond.L.Unlock()
+
+	// -------------------------------------
+	// Check if order is already processed
+	// -------------------------------------
+	a.ordersMapMutex.Lock()
+	respData, ok := a.OrdersMap[orderID]
+
+	if ok {
+		// ---------------------------------------
+		// Order was process, checking for status
+		// ---------------------------------------
+		if respData.Cancel {
+			a.ordersMapMutex.Unlock()
+			return false, nil
+		} else {
+			remains, err := strconv.ParseFloat(respData.Remains, 64)
+			if err != nil {
+				a.ordersMapMutex.Unlock()
+				return completeOrCanceled, err
+			}
+			if remains == 0 {
+				// -------------------
+				// Order is complete
+				// -------------------
+				a.ordersMapMutex.Unlock()
+				return true, nil
+			}
+
+			log.Debugf("%s: Order is incomplete, now will wait", name)
+		}
+	}
+	a.ordersMapMutex.Unlock()
+
+	// -------------------------------
+	// Wait for order to complete
+	// -------------------------------
+	for {
+		select {
+
+		case _ = <-a.done:
+			{
+
+				//TODO: Cancel order here
+				return false, nil
+			}
+
+		case respFromServer := <-sub:
+			{
+				respData = respFromServer.(ResponseOrderData)
+
+				// ---------------------------------------
+				// Order was process, checking for status
+				// ---------------------------------------
+				if respData.Cancel {
+					return false, nil
+				} else {
+					remains, err := strconv.ParseFloat(respData.Remains, 64)
+					if err != nil {
+						return completeOrCanceled, err
+					}
+					if remains == 0 {
+						// -------------------
+						// Order is complete
+						// -------------------
+						return true, nil
+					}
+
+					log.Debugf("%s: Order is incomplete, now will wait", name)
+				}
+
+			}
+
+		}
+	}
+	return completeOrCanceled, err
+}
+
+// ---------------
+// Private
+// ---------------
+
+func (a *API) openOrdersSubscribe() {
+
+	a.cond.L.Lock()
+	for !a.connected {
+		a.cond.Wait()
+	}
+
+	// --------------
+	// Create Action
+	// --------------
+	action := "order"
+
+	sub := a.subscribe(action)
+	defer a.unsubscribe(action)
+	a.cond.L.Unlock()
+
+	for {
+
+		select {
+
+		case respFromServer := <-sub:
+
+			resp := ResponseOrder{}
+			respMsg := respFromServer.([]byte)
+
+			// ---------------------------
+			// Unmarshal and check result
+			// ---------------------------
+			err := json.Unmarshal(respMsg, resp)
+			if err != nil {
+				log.Error("PlaceOrder Error: Conn Unmarshal: ", err.Error())
+			}
+
+			a.ordersMapMutex.Lock()
+			orderID := resp.Data.ID
+			a.OrdersMap[orderID] = resp.Data
+			a.ordersMapMutex.Unlock()
+			a.ordersChan <- resp.Data
+
+			log.Debugf("%s response: ", spew.Sdump(resp))
+
+		case <-a.done:
+			{
+				return
+			}
+
+		}
+
+	}
+
 }

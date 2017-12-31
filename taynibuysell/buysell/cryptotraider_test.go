@@ -59,33 +59,67 @@ func TestCryptoSelectorBasic(t *testing.T) {
 	kr := kredis.NewKredis(20000)
 	kr.Start()
 
+	// ---------------------
+	// Get list of pairs
+	// ---------------------
 	crytpPairs, tradePairs := buysell.GetPairsLists()
 
-	testPair := "XRPBTC"
+	// ---------------------
+	// Set initial state of
+	// crypto pairs
+	// ---------------------
 
-	key := fmt.Sprintf(buysell.CryptoPairString, "TEST", testPair)
+	for _, pair := range crytpPairs {
+
+		key := fmt.Sprintf(buysell.CryptoPairString, "TEST", pair)
+		err := kr.Set(key, "false")
+		if err != nil {
+			t.Error(err.Error())
+		}
+	}
+
+	// ----------------------------
+	// Select a random crypto pair
+	// and set initial state
+	// ----------------------------
+	testPairInitial := crytpPairs[rand.Intn(len(crytpPairs))]
+	log.Info("Test pair initial selected: ", testPairInitial)
+
+	key := fmt.Sprintf(buysell.CryptoPairString, "TEST", testPairInitial)
 	err := kr.Set(key, "true")
 	if err != nil {
 		t.Error(err.Error())
 	}
-
 	time.Sleep(time.Second)
 
-	_ = buysell.NewCryptoSelector("TEST", kr, crytpPairs, tradePairs, nil)
+	// ------------------------------
+	// Create crypto selector object
+	// ------------------------------
+	cs := buysell.NewCryptoSelector("TEST", kr, crytpPairs, tradePairs)
+	cs.ShowStatus()
 
+	// ----------------
+	// Start selector
+	// ----------------
+	go cs.Select()
 	time.Sleep(time.Second)
-	buyKey := fmt.Sprintf("TEST_%s_BUY", testPair)
+
+	testPair := crytpPairs[rand.Intn(len(crytpPairs))]
+	log.Info("Test pair selected: ", testPair)
+	buyKey := fmt.Sprintf("TEST_%s_BUY", testPairInitial)
 	if err := kr.Publish(buyKey, "true"); err != nil {
 		t.Errorf("Publishing to: %s -> %s ", buyKey, "true")
 	}
 
-	time.Sleep(time.Second * 5)
+	time.Sleep(time.Second * 2)
+
+	cs.ShowStatus()
 
 	// ------------
 	// Test END
 	// ------------
 
-	_ = kr.Set(key, "false")
+	//_ = kr.Set(key, "false")
 
 }
 

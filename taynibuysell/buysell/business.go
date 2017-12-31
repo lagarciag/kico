@@ -111,7 +111,7 @@ func Start(ID string) {
 	// --------------------------------------
 	trader.cryptoPairs, trader.pairs = GetPairsLists()
 
-	_ = NewCryptoSelector(ID, kr, trader.cryptoPairs, trader.pairs, nil)
+	_ = NewCryptoSelector(ID, kr, trader.cryptoPairs, trader.pairs)
 
 	time.Sleep(time.Second * 5)
 

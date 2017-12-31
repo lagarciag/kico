@@ -28,13 +28,20 @@ type API struct {
 	orderBookHandlers   map[string]chan bool
 	stopDataCollector   bool
 
+	// ordersChan Channel
+	ordersChan chan ResponseOrderData
+
+	ordersMapMutex           *sync.Mutex
+	orderSubscriberMutex     *sync.Mutex
+	OrdersMap                map[string]ResponseOrderData
+	orderResponseSubscribers map[string]chan ResponseOrderData
+
 	//Dialer used to connect to WebSocket server
 	Dialer *websocket.Dialer
 
 	//ReceiveDone send message after Close() initiation
 	ReceiveDone chan bool
-
-	HeartBeat chan bool
+	HeartBeat   chan bool
 
 	//HeartMonitor
 	HeartMonitor chan bool
@@ -47,8 +54,7 @@ type API struct {
 	authenticate bool
 
 	errorChan chan error
-
-	done chan bool
+	done      chan bool
 
 	reconAtempts int
 }
@@ -113,7 +119,9 @@ func (a *API) auth() error {
 	s := fmt.Sprintf("%d%s", timestamp, a.Key)
 
 	h := hmac.New(sha256.New, []byte(a.Secret))
-	h.Write([]byte(s))
+	if _, err := h.Write([]byte(s)); err != nil {
+		log.Error("wirting bytes in cexio auth func")
+	}
 
 	// generate signed signature string
 	signature := hex.EncodeToString(h.Sum(nil))
@@ -163,6 +171,40 @@ func (a *API) pong() {
 
 }
 
+//-----------------------------
+// Order Subscribe functions
+//-----------------------------
+
+func (a *API) orderSubscribe(orderID string) chan ResponseOrderData {
+	a.orderSubscriberMutex.Lock()
+	defer a.orderSubscriberMutex.Unlock()
+	log.Debug("Order Subscribed to: ", orderID)
+	a.responseSubscribers[orderID] = make(chan subscriberType)
+
+	return a.orderResponseSubscribers[orderID]
+}
+
+func (a *API) orderUnsubscribe(orderID string) {
+	a.orderSubscriberMutex.Lock()
+	defer a.orderSubscriberMutex.Unlock()
+
+	delete(a.orderResponseSubscribers, orderID)
+}
+
+func (a *API) orderSubscriber(orderID string) (chan ResponseOrderData, error) {
+	a.orderSubscriberMutex.Lock()
+	defer a.orderSubscriberMutex.Unlock()
+	sub, ok := a.orderResponseSubscribers[orderID]
+	if ok == false {
+		return nil, fmt.Errorf("OrderSubscriber '%s' not found", orderID)
+	}
+
+	return sub, nil
+}
+
+// -----------------------------
+// Action Subscribe functions
+// -----------------------------
 func (a *API) subscribe(action string) chan subscriberType {
 	a.subscriberMutex.Lock()
 	defer a.subscriberMutex.Unlock()
@@ -182,7 +224,6 @@ func (a *API) unsubscribe(action string) {
 func (a *API) subscriber(action string) (chan subscriberType, error) {
 	a.subscriberMutex.Lock()
 	defer a.subscriberMutex.Unlock()
-	//log.Debug("Subscribed to: ", action)
 	sub, ok := a.responseSubscribers[action]
 	if ok == false {
 		return nil, fmt.Errorf("Subscriber '%s' not found", action)
@@ -193,12 +234,13 @@ func (a *API) subscriber(action string) (chan subscriberType, error) {
 
 func (ws *API) reconnect() {
 	log.Warn("Reconecting bot...")
-	ws.Connect()
+	if err := ws.Connect(); err != nil {
+		log.Error("Connect error: ", err.Error())
+	}
 	log.Warn("Bot is back online")
 }
 
 func (ws *API) watchDog() {
-	//time.Sleep(time.Second * 30)
 	ws.cond.L.Lock()
 	log.Info("Watchdog Waiting....")
 	ws.cond.Wait()
@@ -215,16 +257,12 @@ func (ws *API) watchDog() {
 		select {
 		case <-ws.HeartBeat:
 			{
-				//localElapsed := time.Since(beatTime)
-				//log.Debug("HeartBeat elapsed: ", localElapsed.Seconds())
 				beatTime = time.Now()
-
 				continue
 			}
 		case <-ws.HeartMonitor:
 			{
 				elapsed := time.Since(beatTime)
-				//log.Debug("WatchDog elapsed: ", heartMonitor)
 				if elapsed.Seconds() > 120 {
 					timeOutErr := fmt.Errorf("Watchdog timer expried!!!")
 					log.Error(timeOutErr)
