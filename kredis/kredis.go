@@ -11,6 +11,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+const sizeLimit = 24000
+
 type Kredis struct {
 	conn           redis.Conn
 	psc            redis.PubSubConn
@@ -173,7 +175,7 @@ func (kr *Kredis) Add(exchange, pair string, value float64) error {
 		kr.mu.Unlock()
 		return err
 	}
-	_, err = kr.conn.Do("LTRIM", key, 0, 12000)
+	_, err = kr.conn.Do("LTRIM", key, 0, sizeLimit)
 	if err != nil {
 		kr.mu.Unlock()
 		return err
@@ -213,7 +215,7 @@ func (kr *Kredis) AddString(exchange, pair string, value interface{}) error {
 		return err
 	}
 
-	_, err = kr.conn.Do("LTRIM", key, 0, 12000)
+	_, err = kr.conn.Do("LTRIM", key, 0, sizeLimit)
 	if err != nil {
 		kr.mu.Unlock()
 		return err
@@ -256,7 +258,7 @@ func (kr *Kredis) AddStringLong(exchange, pair string, value interface{}) error 
 		return err
 	}
 
-	_, err = kr.conn.Do("LTRIM", key, 0, 12000)
+	_, err = kr.conn.Do("LTRIM", key, 0, sizeLimit)
 	if err != nil {
 		kr.mu.Unlock()
 		return err

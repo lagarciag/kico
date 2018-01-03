@@ -219,3 +219,8 @@ func (rb *RingBuffer) tailNext() int {
 	return tailNext
 
 }
+
+func (rb *RingBuffer) GetBuff() []float64 {
+
+	return rb.buff
+}

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/lagarciag/movingaverage"
+
 	"github.com/lagarciag/multiema"
 	"github.com/lagarciag/ringbuffer"
 	log "github.com/sirupsen/logrus"
@@ -99,9 +100,20 @@ type Indicators struct {
 }
 
 type MovingStats struct {
-	mu           *sync.Mutex
+	ID string
+	mu *sync.Mutex
+
 	dirtyHistory bool
 	windowSize   int
+
+	latestIndicators     Indicators
+	indicatorsHistory0   []Indicators
+	indicatorsHistory1   []Indicators
+	indicatorsHistoryAll []Indicators
+
+	historyIndicatorsInSlices0   IndicatorsHistory
+	historyIndicatorsInSlices1   IndicatorsHistory
+	historyIndicatorsInSlicesAll IndicatorsHistory
 
 	atrLimit float64
 
@@ -116,12 +128,12 @@ type MovingStats struct {
 
 	// True Range Average
 	//atr ewma.MovingAverage
-	atr  *multiema.MultiEma
+	atr  *movingaverage.MovingAverage
 	atrp float64
 	// Directional Movement Index
-	plusDMAvr  *multiema.MultiEma
-	minusDMAvr *multiema.MultiEma
-	adxAvr     *multiema.MultiEma
+	plusDMAvr  *movingaverage.MovingAverage
+	minusDMAvr *movingaverage.MovingAverage
+	adxAvr     *movingaverage.MovingAverage
 
 	/*
 		sEma        *multiema.MultiEma
@@ -184,204 +196,74 @@ const emaPeriod = 9
 const macD9Period = 9
 const mac12Period = 12
 const mac26Period = 26
-const atrPeriod = 14
+const atrPeriod = 9
 const smallSmaPeriod = 60
 const longSmaPeriod = 120
 const atrDivisor = float64(360)
 const smaLongPeriodMultiplier = 2
 
-func createIndicatorsHistorySlice(indHistory []Indicators) (indicatorsHistorySlices IndicatorsHistory) {
-
-	size := len(indHistory)
-
-	indicatorsHistorySlices.LastValue = make([]float64, size)
-	indicatorsHistorySlices.Sma = make([]float64, size)
-	indicatorsHistorySlices.Mema9 = make([]float64, size)
-	indicatorsHistorySlices.Sema = make([]float64, size)
-	indicatorsHistorySlices.Ema = make([]float64, size)
-	indicatorsHistorySlices.EmaUp = make([]bool, size)
-	indicatorsHistorySlices.Slope = make([]float64, size)
-
-	// MACD indicators
-	indicatorsHistorySlices.Macd = make([]float64, size)
-	indicatorsHistorySlices.Md9 = make([]float64, size)
-	indicatorsHistorySlices.Macd12 = make([]float64, size)
-	indicatorsHistorySlices.Macd26 = make([]float64, size)
-	indicatorsHistorySlices.MacdDiv = make([]float64, size)
-	indicatorsHistorySlices.MacdBull = make([]bool, size)
-
-	indicatorsHistorySlices.StdDev = make([]float64, size)
-	indicatorsHistorySlices.StdDevPercentage = make([]float64, size)
-	//stdDevBuy := ms.StdDevBuy()
-
-	indicatorsHistorySlices.CHigh = make([]float64, size)
-	indicatorsHistorySlices.CLow = make([]float64, size)
-	indicatorsHistorySlices.PHigh = make([]float64, size)
-	indicatorsHistorySlices.PLow = make([]float64, size)
-	indicatorsHistorySlices.MDM = make([]float64, size)
-	indicatorsHistorySlices.PDM = make([]float64, size)
-	indicatorsHistorySlices.Adx = make([]float64, size)
-	indicatorsHistorySlices.MDI = make([]float64, size)
-	indicatorsHistorySlices.PDI = make([]float64, size)
-
-	// --------------
-	// True Range
-	// --------------
-	indicatorsHistorySlices.TR = make([]float64, size)
-	indicatorsHistorySlices.ATR = make([]float64, size)
-	indicatorsHistorySlices.ATRP = make([]float64, size)
-
-	indicatorsHistorySlices.Buy = make([]bool, size)
-	indicatorsHistorySlices.Sell = make([]bool, size)
-
-	for i, indicator := range indHistory {
-
-		indicatorsHistorySlices.LastValue[i] = indicator.LastValue
-		indicatorsHistorySlices.Sma[i] = indicator.Sma
-		indicatorsHistorySlices.Mema9[i] = indicator.Mema9
-		indicatorsHistorySlices.Sema[i] = indicator.Sema
-		indicatorsHistorySlices.Ema[i] = indicator.Ema
-		indicatorsHistorySlices.EmaUp[i] = indicator.EmaUp
-		indicatorsHistorySlices.Slope[i] = indicator.Slope
-
-		// MACD indicators
-		indicatorsHistorySlices.Macd[i] = indicator.Macd
-		indicatorsHistorySlices.Md9[i] = indicator.Md9
-		indicatorsHistorySlices.Macd12[i] = indicator.Macd12
-		indicatorsHistorySlices.Macd26[i] = indicator.Macd26
-		indicatorsHistorySlices.MacdDiv[i] = indicator.MacdDiv
-		indicatorsHistorySlices.MacdBull[i] = indicator.MacdBull
-
-		indicatorsHistorySlices.StdDev[i] = indicator.StdDev
-		indicatorsHistorySlices.StdDevPercentage[i] = indicator.StdDevPercentage
-		//stdDevBuy := ms.StdDevBuy()
-
-		indicatorsHistorySlices.CHigh[i] = indicator.CHigh
-		indicatorsHistorySlices.CLow[i] = indicator.CLow
-		indicatorsHistorySlices.PHigh[i] = indicator.PHigh
-		indicatorsHistorySlices.PLow[i] = indicator.PLow
-		indicatorsHistorySlices.MDM[i] = indicator.MDM
-		indicatorsHistorySlices.PDM[i] = indicator.PDM
-		indicatorsHistorySlices.Adx[i] = indicator.Adx
-		indicatorsHistorySlices.MDI[i] = indicator.MDI / 100
-		indicatorsHistorySlices.PDI[i] = indicator.PDI / 100
-
-		// --------------
-		// True Range
-		// --------------
-		indicatorsHistorySlices.TR[i] = indicator.TR
-		indicatorsHistorySlices.ATR[i] = indicator.ATR
-		indicatorsHistorySlices.ATRP[i] = indicator.ATRP
-
-		indicatorsHistorySlices.Buy[i] = indicator.Buy
-		indicatorsHistorySlices.Sell[i] = indicator.Sell
-
-	}
-
-	return indicatorsHistorySlices
-}
-
 func NewMovingStats(size int, latestIndicators,
 	prevIndicators Indicators,
 	indicatorsHistory0 []Indicators,
-	indicatorsHistory1 []Indicators, dirtyHistory bool) *MovingStats {
+	indicatorsHistory1 []Indicators,
+	indicatorsHistoryAll []Indicators,
+	dirtyHistory bool,
+	ID string) *MovingStats {
 
 	log.Debug("NewMovingStats Size: ", size)
 
-	historyIndicatorsInSlices0 := createIndicatorsHistorySlice(indicatorsHistory0)
-	historyIndicatorsInSlices1 := createIndicatorsHistorySlice(indicatorsHistory1)
-
 	//window := float64(size)
 	ms := &MovingStats{}
+	ms.ID = ID
 	ms.dirtyHistory = dirtyHistory
 	ms.mu = &sync.Mutex{}
 	ms.windowSize = size
 	ms.atrLimit = float64(size) / atrDivisor
+	ms.latestIndicators = latestIndicators
+	ms.indicatorsHistory0 = indicatorsHistory0
+	ms.indicatorsHistory1 = indicatorsHistory1
+	ms.indicatorsHistoryAll = indicatorsHistoryAll
 
-	prevHigh := latestIndicators.PHigh
-	prevLow := latestIndicators.PLow
+	ms.createIndicatorsHistorySlices(indicatorsHistory0, indicatorsHistory1, indicatorsHistoryAll)
+	ms.historyInit()
 
-	currHigh := latestIndicators.CHigh
-	currLow := latestIndicators.CLow
+	// ----------------
+	// Initialize SMA
+	// ----------------
+	ms.smaInit()
 
-	ms.currentWindowHistory = ringbuffer.NewBuffer(size, true, currHigh, currLow)
-
-	ms.currentWindowHistory.PushBuffer(reverseBuffer(historyIndicatorsInSlices0.LastValue))
-
-	ms.currentWindowHistory.SetInitHigh(currHigh)
-	ms.currentWindowHistory.SetInitLow(currLow)
-
-	ms.lastWindowHistory = ringbuffer.NewBuffer(size, true, prevHigh, prevLow)
-
-	ms.lastWindowHistory.PushBuffer(reverseBuffer(historyIndicatorsInSlices1.LastValue))
-	ms.lastWindowHistory.SetInitHigh(prevHigh)
-	ms.lastWindowHistory.SetInitLow(prevLow)
-
-	ms.sma = movingaverage.New(smallSmaPeriod)
-
-	ms.smaLong = movingaverage.New(longSmaPeriod)
-
-	//ms.sema = ewma.NewMovingAverage(30)
 	ms.sema = multiema.NewDema(30, latestIndicators.Sema)
+	ms.mema9 = multiema.NewMultiEma(emaPeriod, size, ms.historyIndicatorsInSlices0.Mema9[0])
 
-	ms.mema9 = multiema.NewMultiEma(emaPeriod, size, historyIndicatorsInSlices0.Mema9[0])
+	// ----------------------
+	// Initialize ATR
+	// ----------------------
+	ms.atrInit()
 
-	if historyIndicatorsInSlices0.ATR[0] < 0 {
-		historyIndicatorsInSlices0.ATR[0] = 0
-	}
+	// ------------------------------------------
+	// Initialize Directional Movement Averages
+	// ------------------------------------------
+	ms.dmAverageInit()
 
-	if historyIndicatorsInSlices0.PDM[0] < 0 {
-		historyIndicatorsInSlices0.PDM[0] = 0
-	}
+	// -------------------
+	// Initialize ADX
+	// -------------------
+	ms.adxInit()
 
-	if historyIndicatorsInSlices0.MDM[0] < 0 {
-		historyIndicatorsInSlices0.MDM[0] = 0
-	}
+	// ---------------------------
+	// Initialize EMA & Macd emas
+	// ---------------------------
+	ms.emaMacdInit()
 
-	ms.atr = multiema.NewMultiEma(atrPeriod, size, historyIndicatorsInSlices0.ATR[0])
+	initValue := `
+	ID     : %s
+	ATR    : %f
+	PDMAvr : %f
+	MDMAvr : %f
+	ADX    : %f
 
-	log.Debug("PDM Init value: ", historyIndicatorsInSlices0.PDM[0])
-
-	tmpAtr := ms.atr.Value()
-
-	if tmpAtr < 0.0000001 {
-		tmpAtr = 0.0000001
-	}
-
-	ms.plusDMAvr = multiema.NewMultiEma(atrPeriod, size, historyIndicatorsInSlices0.PDM[0]/tmpAtr)
-	log.Debug("MDM Init value: ", historyIndicatorsInSlices0.MDM[0])
-	ms.minusDMAvr = multiema.NewMultiEma(atrPeriod, size, historyIndicatorsInSlices0.MDM[0]/tmpAtr)
-
-	if historyIndicatorsInSlices0.Adx[0] > 200 || historyIndicatorsInSlices0.Adx[0] < 0 {
-		log.Errorf("Correcting spurious DB ADX value from %f to %f: ", historyIndicatorsInSlices0.Adx[0], float64(0.1))
-		historyIndicatorsInSlices0.Adx[0] = float64(0.1)
-
-	}
-
-	ms.adxAvr = multiema.NewMultiEma(atrPeriod, size, historyIndicatorsInSlices0.Adx[0]/100)
-	log.Debug("ADX Init Value:", ms.adxAvr.Value())
-
-	/*
-		ms.sEma = ewma.NewMovingAverage(size)
-		ms.sEmaHistory = ringbuffer.NewBuffer(size, false)
-
-		ms.dEma = ewma.NewMovingAverage(window)
-		ms.dEmaHistory = ringbuffer.NewBuffer(size, false)
-
-		ms.tEma = ewma.NewMovingAverage(window)
-		ms.tEmaHistory = ringbuffer.NewBuffer(size, false)
-	*/
-
-	ms.sEma = newEmaContainer(emaPeriod, size, 1, historyIndicatorsInSlices0.Ema)
-	//ms.dEma = newEmaContainer(emaPeriod, size, 2, historyIndicatorsInSlices.d)
-	//ms.tEma = newEmaContainer(emaPeriod, size, 3, []float64{0})
-
-	ms.emaMacd9 = multiema.NewMultiEma(macD9Period, size, historyIndicatorsInSlices0.Md9[0])
-
-	ms.ema12 = multiema.NewMultiEma(mac12Period, size, historyIndicatorsInSlices0.Macd12[0])
-	ms.ema26 = multiema.NewMultiEma(mac26Period, size, historyIndicatorsInSlices0.Macd26[0])
-
-	ms.atrp = historyIndicatorsInSlices0.ATR[0] / historyIndicatorsInSlices0.Ema[0]
+	`
+	log.Debugf(initValue, ms.ID, ms.atr.Value(), ms.plusDMAvr.Value(), ms.minusDMAvr.Value(), ms.adxAvr.Value())
 
 	return ms
 }

@@ -13,7 +13,7 @@ func TestTrueRangeSimple(t *testing.T) {
 	ind2 := movingstats.Indicators{}
 	arg1 := make([]movingstats.Indicators, 1)
 	arg2 := make([]movingstats.Indicators, 1)
-	ms := movingstats.NewMovingStats(10, ind1, ind2, arg1, arg2, false)
+	ms := movingstats.NewMovingStats(10, ind1, ind2, arg1, arg2, arg2, false, "test")
 
 	floatSlice := []float64{10, 11, 12, 13, 14, 15, 16, 17, 16, 11,
 		10, 11, 12, 13, 14, 15, 16, 17, 16, 11,
