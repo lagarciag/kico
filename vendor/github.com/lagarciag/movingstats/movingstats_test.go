@@ -21,42 +21,6 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func TestSimpleMovingAverage(t *testing.T) {
-
-	period := rand.Intn(10) + rand.Intn(10)
-	period = 5
-
-	size := period + rand.Intn(10)
-	size = 15
-	movingStats := movingstats.NewAverage(period)
-	movingAverage := movingaverage.New(int(period))
-
-	floatList := make([]float64, size)
-
-	for i := range floatList {
-
-		floatList[i] = rand.Float64() * float64(rand.Intn(100000))
-	}
-
-	//floatList = []float64{1,1,1,2,2,2}
-
-	for _, value := range floatList {
-		movingStats.Add(value)
-		movingAverage.Add(value)
-	}
-
-	avg1 := movingStats.SimpleMovingAverage()
-	avg2 := movingAverage.SimpleMovingAverage()
-
-	if uint(avg1) != uint(avg2) {
-
-		t.Error("Mistmatch: ", avg1, avg2)
-	} else {
-		t.Log("Match: ", avg1, avg2)
-	}
-
-}
-
 func TestSimpleMovingAverageFromStats(t *testing.T) {
 
 	period := rand.Intn(10) + rand.Intn(1000000)
@@ -67,7 +31,7 @@ func TestSimpleMovingAverageFromStats(t *testing.T) {
 	arg1 := make([]movingstats.Indicators, 1)
 	arg2 := make([]movingstats.Indicators, 1)
 
-	movingStats := movingstats.NewMovingStats(period, ind1, ind2, arg1, arg2, false)
+	movingStats := movingstats.NewMovingStats(period, ind1, ind2, arg1, arg2, arg2, false, "test")
 	movingAverage := movingaverage.New(int(period))
 
 	floatList := make([]float64, size)
@@ -132,7 +96,7 @@ func TestDmi(t *testing.T) {
 	arg1 := make([]movingstats.Indicators, 1)
 	arg2 := make([]movingstats.Indicators, 1)
 
-	ms := movingstats.NewMovingStats(windowSize, ind1, ind2, arg1, arg2, false)
+	ms := movingstats.NewMovingStats(windowSize, ind1, ind2, arg1, arg2, arg2, false, "test")
 
 	//floatList = []float64{1,1,1,2,2,2}
 
@@ -164,7 +128,7 @@ func TestStandardDeviation(t *testing.T) {
 		arg1 := make([]movingstats.Indicators, 1)
 		arg2 := make([]movingstats.Indicators, 1)
 
-		movingStats := movingstats.NewMovingStats(period, ind1, ind2, arg1, arg2, false)
+		movingStats := movingstats.NewMovingStats(period, ind1, ind2, arg1, arg2, arg2, false, "test")
 		movingAverage := movingaverage.New(int(period))
 
 		floatList := make([]float64, size)

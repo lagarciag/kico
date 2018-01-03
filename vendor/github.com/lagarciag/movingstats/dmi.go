@@ -66,7 +66,8 @@ func (ms *MovingStats) dmiCalc() {
 	// Obtain Average True Range
 	// ----------------------------
 
-	pAvrTr := ms.atr.Value()
+	//pAvrTr := ms.atr.Value()
+	pAvrTr := ms.atr.SimpleMovingAverage()
 	if pAvrTr < 0.0000001 {
 		pAvrTr = float64(0.0000001)
 	}
@@ -89,26 +90,26 @@ func (ms *MovingStats) dmiCalc() {
 
 	pmAvr := ms.plusDMAvr.Value() * float64(100)
 	if pmAvr < 0 {
-		log.Error("ms.plusDMAvr * 100 < 0 ", ms.windowSize)
+		log.Errorf("ms.plusDMAvr * 100 < 0 - %d , %s", ms.windowSize, ms.ID)
 		pmAvr = math.Abs(pmAvr)
 	}
 
 	mmAvr := ms.minusDMAvr.Value() * float64(100)
 	if mmAvr < 0 {
-		log.Error("ms.minusDMAvr * 100 < 0 ", ms.windowSize)
+		log.Errorf("ms.minusDMAvr * 100 < 0 - %d , %s", ms.windowSize, ms.ID)
 		mmAvr = math.Abs(mmAvr)
 	}
 
 	ms.plusDI = pmAvr
 
 	if ms.plusDI < 0 {
-		log.Error("ms.plusDI < 0 ", ms.windowSize)
+		log.Errorf("ms.plusDI < 0 - %d , %s", ms.windowSize, ms.ID)
 	}
 
 	ms.minusDI = mmAvr
 
 	if ms.minusDI < 0 {
-		log.Error("ms.minusDI < 0 ", ms.windowSize)
+		log.Errorf("ms.minusDI < 0 - %d , %s", ms.windowSize, ms.ID)
 	}
 
 	pDImDI := ms.plusDI + ms.minusDI

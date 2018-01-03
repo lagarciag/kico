@@ -141,7 +141,7 @@ func NewMinuteStrategy(name string, minuteWindowSize int, stdLimit float64, doLo
 	latestIndicators := ps.indicatorsGetter(0)
 	previewIndicators := ps.indicatorsGetter(ps.movingSampleWindowSize)
 
-	indicatorsToRetrieve := ps.movingSampleWindowSize * 2
+	indicatorsToRetrieve := -1
 
 	upperWindowSize := ps.movingSampleWindowSize * 2
 	lowerWindowSize := ps.movingSampleWindowSize
@@ -190,7 +190,10 @@ func NewMinuteStrategy(name string, minuteWindowSize int, stdLimit float64, doLo
 		latestIndicators,
 		previewIndicators,
 		indicatorsHistory0,
-		indicatorsHistory1, dirtyHistory)
+		indicatorsHistory1,
+		indicatorsHistoryTotal,
+		dirtyHistory,
+		ID)
 
 	ps.addChannel = make(chan float64, ps.movingSampleWindowSize)
 
@@ -579,6 +582,10 @@ func (ms *MinuteStrategy) indicatorsHistoryGetter(size int) (indicators []moving
 
 	if size == 0 {
 		size = 1
+	}
+
+	if size == -1 {
+		size = len(indicatorsJson)
 	}
 
 	indicators = make([]movingstats.Indicators, size)
