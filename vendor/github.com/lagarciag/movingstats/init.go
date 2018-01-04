@@ -222,10 +222,23 @@ func (ms *MovingStats) dmAverageInit() {
 	plusDMAAvrHistoryATR := reverseBuffer(ms.historyIndicatorsInSlicesAll.PDM)
 	avTRHistory := reverseBuffer(ms.historyIndicatorsInSlicesAll.ATR)
 	plusDMAAvrHistory := make([]float64, len(plusDMAAvrHistoryATR))
+
+	// Regenerate plusDm Average using historical ATR
 	for i, pdm := range plusDMAAvrHistoryATR {
-		plusDMAAvrHistory[i] = pdm * avTRHistory[i]
+		atrHist := avTRHistory[i]
+		if atrHist < 0.000000001 {
+			atrHist = 0.000000001
+		}
+		plusDMAAvrHistory[i] = pdm / atrHist
 	}
-	plusDMAAvrInit := ms.historyIndicatorsInSlicesAll.PDM[0] * ms.historyIndicatorsInSlicesAll.ATR[0]
+
+	atr := ms.historyIndicatorsInSlicesAll.ATR[0]
+
+	if atr == 0 {
+		atr = float64(1)
+	}
+
+	plusDMAAvrInit := ms.historyIndicatorsInSlicesAll.PDM[0] / atr
 	ms.plusDMAvr.Init(plusDMAAvrInit, plusDMAAvrHistory)
 
 	// ----------------------
@@ -235,10 +248,17 @@ func (ms *MovingStats) dmAverageInit() {
 	ms.minusDMAvr = movingaverage.New(atrPeriod*ms.windowSize, true)
 	minusDMAAvrHistoryATR := reverseBuffer(ms.historyIndicatorsInSlicesAll.MDM)
 	minusDMAAvrHistory := make([]float64, len(minusDMAAvrHistoryATR))
+
+	// Regenerate minusDm Average using historical ATR
 	for i, mdm := range minusDMAAvrHistoryATR {
-		minusDMAAvrHistory[i] = mdm * avTRHistory[i]
+		atrHist := avTRHistory[i]
+		if atrHist < 0.000000001 {
+			atrHist = 0.000000001
+		}
+		minusDMAAvrHistory[i] = mdm / atrHist
 	}
-	minusDMAAvrInit := ms.historyIndicatorsInSlicesAll.MDM[0] * ms.historyIndicatorsInSlicesAll.ATR[0]
+
+	minusDMAAvrInit := ms.historyIndicatorsInSlicesAll.MDM[0] / atr
 	ms.minusDMAvr.Init(minusDMAAvrInit, minusDMAAvrHistory)
 
 }
