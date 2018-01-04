@@ -257,18 +257,20 @@ func NewMovingStats(size int, latestIndicators,
 
 	initValue := `
 	ID     : %s
+	SMA    : %f
 	ATR    : %f
 	PDMAvr : %f
 	MDMAvr : %f
 	ADX    : %f
 
 	`
-	log.Debugf(initValue, ms.ID, ms.atr.Value(), ms.plusDMAvr.Value(), ms.minusDMAvr.Value(), ms.adxAvr.Value())
+	log.Debugf(initValue, ms.ID, ms.sma.Value(), ms.atr.Value(), ms.plusDMAvr.Value(), ms.minusDMAvr.Value(), ms.adxAvr.Value())
 
 	return ms
 }
 
 func (ms *MovingStats) Add(value float64) {
+
 	ms.mu.Lock()
 	if ms.dirtyHistory {
 		log.Warn("Warming up data points due to dirty bit: ", ms.windowSize)

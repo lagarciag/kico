@@ -9,6 +9,7 @@ import (
 type MovingAverage struct {
 	count  int
 	period int
+	abs    bool
 
 	avgSum      float64
 	average     float64
@@ -21,9 +22,10 @@ type MovingAverage struct {
 	init bool
 }
 
-func New(period int) *MovingAverage {
+func New(period int, abs bool) *MovingAverage {
 
 	avg := &MovingAverage{}
+	avg.abs = abs
 	avg.init = false
 	avg.period = period
 	avg.avgHistBuff = ringbuffer.NewBuffer(period, false, 0, 0)
@@ -33,25 +35,36 @@ func New(period int) *MovingAverage {
 
 func (avg *MovingAverage) Init(initVal float64, historyValues []float64) {
 	avg.init = true
-	avg.avgSum = initVal * float64(avg.period)
+
+	if avg.abs {
+		initVal = math.Abs(initVal)
+	}
+
 	avg.average = initVal
 	for _, value := range historyValues {
+		if avg.abs {
+			value = math.Abs(value)
+		}
 		avg.avgHistBuff.Push(value)
 		avg.count++
+	}
+	if avg.count >= avg.period {
+		avg.avgSum = initVal * float64(avg.period)
+		//for _, val := range historyValues[0 : avg.period-1] {
+		//	avg.avgSum = avg.avgSum + val
+		//}
+	} else {
+		avg.avgSum = initVal * float64(avg.count)
+		//for _, val := range historyValues {
+		//	avg.avgSum = avg.avgSum + val
+		//}
 	}
 
 }
 
 func (avg *MovingAverage) Add(value float64) {
-
-	//if !avg.init {
-	//	for i := 0; i< avg.period; i ++ {
-	//		avg.avg(value)
-	//	}
-	//	avg.init = true
-	//}
-
 	avg.avg(value)
+
 }
 
 func (avg *MovingAverage) SimpleMovingAverage() float64 {
@@ -68,6 +81,10 @@ func (avg *MovingAverage) MovingStandardDeviation() float64 {
 
 func (avg *MovingAverage) avg(value float64) {
 
+	if avg.abs {
+		value = math.Abs(value)
+	}
+
 	avg.count++
 
 	lastAvgValue := avg.avgHistBuff.Oldest()
@@ -75,7 +92,11 @@ func (avg *MovingAverage) avg(value float64) {
 	//logrus.Info("lastVal :", lastAvgValue)
 	//logrus.Info("buf: ", avg.avgHistBuff.GetBuff())
 
-	avg.avgSum = (avg.avgSum - lastAvgValue) + value
+	if avg.abs {
+		avg.avgSum = math.Abs((avg.avgSum - lastAvgValue) + value)
+	} else {
+		avg.avgSum = (avg.avgSum - lastAvgValue) + value
+	}
 
 	if avg.count < avg.period {
 		avg.average = avg.avgSum / float64(avg.count)
@@ -102,4 +123,8 @@ func (avg *MovingAverage) avg(value float64) {
 	}
 
 	avg.varHistBuff.Push(value2)
+}
+
+func (avg *MovingAverage) TestCount() int {
+	return avg.count
 }

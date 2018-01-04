@@ -32,7 +32,7 @@ func TestSimpleMovingAverageFromStats(t *testing.T) {
 	arg2 := make([]movingstats.Indicators, 1)
 
 	movingStats := movingstats.NewMovingStats(period, ind1, ind2, arg1, arg2, arg2, false, "test")
-	movingAverage := movingaverage.New(int(period))
+	movingAverage := movingaverage.New(int(period), true)
 
 	floatList := make([]float64, size)
 
@@ -129,7 +129,7 @@ func TestStandardDeviation(t *testing.T) {
 		arg2 := make([]movingstats.Indicators, 1)
 
 		movingStats := movingstats.NewMovingStats(period, ind1, ind2, arg1, arg2, arg2, false, "test")
-		movingAverage := movingaverage.New(int(period))
+		movingAverage := movingaverage.New(int(period), true)
 
 		floatList := make([]float64, size)
 

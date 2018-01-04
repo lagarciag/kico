@@ -139,11 +139,13 @@ func (ms *MovingStats) createIndicatorsHistorySlices(indHistory0, indHistory1, i
 
 	//---------------------------------------------
 
-	if ms.historyIndicatorsInSlicesAll.Adx[0] > 200 || ms.historyIndicatorsInSlicesAll.Adx[0] < 0 {
-		log.Errorf("Correcting spurious DB ADX value from %f to %f: ", ms.historyIndicatorsInSlicesAll.Adx[0], float64(0.1))
-		ms.historyIndicatorsInSlicesAll.Adx[0] = float64(0.1)
+	/*
+		if ms.historyIndicatorsInSlicesAll.Adx[0] > 200 || ms.historyIndicatorsInSlicesAll.Adx[0] < 0 {
+			log.Errorf("Correcting spurious DB ADX value from %f to %f: ", ms.historyIndicatorsInSlicesAll.Adx[0], float64(0.1))
+			ms.historyIndicatorsInSlicesAll.Adx[0] = float64(0.1)
 
-	}
+		}
+	*/
 
 }
 
@@ -175,21 +177,28 @@ func (ms *MovingStats) smaInit() {
 	// -----------------
 	// Initialize Sma
 	// -----------------
-	ms.sma = movingaverage.New(smallSmaPeriod)
+	ms.sma = movingaverage.New(smallSmaPeriod, true)
 	smaHistory := reverseBuffer(ms.historyIndicatorsInSlicesAll.LastValue)
 
 	smaInit := ms.historyIndicatorsInSlicesAll.Sma[0]
 	ms.sma.Init(smaInit, smaHistory)
 	//TODO: Initialize smaLong
-	ms.smaLong = movingaverage.New(longSmaPeriod)
+	ms.smaLong = movingaverage.New(longSmaPeriod, true)
+
+	log.Debug("SMA INIT: ", ms.sma.Value(), smaInit, smaHistory)
 
 }
 
 func (ms *MovingStats) atrInit() {
-	ms.atr = movingaverage.New(atrPeriod * ms.windowSize)
+	ms.atr = movingaverage.New(atrPeriod*ms.windowSize, true)
 	trHistory := reverseBuffer(ms.historyIndicatorsInSlicesAll.Sma)
+
+	for i, val := range trHistory {
+		trHistory[i] = math.Abs(val)
+	}
+
 	log.Debug("ATR History lenth: ", len(trHistory))
-	trInit := ms.historyIndicatorsInSlicesAll.TR[0]
+	trInit := math.Abs(ms.historyIndicatorsInSlicesAll.TR[0])
 	log.Debug("TR Init : ", trInit)
 	ms.atr.Init(trInit, trHistory)
 
@@ -209,7 +218,7 @@ func (ms *MovingStats) dmAverageInit() {
 	// Initialize plusDMAvr
 	// ----------------------
 
-	ms.plusDMAvr = movingaverage.New(atrPeriod * ms.windowSize)
+	ms.plusDMAvr = movingaverage.New(atrPeriod*ms.windowSize, true)
 	plusDMAAvrHistoryATR := reverseBuffer(ms.historyIndicatorsInSlicesAll.PDM)
 	avTRHistory := reverseBuffer(ms.historyIndicatorsInSlicesAll.ATR)
 	plusDMAAvrHistory := make([]float64, len(plusDMAAvrHistoryATR))
@@ -223,7 +232,7 @@ func (ms *MovingStats) dmAverageInit() {
 	// Initialize plusDMAvr
 	// ----------------------
 
-	ms.minusDMAvr = movingaverage.New(atrPeriod * ms.windowSize)
+	ms.minusDMAvr = movingaverage.New(atrPeriod*ms.windowSize, true)
 	minusDMAAvrHistoryATR := reverseBuffer(ms.historyIndicatorsInSlicesAll.MDM)
 	minusDMAAvrHistory := make([]float64, len(minusDMAAvrHistoryATR))
 	for i, mdm := range minusDMAAvrHistoryATR {
@@ -236,7 +245,7 @@ func (ms *MovingStats) dmAverageInit() {
 
 func (ms *MovingStats) adxInit() {
 
-	ms.adxAvr = movingaverage.New(atrPeriod * ms.windowSize)
+	ms.adxAvr = movingaverage.New(atrPeriod*ms.windowSize, true)
 
 	plusDIHistory := reverseBuffer(ms.historyIndicatorsInSlicesAll.PDI)
 	minusDIHistory := reverseBuffer(ms.historyIndicatorsInSlicesAll.MDI)

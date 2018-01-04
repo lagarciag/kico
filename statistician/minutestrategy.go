@@ -158,7 +158,7 @@ func NewMinuteStrategy(name string, minuteWindowSize int, stdLimit float64, doLo
 
 	if indicatorsSaved < ps.movingSampleWindowSize {
 		if indicatorsSaved > 0 {
-			lowerWindowSize = indicatorsSaved
+			lowerWindowSize = indicatorsSaved - 1
 		} else {
 			dirtyHistory = true
 
@@ -580,12 +580,12 @@ func (ms *MinuteStrategy) indicatorsHistoryGetter(size int) (indicators []moving
 		size = len(indicatorsJson)
 	}
 
-	if size == 0 {
-		size = 1
-	}
-
 	if size == -1 {
 		size = len(indicatorsJson)
+	}
+
+	if size == 0 {
+		size = 1
 	}
 
 	indicators = make([]movingstats.Indicators, size)
