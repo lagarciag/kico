@@ -14,6 +14,10 @@ func createIndicatorsHistorySlice(indHistory []Indicators) (indicatorsHistorySli
 
 	size := len(indHistory)
 
+	if size == 0 {
+		size = 1
+	}
+
 	log.Debug("createIndicatorsHistorySlice size: ", size)
 
 	indicatorsHistorySlices.LastValue = make([]float64, size)

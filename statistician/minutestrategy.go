@@ -86,17 +86,29 @@ type MinuteStrategy struct {
 	sell bool
 
 	doDbUpdate bool
+
+	// --------------------
+	// Indicators History
+	// -------------------
+	indicatorsToRetrieve   int
+	indicatorsHistoryTotal []movingstats.Indicators
+	indicatorsSaved        int
+	latestIndicators       movingstats.Indicators
+	previewIndicators      movingstats.Indicators
+	indicatorsHistory0     []movingstats.Indicators
+	indicatorsHistory1     []movingstats.Indicators
+	dirtyHistory           bool
 }
 
 func NewMinuteStrategy(name string, minuteWindowSize int, stdLimit float64, doLog bool, kr *kredis.Kredis, sampleRate int) *MinuteStrategy {
 
 	ID := fmt.Sprintf("%s_MS_%d", name, minuteWindowSize)
-	dirtyHistory := false
 
 	// -------------------
 	// Setup MinutStrategy
 	// --------------------
 	ps := &MinuteStrategy{}
+	ps.dirtyHistory = false
 	ps.ID = ID
 
 	ps.init = true
@@ -114,85 +126,19 @@ func NewMinuteStrategy(name string, minuteWindowSize int, stdLimit float64, doLo
 	ps.minuteWindowSize = minuteWindowSize
 	ps.movingSampleWindowSize = minuteWindowSize * ps.multiplier
 
-	keyCounter := fmt.Sprintf("%s_INDICATORS", ps.ID)
-	indicatorsSaved, err := ps.kr.GetCounterRaw(keyCounter)
-
-	if indicatorsSaved < ps.movingSampleWindowSize {
-		dirtyHistory = true
-		log.Warn("Indicators History is to shallow, setting dirty bit")
-	}
-
-	if err != nil {
-		log.Fatal("Error reading indicators count")
-	}
-
-	//oldestIndicator := ps.indicatorsGetter(indicatorsSaved - 1)
-
-	//log.Info("Oldest Values: ", oldestIndicator)
-
-	maxPeriodCount := ps.movingSampleWindowSize * 26
-	log.Infof("Indicators count: %d, sample window size: %d, max period count (26): %d", indicatorsSaved, ps.movingSampleWindowSize, maxPeriodCount)
-
-	//os.Exit(1)
-
-	// ------------------
-	// Get latest values
-	// ------------------
-	latestIndicators := ps.indicatorsGetter(0)
-	previewIndicators := ps.indicatorsGetter(ps.movingSampleWindowSize)
-
-	indicatorsToRetrieve := -1
-
-	upperWindowSize := ps.movingSampleWindowSize * 2
-	lowerWindowSize := ps.movingSampleWindowSize
-
-	if indicatorsSaved < (ps.movingSampleWindowSize * 2) {
-
-		if indicatorsSaved > ps.movingSampleWindowSize {
-			upperWindowSize = 2*ps.movingSampleWindowSize - indicatorsSaved
-		} else {
-
-			upperWindowSize = 0
-		}
-	}
-
-	if indicatorsSaved < ps.movingSampleWindowSize {
-		if indicatorsSaved > 0 {
-			lowerWindowSize = indicatorsSaved - 1
-		} else {
-			dirtyHistory = true
-
-			lowerWindowSize = 1
-		}
-	}
-
-	indicatorsHistoryTotal := ps.indicatorsHistoryGetter(indicatorsToRetrieve)
-	log.Info("History Indicators retrieved: ", len(indicatorsHistoryTotal))
-	log.Info("History Upper Window Size :", upperWindowSize)
-	log.Info("History Lower Window Size :", lowerWindowSize)
-
-	var indicatorsHistory0 []movingstats.Indicators
-	var indicatorsHistory1 []movingstats.Indicators
-
-	indicatorsHistory0 = indicatorsHistoryTotal[0:lowerWindowSize]
-
-	if upperWindowSize > ps.movingSampleWindowSize {
-
-		indicatorsHistory1 = indicatorsHistoryTotal[ps.movingSampleWindowSize:upperWindowSize]
-
-	} else {
-		indicatorsHistory1 = indicatorsHistory0
-	}
-
-	log.Info("Updating data from indicators history: ", len(indicatorsHistory0))
+	// ---------------------------
+	// Get Indicators to produce
+	// indicators history
+	// ---------------------------
+	ps.initIndicators()
 
 	ps.movingStats = movingstats.NewMovingStats(int(ps.movingSampleWindowSize),
-		latestIndicators,
-		previewIndicators,
-		indicatorsHistory0,
-		indicatorsHistory1,
-		indicatorsHistoryTotal,
-		dirtyHistory,
+		ps.latestIndicators,
+		ps.previewIndicators,
+		ps.indicatorsHistory0,
+		ps.indicatorsHistory1,
+		ps.indicatorsHistoryTotal,
+		ps.dirtyHistory,
 		ID)
 
 	ps.addChannel = make(chan float64, ps.movingSampleWindowSize)
@@ -205,6 +151,65 @@ func NewMinuteStrategy(name string, minuteWindowSize int, stdLimit float64, doLo
 	go ps.indicatorsStorer()
 
 	return ps
+
+}
+
+func (ps *MinuteStrategy) initIndicators() {
+
+	ps.indicatorsToRetrieve = -1
+	ps.indicatorsHistoryTotal = ps.indicatorsHistoryGetter(ps.indicatorsToRetrieve)
+	ps.indicatorsSaved = len(ps.indicatorsHistoryTotal)
+
+	if ps.indicatorsSaved < ps.movingSampleWindowSize {
+		ps.dirtyHistory = true
+		log.Warn("Indicators History is to shallow, setting dirty bit")
+	}
+
+	log.Infof("Indicators count: %d, sample window size: %d, max period count (26): %d", ps.indicatorsSaved, ps.movingSampleWindowSize)
+
+	// ------------------
+	// Get latest values
+	// ------------------
+	ps.latestIndicators = ps.indicatorsGetter(0)
+	ps.previewIndicators = ps.indicatorsGetter(ps.movingSampleWindowSize)
+
+	upperWindowSize := ps.movingSampleWindowSize * 2
+	lowerWindowSize := ps.movingSampleWindowSize
+
+	if ps.indicatorsSaved < (ps.movingSampleWindowSize * 2) {
+
+		if ps.indicatorsSaved > ps.movingSampleWindowSize {
+			upperWindowSize = 2*ps.movingSampleWindowSize - ps.indicatorsSaved
+		} else {
+
+			upperWindowSize = 0
+		}
+	}
+
+	if ps.indicatorsSaved < ps.movingSampleWindowSize {
+		if ps.indicatorsSaved > 0 {
+			lowerWindowSize = ps.indicatorsSaved - 1
+		} else {
+			ps.dirtyHistory = true
+			lowerWindowSize = 1
+		}
+	}
+
+	log.Info("History Indicators retrieved: ", len(ps.indicatorsHistoryTotal))
+	log.Info("History Upper Window Size :", upperWindowSize)
+	log.Info("History Lower Window Size :", lowerWindowSize)
+
+	ps.indicatorsHistory0 = ps.indicatorsHistoryTotal[0:lowerWindowSize]
+
+	if upperWindowSize > ps.movingSampleWindowSize {
+
+		ps.indicatorsHistory1 = ps.indicatorsHistoryTotal[ps.movingSampleWindowSize:upperWindowSize]
+
+	} else {
+		ps.indicatorsHistory1 = ps.indicatorsHistory0
+	}
+
+	log.Info("Updating data from indicators history: ", len(ps.indicatorsHistory0))
 
 }
 

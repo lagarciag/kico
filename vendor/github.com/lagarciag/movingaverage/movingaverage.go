@@ -4,6 +4,7 @@ import (
 	"math"
 
 	"github.com/lagarciag/ringbuffer"
+	log "github.com/sirupsen/logrus"
 )
 
 type MovingAverage struct {
@@ -25,6 +26,7 @@ type MovingAverage struct {
 func New(period int, abs bool) *MovingAverage {
 
 	avg := &MovingAverage{}
+	avg.count = 0
 	avg.abs = abs
 	avg.init = false
 	avg.period = period
@@ -41,12 +43,17 @@ func (avg *MovingAverage) Init(initVal float64, historyValues []float64) {
 	}
 
 	avg.average = initVal
+
 	for _, value := range historyValues {
 		if avg.abs {
 			value = math.Abs(value)
 		}
 		avg.avgHistBuff.Push(value)
 		avg.count++
+	}
+
+	if avg.count < avg.period {
+		log.Info("History is < than perdio: ", avg.period)
 	}
 	if avg.count >= avg.period {
 		avg.avgSum = initVal * float64(avg.period)
@@ -80,12 +87,10 @@ func (avg *MovingAverage) MovingStandardDeviation() float64 {
 }
 
 func (avg *MovingAverage) avg(value float64) {
-
+	avg.count++
 	if avg.abs {
 		value = math.Abs(value)
 	}
-
-	avg.count++
 
 	lastAvgValue := avg.avgHistBuff.Oldest()
 
@@ -93,9 +98,12 @@ func (avg *MovingAverage) avg(value float64) {
 	//logrus.Info("buf: ", avg.avgHistBuff.GetBuff())
 
 	if avg.abs {
-		avg.avgSum = math.Abs((avg.avgSum - lastAvgValue) + value)
+		avg.avgSum = math.Abs(avg.avgSum - lastAvgValue + value)
+		//log.Info("AVG SUM: ", avg.avgSum, lastAvgValue, value)
 	} else {
-		avg.avgSum = (avg.avgSum - lastAvgValue) + value
+		avg.avgSum = avg.avgSum - lastAvgValue + value
+		//log.Info("AVG SUM: ", avg.avgSum, lastAvgValue, value)
+
 	}
 
 	if avg.count < avg.period {
