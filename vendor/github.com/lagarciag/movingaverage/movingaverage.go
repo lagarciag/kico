@@ -20,7 +20,7 @@ type MovingAverage struct {
 	variance    float64
 	varHistBuff *ringbuffer.RingBuffer
 
-	init bool
+	//init bool
 }
 
 func New(period int, abs bool) *MovingAverage {
@@ -28,7 +28,7 @@ func New(period int, abs bool) *MovingAverage {
 	avg := &MovingAverage{}
 	avg.count = 0
 	avg.abs = abs
-	avg.init = false
+	//avg.init = false
 	avg.period = period
 	avg.avgHistBuff = ringbuffer.NewBuffer(period, false, 0, 0)
 	avg.varHistBuff = ringbuffer.NewBuffer(period, false, 0, 0)
@@ -36,41 +36,29 @@ func New(period int, abs bool) *MovingAverage {
 }
 
 func (avg *MovingAverage) Init(initVal float64, historyValues []float64) {
-	avg.init = true
+	//avg.init = true
+	avg.avgSum = 0
 
-	if avg.abs {
-		initVal = math.Abs(initVal)
-	}
+	if len(historyValues) > 1 {
 
-	avg.average = initVal
+		avg.average = initVal
 
-	for _, value := range historyValues {
-		if avg.abs {
-			value = math.Abs(value)
+		for _, value := range historyValues {
+			avg.avgHistBuff.Push(value)
+			avg.count++
+			avg.avgSum = avg.avgSum + value
 		}
-		avg.avgHistBuff.Push(value)
-		avg.count++
-	}
 
-	if avg.count < avg.period {
-		log.Info("History is < than perdio: ", avg.period)
-	}
-	if avg.count >= avg.period {
-		avg.avgSum = initVal * float64(avg.period)
-		//for _, val := range historyValues[0 : avg.period-1] {
-		//	avg.avgSum = avg.avgSum + val
-		//}
-	} else {
-		avg.avgSum = initVal * float64(avg.count)
-		//for _, val := range historyValues {
-		//	avg.avgSum = avg.avgSum + val
-		//}
-	}
+		if avg.count < avg.period {
+			log.Info("History is < than period: ", avg.period)
+		}
+		if avg.count >= avg.period {
+			avg.avgSum = initVal * float64(avg.period)
+		} else {
+			//avg.avgSum = initVal * float64(avg.count)
+		}
 
-}
-
-func (avg *MovingAverage) Add(value float64) {
-	avg.avg(value)
+	}
 
 }
 
@@ -86,7 +74,7 @@ func (avg *MovingAverage) MovingStandardDeviation() float64 {
 	return math.Sqrt(avg.variance)
 }
 
-func (avg *MovingAverage) avg(value float64) {
+func (avg *MovingAverage) Add(value float64) {
 	avg.count++
 	if avg.abs {
 		value = math.Abs(value)
@@ -94,23 +82,17 @@ func (avg *MovingAverage) avg(value float64) {
 
 	lastAvgValue := avg.avgHistBuff.Oldest()
 
-	//logrus.Info("lastVal :", lastAvgValue)
-	//logrus.Info("buf: ", avg.avgHistBuff.GetBuff())
-
-	if avg.abs {
-		avg.avgSum = math.Abs(avg.avgSum - lastAvgValue + value)
-		//log.Info("AVG SUM: ", avg.avgSum, lastAvgValue, value)
-	} else {
-		avg.avgSum = avg.avgSum - lastAvgValue + value
-		//log.Info("AVG SUM: ", avg.avgSum, lastAvgValue, value)
-
-	}
-
 	if avg.count < avg.period {
+		avg.avgSum = avg.avgSum + value
 		avg.average = avg.avgSum / float64(avg.count)
 	} else {
+		avg.avgSum = avg.avgSum - lastAvgValue + value
 		avg.average = avg.avgSum / float64(avg.period)
 	}
+
+	//log.Info("lastVal :", lastAvgValue)
+	//log.Info("buf: ", avg.avgHistBuff.GetBuff())
+	//log.Info("avg:", avg.average)
 
 	avg.avgHistBuff.Push(value)
 

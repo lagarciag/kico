@@ -272,7 +272,7 @@ func NewMovingStats(size int, latestIndicators,
 func (ms *MovingStats) Add(value float64) {
 
 	ms.mu.Lock()
-	if ms.dirtyHistory {
+	/*if ms.dirtyHistory {
 		log.Warn("Warming up data points due to dirty bit: ", ms.windowSize)
 		for i := 0; i < ms.windowSize*30; i++ {
 			ms.add(value)
@@ -282,6 +282,8 @@ func (ms *MovingStats) Add(value float64) {
 	} else {
 		ms.add(value)
 	}
+	*/
+	ms.add(value)
 	ms.mu.Unlock()
 }
 
