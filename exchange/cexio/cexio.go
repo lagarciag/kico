@@ -175,7 +175,9 @@ func (bot *Bot) PublicRestart() {
 	// Stop price update timer
 	//--------------------------
 	for _, pair := range bot.pairs {
-		bot.priceUpdateTimer[pair].Stop()
+		if bot.priceUpdateTimer[pair] != nil {
+			bot.priceUpdateTimer[pair].Stop()
+		}
 	}
 
 	close(bot.apiStop)
