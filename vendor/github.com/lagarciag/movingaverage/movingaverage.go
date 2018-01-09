@@ -1,6 +1,7 @@
 package movingaverage
 
 import (
+	"fmt"
 	"math"
 
 	"github.com/lagarciag/ringbuffer"
@@ -38,22 +39,51 @@ func New(period int, abs bool) *MovingAverage {
 func (avg *MovingAverage) Init(initVal float64, historyValues []float64) {
 	//avg.init = true
 	avg.avgSum = 0
-
+	var realhistory []float64
 	if len(historyValues) > 1 {
 
 		avg.average = initVal
+		avg.avgSum = 0
 
-		for _, value := range historyValues {
+		log.Info("MovingAverage Init: Avg Init val: ", avg.average)
+
+		if len(historyValues) > avg.period {
+			realhistory = historyValues[:avg.period]
+		} else {
+			realhistory = historyValues
+		}
+
+		if len(realhistory) > avg.period {
+			log.Error("realhistory still > avgperiod")
+		}
+
+		for _, value := range realhistory {
 			avg.avgHistBuff.Push(value)
 			avg.count++
 			avg.avgSum = avg.avgSum + value
 		}
 
-		if avg.count < avg.period {
-			log.Info("History is < than period: ", avg.period)
+		if avg.count <= avg.period {
+			dbgMsg := `
+			avg.period : %d
+			avg.avgSum : %f
+			avg.count  : %d
+		`
+			log.Infof("History is <= than period: %s", fmt.Sprintf(dbgMsg, avg.period, avg.avgSum, avg.count))
+
+			avg.average = avg.avgSum / float64(avg.count)
+
 		}
-		if avg.count >= avg.period {
-			avg.avgSum = initVal * float64(avg.period)
+		if avg.count > avg.period {
+			//avg.avgSum = initVal * float64(avg.period)
+			avg.average = avg.avgSum / float64(avg.period)
+			dbgMsg := `
+			avg.period : %d
+			avg.avgSum : %f
+			avg.count  : %d
+		`
+			log.Infof("History is >>> than period: %s", fmt.Sprintf(dbgMsg, avg.period, avg.avgSum, avg.count))
+
 		} else {
 			//avg.avgSum = initVal * float64(avg.count)
 		}

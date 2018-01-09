@@ -454,16 +454,12 @@ func reverseBuffer(buf []float64) (rbuf []float64) {
 
 	rbuf = make([]float64, len(buf))
 
-	// ----------------------------
-	// Reverse initvalues history
-	// ----------------------------
-	rcount := len(buf) - 1
-	count := 0
-	for i := rcount; rcount >= 0; rcount-- {
+	_ = copy(rbuf, buf)
 
-		rbuf[count] = buf[i]
-		count++
+	for i, j := 0, len(rbuf)-1; i < j; i, j = i+1, j-1 {
+		rbuf[i], rbuf[j] = rbuf[j], rbuf[i]
 	}
+
 	return rbuf
 
 }

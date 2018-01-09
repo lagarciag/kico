@@ -10,6 +10,13 @@ import (
 	"github.com/lagarciag/ringbuffer"
 )
 
+const (
+	Minute5   = 30
+	Minute30  = 180
+	Minute60  = 360
+	Minute120 = 720
+)
+
 func createIndicatorsHistorySlice(indHistory []Indicators) (indicatorsHistorySlices IndicatorsHistory) {
 
 	size := len(indHistory)
@@ -115,6 +122,8 @@ func (ms *MovingStats) createIndicatorsHistorySlices(indHistory0, indHistory1, i
 
 	ms.historyIndicatorsInSlicesAll = createIndicatorsHistorySlice(ms.indicatorsHistoryAll)
 
+	log.Info("ms.indicatorsHistoryAll.LastValue", ms.historyIndicatorsInSlicesAll.LastValue)
+
 	if ms.historyIndicatorsInSlices0.ATR[0] < 0 {
 		ms.historyIndicatorsInSlices0.ATR[0] = 0
 	}
@@ -188,15 +197,47 @@ func (ms *MovingStats) smaInit() {
 	// -----------------
 	// Initialize Sma
 	// -----------------
-	ms.sma = movingaverage.New(smallSmaPeriod, true)
-	smaHistory := reverseBuffer(ms.historyIndicatorsInSlicesAll.LastValue)
+
+	period := ms.windowSize / 5
+
+	switch ms.windowSize {
+
+	case Minute60:
+		period = ms.windowSize / 5
+	case Minute120:
+		period = ms.windowSize / 10
+
+	default:
+		period = ms.windowSize / 5
+	}
+
+	ms.sma = movingaverage.New(period, true)
+
+	//log.Info("smaHistory befor reverse:", ms.historyIndicatorsInSlicesAll.LastValue)
+
+	var smaHistory []float64
+
+	if len(ms.historyIndicatorsInSlicesAll.LastValue) > period {
+		smaHistory = reverseBuffer(ms.historyIndicatorsInSlicesAll.LastValue[0:period])
+	} else {
+		smaHistory = reverseBuffer(ms.historyIndicatorsInSlicesAll.LastValue)
+	}
+
+	//log.Info("smaHistory:", smaHistory, ms.windowSize)
 
 	smaInit := ms.historyIndicatorsInSlicesAll.Sma[0]
 	ms.sma.Init(smaInit, smaHistory)
 	//TODO: Initialize smaLong
 	ms.smaLong = movingaverage.New(longSmaPeriod, true)
 
-	log.Debug("SMA INIT: ", ms.sma.Value(), smaInit, smaHistory)
+	msgDebug := `
+	MovingStats smaInit() -->
+	windoSize           : %d
+	period selected     : %d
+	init average        : %f
+	`
+
+	log.Infof(msgDebug, ms.windowSize, period, ms.sma.Value())
 
 }
 
