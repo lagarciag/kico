@@ -8,8 +8,8 @@ func (ms *MovingStats) atrCalc(value float64) {
 	// --------------
 	// Update History
 	// --------------
-	lastVal := ms.currentWindowHistory.Oldest()
 	ms.currentWindowHistory.Push(value)
+	lastVal := ms.currentWindowHistory.Oldest()
 
 	// lastWindowHistory is necesary for calculatin True Range
 	ms.lastWindowHistory.Push(lastVal)
@@ -17,7 +17,6 @@ func (ms *MovingStats) atrCalc(value float64) {
 	// Add data to Average True Range Calculation
 	ms.atr.Add(ms.TrueRange())
 	ms.atrp = (ms.atr.Value() / ms.sEma.Ema.Value()) * 100
-
 }
 
 func (ms *MovingStats) CurrentHigh() float64 {

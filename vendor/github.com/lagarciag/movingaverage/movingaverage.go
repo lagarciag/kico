@@ -82,7 +82,7 @@ func (avg *MovingAverage) Add(value float64) {
 
 	lastAvgValue := avg.avgHistBuff.Oldest()
 
-	if avg.count < avg.period {
+	if avg.count <= avg.period {
 		avg.avgSum = avg.avgSum + value
 		avg.average = avg.avgSum / float64(avg.count)
 	} else {

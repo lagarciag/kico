@@ -163,16 +163,23 @@ func (ms *MovingStats) historyInit() {
 
 	ms.currentWindowHistory = ringbuffer.NewBuffer(ms.windowSize, true, currHigh, currLow)
 
-	ms.currentWindowHistory.PushBuffer(reverseBuffer(ms.historyIndicatorsInSlices0.LastValue))
+	if len(ms.historyIndicatorsInSlices0.LastValue) > 1 {
 
-	ms.currentWindowHistory.SetInitHigh(currHigh)
-	ms.currentWindowHistory.SetInitLow(currLow)
+		ms.currentWindowHistory.PushBuffer(reverseBuffer(ms.historyIndicatorsInSlices0.LastValue))
+		ms.currentWindowHistory.SetInitHigh(currHigh)
+		ms.currentWindowHistory.SetInitLow(currLow)
+
+	}
 
 	ms.lastWindowHistory = ringbuffer.NewBuffer(ms.windowSize, true, prevHigh, prevLow)
 
-	ms.lastWindowHistory.PushBuffer(reverseBuffer(ms.historyIndicatorsInSlices1.LastValue))
-	ms.lastWindowHistory.SetInitHigh(prevHigh)
-	ms.lastWindowHistory.SetInitLow(prevLow)
+	if len(ms.historyIndicatorsInSlices1.LastValue) > 1 {
+
+		ms.lastWindowHistory.PushBuffer(reverseBuffer(ms.historyIndicatorsInSlices1.LastValue))
+		ms.lastWindowHistory.SetInitHigh(prevHigh)
+		ms.lastWindowHistory.SetInitLow(prevLow)
+
+	}
 
 }
 

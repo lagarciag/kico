@@ -1,5 +1,7 @@
 package ringbuffer
 
+import "github.com/sirupsen/logrus"
+
 type RingBuffer struct {
 	buff          []float64
 	head          int
@@ -56,19 +58,43 @@ func (rb *RingBuffer) PushBuffer(values []float64) {
 }
 
 func (rb *RingBuffer) SetInitHigh(highValue float64) {
-	rb.initHighValue = highValue
-	rb.initHighSet = true
-	rb.counter = 0
+	if highValue != 0 {
+		logrus.Info("RingBuffer Init High: ", highValue)
+		rb.initHighValue = highValue
+		rb.initHighSet = true
+		rb.counter = 0
+	} else {
+		logrus.Info("Skip ringbuffer init high")
+		rb.initHighSet = false
+	}
 }
 
 func (rb *RingBuffer) SetInitLow(value float64) {
-	rb.initLowValue = value
-	rb.initLowSet = true
-	rb.counter = 0
+	if value != 0 {
+		logrus.Info("RingBuffer Init Low: ", value)
+		rb.initLowValue = value
+		rb.initLowSet = true
+		rb.counter = 0
+	} else {
+		rb.initLowSet = false
+		logrus.Info("Skip ringbuffer init low")
+	}
 }
 
 //Push adds a new element to the buffer
 func (rb *RingBuffer) Push(value float64) {
+
+	if rb.counter == 0 && !rb.initLowSet {
+		rb.SetInitLow(value)
+		for i := range rb.buff {
+			rb.buff[i] = value
+		}
+	}
+
+	if rb.counter == 0 && !rb.initHighSet {
+		rb.SetInitHigh(value)
+	}
+
 	if value > rb.initHighValue || rb.counter >= rb.size {
 		rb.initHighSet = false
 	}
@@ -168,21 +194,17 @@ func (rb *RingBuffer) Head() float64 {
 
 //MostRecent returns the element at the head - 1
 func (rb *RingBuffer) MostRecent() float64 {
-	//if rb.head == 0 {
-	//	return rb.buff[rb.size-1]
-	//}
-	//return rb.buff[rb.head-1]
 	return rb.buff[rb.head]
 
 }
 
 //Oldest returns the element at the head - 1
 func (rb *RingBuffer) Oldest() float64 {
-	//if rb.tail == 0 {
-	//	return rb.buff[rb.size-1]
-	//}
-	return rb.buff[rb.tail]
-
+	oldest := rb.buff[rb.tail]
+	if rb.counter < rb.size {
+		oldest = rb.buff[0]
+	}
+	return oldest
 }
 
 //Tail returns the element at the buffer tail
