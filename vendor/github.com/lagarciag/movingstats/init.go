@@ -242,8 +242,18 @@ func (ms *MovingStats) smaInit() {
 }
 
 func (ms *MovingStats) atrInit() {
-	ms.atr = movingaverage.New(atrPeriod*ms.windowSize, true)
-	trHistory := reverseBuffer(ms.historyIndicatorsInSlicesAll.Sma)
+
+	period := atrPeriod * ms.windowSize
+
+	ms.atr = movingaverage.New(period, true)
+
+	var trHistory []float64
+
+	if len(ms.historyIndicatorsInSlicesAll.Sma) > period {
+		trHistory = reverseBuffer(ms.historyIndicatorsInSlicesAll.TR[0:period])
+	} else {
+		trHistory = reverseBuffer(ms.historyIndicatorsInSlicesAll.TR)
+	}
 
 	for i, val := range trHistory {
 		trHistory[i] = math.Abs(val)
@@ -258,6 +268,8 @@ func (ms *MovingStats) atrInit() {
 
 func (ms *MovingStats) dmAverageInit() {
 
+	period := atrPeriod * ms.windowSize
+
 	tmpAtr := ms.atr.Value()
 
 	log.Debug("ATR init: ", tmpAtr)
@@ -270,9 +282,30 @@ func (ms *MovingStats) dmAverageInit() {
 	// Initialize plusDMAvr
 	// ----------------------
 
-	ms.plusDMAvr = movingaverage.New(atrPeriod*ms.windowSize, true)
-	plusDMAAvrHistoryATR := reverseBuffer(ms.historyIndicatorsInSlicesAll.PDM)
-	avTRHistory := reverseBuffer(ms.historyIndicatorsInSlicesAll.ATR)
+	ms.plusDMAvr = movingaverage.New(period, true)
+
+	// -----------------------------
+	// Create historical ATR buffer
+	// -----------------------------
+	var avTRHistory []float64
+
+	if len(ms.historyIndicatorsInSlicesAll.ATR) > period {
+		avTRHistory = reverseBuffer(ms.historyIndicatorsInSlicesAll.ATR[0:period])
+	} else {
+		avTRHistory = reverseBuffer(ms.historyIndicatorsInSlicesAll.ATR)
+	}
+
+	// ----------------------------
+	// Create plusDMAAvrHistory
+	// ----------------------------
+	var plusDMAAvrHistoryATR []float64
+
+	if len(ms.historyIndicatorsInSlicesAll.PDM) > period {
+		plusDMAAvrHistoryATR = reverseBuffer(ms.historyIndicatorsInSlicesAll.PDM[0:period])
+	} else {
+		plusDMAAvrHistoryATR = reverseBuffer(ms.historyIndicatorsInSlicesAll.PDM)
+	}
+
 	plusDMAAvrHistory := make([]float64, len(plusDMAAvrHistoryATR))
 
 	// Regenerate plusDm Average using historical ATR
@@ -297,8 +330,18 @@ func (ms *MovingStats) dmAverageInit() {
 	// Initialize plusDMAvr
 	// ----------------------
 
-	ms.minusDMAvr = movingaverage.New(atrPeriod*ms.windowSize, true)
-	minusDMAAvrHistoryATR := reverseBuffer(ms.historyIndicatorsInSlicesAll.MDM)
+	ms.minusDMAvr = movingaverage.New(period, true)
+
+	// ----------------------------
+	// Create plusDMAAvrHistory
+	// ----------------------------
+	var minusDMAAvrHistoryATR []float64
+
+	if len(ms.historyIndicatorsInSlicesAll.MDM) > period {
+		minusDMAAvrHistoryATR = reverseBuffer(ms.historyIndicatorsInSlicesAll.MDM[0:period])
+	} else {
+		minusDMAAvrHistoryATR = reverseBuffer(ms.historyIndicatorsInSlicesAll.MDM)
+	}
 	minusDMAAvrHistory := make([]float64, len(minusDMAAvrHistoryATR))
 
 	// Regenerate minusDm Average using historical ATR
@@ -317,10 +360,25 @@ func (ms *MovingStats) dmAverageInit() {
 
 func (ms *MovingStats) adxInit() {
 
-	ms.adxAvr = movingaverage.New(atrPeriod*ms.windowSize, true)
+	period := atrPeriod * ms.windowSize
 
-	plusDIHistory := reverseBuffer(ms.historyIndicatorsInSlicesAll.PDI)
-	minusDIHistory := reverseBuffer(ms.historyIndicatorsInSlicesAll.MDI)
+	ms.adxAvr = movingaverage.New(period, true)
+
+	var plusDIHistory []float64
+	var minusDIHistory []float64
+
+	if len(ms.historyIndicatorsInSlicesAll.PDI) > period {
+		plusDIHistory = reverseBuffer(ms.historyIndicatorsInSlicesAll.PDI[0:period])
+	} else {
+		plusDIHistory = reverseBuffer(ms.historyIndicatorsInSlicesAll.PDI)
+	}
+
+	if len(ms.historyIndicatorsInSlicesAll.MDI) > period {
+		minusDIHistory = reverseBuffer(ms.historyIndicatorsInSlicesAll.MDI[0:period])
+	} else {
+		minusDIHistory = reverseBuffer(ms.historyIndicatorsInSlicesAll.MDI)
+	}
+
 	adValHistory := make([]float64, len(plusDIHistory))
 
 	for i, value := range plusDIHistory {

@@ -67,7 +67,7 @@ func (ms *MovingStats) dmiCalc() {
 	// ----------------------------
 
 	//pAvrTr := ms.atr.Value()
-	pAvrTr := ms.atr.SimpleMovingAverage()
+	pAvrTr := ms.atr.Value()
 	if pAvrTr < 0.0000001 {
 		pAvrTr = float64(0.0000001)
 	}
