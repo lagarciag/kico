@@ -199,7 +199,7 @@ const mac26Period = 26
 const atrPeriod = 14
 const smallSmaPeriod = 60
 const longSmaPeriod = 120
-const atrDivisor = float64(360)
+const atrDivisor = float64(460)
 const smaLongPeriodMultiplier = 2
 
 func NewMovingStats(size int, latestIndicators,
