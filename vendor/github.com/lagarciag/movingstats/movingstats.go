@@ -272,27 +272,11 @@ func NewMovingStats(size int, latestIndicators,
 func (ms *MovingStats) Add(value float64) {
 
 	ms.mu.Lock()
-	/*if ms.dirtyHistory {
-		log.Warn("Warming up data points due to dirty bit: ", ms.windowSize)
-		for i := 0; i < ms.windowSize*30; i++ {
-			ms.add(value)
-		}
-		log.Warn("Done warming up due to dirty bit: ", ms.windowSize)
-		ms.dirtyHistory = false
-	} else {
-		ms.add(value)
-	}
-	*/
-	ms.add(value)
-	ms.mu.Unlock()
-}
-
-func (ms *MovingStats) add(value float64) {
-
 	ms.sma.Add(value)
 	ms.smaLong.Add(value)
 	ms.sema.Add(value)
 	ms.mema9.Add(value)
+
 	// ------------------------------------------------
 	// Calculate Multiple Exponential Moving Averages
 	// ------------------------------------------------
@@ -316,6 +300,7 @@ func (ms *MovingStats) add(value float64) {
 
 	ms.count++
 
+	ms.mu.Unlock()
 }
 
 func (ms *MovingStats) Ema1() float64 {
