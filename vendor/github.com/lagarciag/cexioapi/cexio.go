@@ -120,7 +120,7 @@ func (a *API) auth() error {
 
 	h := hmac.New(sha256.New, []byte(a.Secret))
 	if _, err := h.Write([]byte(s)); err != nil {
-		log.Error("wirting bytes in cexio auth func")
+		log.Error("writing bytes in cexio auth func")
 	}
 
 	// generate signed signature string
