@@ -225,7 +225,7 @@ type MovingStats struct {
 	count          int
 }
 
-const panicMinutesLimitMultiplier = 12
+const panicMinutesLimitMultiplier = 8 * 10 / 60
 const emaPeriod = 9
 const macD9Period = 9
 const mac12Period = 12
