@@ -39,7 +39,7 @@ func (ms *MovingStats) macdCalc(value float64) {
 	if ms.MacdDnTimer > ms.panicMinutesLimit {
 		ms.MacdBearToBullPanicBuy = true
 	} else {
-		ms.MacdBearToBullPanicBuy = true
+		ms.MacdBearToBullPanicBuy = false	
 	}
 
 }
