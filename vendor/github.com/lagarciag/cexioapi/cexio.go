@@ -36,6 +36,10 @@ type API struct {
 	OrdersMap                map[string]ResponseOrderData
 	orderResponseSubscribers map[string]chan ResponseOrderData
 
+	// Balance
+	balance         map[string]string
+	balanceMapMutex *sync.Mutex
+
 	//Dialer used to connect to WebSocket server
 	Dialer *websocket.Dialer
 

@@ -327,6 +327,7 @@ func (a *API) PlaceOrder(cCode1 string, cCode2 string, amount, price float64, th
 	a.ordersMapMutex.Lock()
 	respData := ResponseOrderData{}
 	respData.ID = resp.Data.ID
+	respData.Remains = resp.Data.Pending
 
 	if resp.Data.Complete {
 		respData.Remains = "0"
@@ -335,6 +336,9 @@ func (a *API) PlaceOrder(cCode1 string, cCode2 string, amount, price float64, th
 	respData.Cancel = false
 
 	orderID := resp.Data.ID
+
+	log.Debug("place order: ", spew.Sdump(respData))
+
 	a.OrdersMap[orderID] = respData
 	a.ordersMapMutex.Unlock()
 
@@ -362,6 +366,76 @@ func (a *API) PlaceOrder(cCode1 string, cCode2 string, amount, price float64, th
 			resp.Data.Type,
 			resp.Data.Price)
 		log.Debug("Order Placement not complete:", dmessage)
+	}
+
+	return resp, nil
+}
+
+func (a *API) CancelOrder(orderID string) (*CancelOrderResponse, error) {
+	a.cond.L.Lock()
+	for !a.connected {
+		a.cond.Wait()
+	}
+
+	// ------------------
+	// Create order ID
+	// ------------------
+	timestamp := time.Now().UnixNano()
+	transactionID := fmt.Sprintf("%d_%s:cancel-order", timestamp, orderID)
+
+	// -------------------------------
+	// Create Action & subscriberID
+	// -------------------------------
+	action := "cancel-order"
+	subscriberIdentifier := fmt.Sprintf("cancel-order-%s", transactionID)
+	log.Debug("cancel-order: subscriberIdentifier -> ", subscriberIdentifier)
+
+	sub := a.subscribe(subscriberIdentifier)
+	defer a.unsubscribe(subscriberIdentifier)
+
+	dataRequest := CancelOrderData{
+		OrderId: orderID,
+	}
+
+	msg := CancelOrder{
+		E:    action,
+		Data: dataRequest,
+		Oid:  transactionID,
+	}
+
+	log.Debug("PlaceOrder request: ", msg)
+
+	resp := &CancelOrderResponse{}
+
+	err := a.conn.WriteJSON(msg)
+	if err != nil {
+		log.Error("Cancel-order WriteJSON:", err.Error())
+		a.cond.L.Unlock()
+		return nil, err
+	}
+	a.cond.L.Unlock()
+
+	respFromServer := <-sub
+
+	respMsg := respFromServer.([]byte)
+
+	// ---------------------------
+	// Unmarshal and check result
+	// ---------------------------
+	err = json.Unmarshal(respMsg, resp)
+	if err != nil {
+		log.Error("PlaceOrder Error: Conn Unmarshal: ", err.Error())
+		return resp, err
+	}
+
+	// ----------------------------
+	// Check for errors, if error
+	// reported send error back
+	// ----------------------------
+	if resp.Ok != "ok" {
+		repErr := fmt.Errorf("Cancel-Order Error reported: %s", "not OK")
+		log.Error(repErr)
+		return resp, repErr
 	}
 
 	return resp, nil
@@ -567,6 +641,9 @@ func (a *API) WaitOrderComplete(orderID string) (completeOrCanceled bool, err er
 			a.ordersMapMutex.Unlock()
 			return false, nil
 		} else {
+
+			log.Debug("respData:", spew.Sdump(respData))
+
 			remains, err := strconv.ParseFloat(respData.Remains, 64)
 			if err != nil {
 				a.ordersMapMutex.Unlock()
@@ -602,12 +679,15 @@ func (a *API) WaitOrderComplete(orderID string) (completeOrCanceled bool, err er
 			{
 				respData = respFromServer.(ResponseOrderData)
 
+				log.Info("respData: ", spew.Sdump(respData))
+
 				// ---------------------------------------
 				// Order was process, checking for status
 				// ---------------------------------------
 				if respData.Cancel {
 					return false, nil
 				} else {
+
 					remains, err := strconv.ParseFloat(respData.Remains, 64)
 					if err != nil {
 						return completeOrCanceled, err

@@ -371,11 +371,11 @@ func (ms *MinuteStrategy) buySellUpdate() {
 		mDIBear = true
 	}
 
-	if pDIBull && adxBull {
+	if pDIBull && adxBull || ms.movingStats.EmaBearToBullPanicBuy || ms.movingStats.MacdBearToBullPanicBuy {
 		pDirectionalBull = true
 	}
 
-	if mDIBear || adxBull {
+	if mDIBear || adxBull || ms.movingStats.EmaBullToBearPanicSell || ms.movingStats.MacdBullToBearPanicSell {
 		mDirectionalBear = true
 	}
 
@@ -534,6 +534,16 @@ func (ms *MinuteStrategy) updateIndicators() {
 		ms.indicators.TR = ms.movingStats.TrueRange()
 		ms.indicators.ATR = ms.movingStats.Atr()
 		ms.indicators.ATRP = ms.movingStats.Atrp()
+
+		ms.indicators.EmaUpT = ms.movingStats.EmaUpTimer
+		ms.indicators.EmaDnT = ms.movingStats.EmaDnTimer
+		ms.indicators.MacdUp = ms.movingStats.MacdUpTimer
+		ms.indicators.MacdDnT = ms.movingStats.MacdDnTimer
+
+		ms.indicators.EmaPanicSell = ms.movingStats.EmaBullToBearPanicSell
+		ms.indicators.EmaPanicBuy = ms.movingStats.EmaBearToBullPanicBuy
+		ms.indicators.MacdPanicSell = ms.movingStats.MacdBullToBearPanicSell
+		ms.indicators.MacdPanicBuy = ms.movingStats.MacdBearToBullPanicBuy
 
 		//--------------------
 		//Calculate UTC time

@@ -218,6 +218,43 @@ func (a *API) ResponseCollector() {
 
 			}
 
+		case "cancel-order":
+			{
+				name := "cancel-order"
+				a.HeartBeat <- true
+				resp := &CancelOrderResponse{}
+				err = json.Unmarshal(msg, resp)
+				if err != nil {
+					localError := fmt.Errorf("%s Error: Conn Unmarshal: %s", name, err.Error())
+					a.errorChan <- localError
+					continue
+				} else {
+
+					// ----------------------------
+					// Check for errors, if error
+					// reported send error back
+					// ----------------------------
+					if resp.Ok != "ok" {
+						repErr := fmt.Errorf("%s Error reported: %s", name, "unspecified")
+						log.Error(repErr)
+					}
+
+					transactionID := resp.Oid
+					subscriberIdentifier = fmt.Sprintf("%s-%s", name, transactionID)
+
+					log.Debug("ResponseCollector: checking subscriber: ", subscriberIdentifier)
+
+					sub, err := a.subscriber(subscriberIdentifier)
+					if err != nil {
+						log.Infof("No response handler for message: %s", string(msg))
+						continue // don't know how to handle message so just skip it
+					}
+					sub <- msg
+					continue
+				}
+
+			}
+
 		case "order":
 			{
 				name := "order"

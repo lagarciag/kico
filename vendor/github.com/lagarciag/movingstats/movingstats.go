@@ -52,6 +52,16 @@ type IndicatorsHistory struct {
 
 	Buy  []bool `json:"buy"`
 	Sell []bool `json:"sell"`
+
+	EmaUpT  []float64 `json:"ema_up_t"`
+	EmaDnT  []float64 `json:"ema_dn_t"`
+	MacdUp  []float64 `json:"macd_up"`
+	MacdDnT []float64 `json:"macd_dn_t"`
+
+	EmaPanicSell  []bool `json:"ema_panic_sell"`
+	EmaPanicBuy   []bool `json:"ema_panic_buy"`
+	MacdPanicSell []bool `json:"macd_panic_sell"`
+	MacdPanicBuy  []bool `json:"macd_panic_buy"`
 }
 
 type Indicators struct {
@@ -97,11 +107,23 @@ type Indicators struct {
 
 	Buy  bool `json:"buy"`
 	Sell bool `json:"sell"`
+
+	EmaUpT  float64 `json:"ema_up_t"`
+	EmaDnT  float64 `json:"ema_dn_t"`
+	MacdUp  float64 `json:"macd_up_t"`
+	MacdDnT float64 `json:"macd_dn_t"`
+
+	EmaPanicSell  bool `json:"ema_panic_sell"`
+	EmaPanicBuy   bool `json:"ema_panic_buy"`
+	MacdPanicSell bool `json:"macd_panic_sell"`
+	MacdPanicBuy  bool `json:"macd_panic_buy"`
 }
 
 type MovingStats struct {
 	ID string
 	mu *sync.Mutex
+
+	panicMinutesLimit float64
 
 	dirtyHistory bool
 	windowSize   int
@@ -168,11 +190,22 @@ type MovingStats struct {
 
 	macd           float64
 	macdDivergence float64
+	macdBull       bool
 
-	emaUpTimer  time.Duration
-	emaDnTimer  time.Duration
-	macdUpTimer time.Duration
-	macdDnTimer time.Duration
+	EmaUpTimer  float64
+	EmaDnTimer  float64
+	MacdUpTimer float64
+	MacdDnTimer float64
+
+	emaUpStartTime  time.Time
+	emaDnStartTime  time.Time
+	macdUpStartTime time.Time
+	macdDnStartTime time.Time
+
+	EmaBullToBearPanicSell  bool
+	EmaBearToBullPanicBuy   bool
+	MacdBullToBearPanicSell bool
+	MacdBearToBullPanicBuy  bool
 
 	//Directional Movement
 	cHigh float64
@@ -192,6 +225,7 @@ type MovingStats struct {
 	count          int
 }
 
+const panicMinutesLimitMultiplier = 12
 const emaPeriod = 9
 const macD9Period = 9
 const mac12Period = 12
@@ -214,6 +248,14 @@ func NewMovingStats(size int, latestIndicators,
 
 	//window := float64(size)
 	ms := &MovingStats{}
+	ms.panicMinutesLimit = float64(size * panicMinutesLimitMultiplier)
+	ms.macdUpStartTime = time.Now()
+	ms.macdDnStartTime = ms.macdUpStartTime
+	ms.emaUpStartTime = ms.macdDnStartTime
+	ms.emaDnStartTime = ms.macdDnStartTime
+	ms.MacdDnTimer = 0
+	ms.MacdUpTimer = 0
+
 	ms.ID = ID
 	ms.dirtyHistory = dirtyHistory
 	ms.mu = &sync.Mutex{}

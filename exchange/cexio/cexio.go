@@ -61,18 +61,18 @@ func (bot *Bot) Restart() {
 		log.Error(err.Error())
 	}
 
-/*
-	bot.apiOnline = false
+	/*
+		bot.apiOnline = false
 
-	//--------------------------
-	// Stop price update timer
-	//--------------------------
-	for _, pair := range bot.pairs {
-		if bot.priceUpdateTimer[pair] != nil {
-			bot.priceUpdateTimer[pair].Stop()
+		//--------------------------
+		// Stop price update timer
+		//--------------------------
+		for _, pair := range bot.pairs {
+			if bot.priceUpdateTimer[pair] != nil {
+				bot.priceUpdateTimer[pair].Stop()
+			}
 		}
-	}
-*/
+	*/
 	bot.ApiOnline = false
 
 	close(bot.ApiStop)
@@ -167,6 +167,18 @@ func (bot *Bot) PlaceOrder(cc1 string, cc2 string, amount, price float64, aType 
 	}
 
 	return complete, pending, amountPlaced, transactionID, orderID, err
+}
+
+func (bot *Bot) CancelOrder(orderID string) (err error) {
+
+	resp, err := bot.Api.CancelOrder(orderID)
+	if err != nil {
+		return err
+	}
+
+	log.Debug("CancelOrder response: \n%s", spew.Sdump(resp))
+
+	return err
 }
 
 func (bot *Bot) GetOpenOrdersList(cc1 string, cc2 string) (ordersList []cexioapi.ResponseOpenOrdersData,

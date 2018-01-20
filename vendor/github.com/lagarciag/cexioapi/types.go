@@ -253,3 +253,24 @@ type ResponseOrderData struct {
 	Cancel   bool              `json:"cancel"`
 	Pair     map[string]string `json:"pair"`
 }
+
+type CancelOrder struct {
+	E    string          `json:"e"`
+	Data CancelOrderData `json:"data"`
+	Oid  string          `json:"oid"`
+}
+
+type CancelOrderData struct {
+	OrderId string `json:"order_id"`
+}
+
+type CancelOrderResponse struct {
+	E    string          `json:"e"`
+	Data CancelOrderData `json:"data"`
+	Oid  string          `json:"oid"`
+	Ok   string          `json:"ok"`
+}
+
+type CancelOrderDataResponse struct {
+	OrderId string `json:"order_id"`
+}

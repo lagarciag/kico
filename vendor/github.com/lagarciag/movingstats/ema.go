@@ -20,14 +20,16 @@ type emaContainer struct {
 	power int
 
 	emaStart     time.Time
-	EmaUpElapsed time.Duration
-	WmaDnElapsed time.Duration
+	EmaUpElapsed float64
+	EmaDnElapsed float64
 }
 
 //periods int, periodSize int
 func newEmaContainer(periods, periodSize int, power int, initValues []float64) (ec *emaContainer) {
 	ec = &emaContainer{}
 	ec.power = power
+	ec.EmaDnElapsed = 0
+	ec.EmaUpElapsed = 0
 
 	ec.Ema = multiema.NewMultiEma(periods, periodSize, initValues[0])
 
@@ -83,19 +85,18 @@ func (ec *emaContainer) Add(value float64) {
 	ec.EmaSlope = ec.EmaHistory.MostRecent() - ec.EmaHistory.Oldest()
 
 	if ec.EmaSlope > 0 {
-
 		if ec.EmaUp == false {
 			ec.emaStart = time.Now()
 		}
-		ec.EmaUpElapsed = time.Since(ec.emaStart)
-		ec.WmaDnElapsed = time.Duration(0)
+		ec.EmaUpElapsed = time.Since(ec.emaStart).Minutes()
+		//ec.EmaDnElapsed = 0
 		ec.EmaUp = true
 	} else {
 		if ec.EmaUp == true {
 			ec.emaStart = time.Now()
 		}
-		ec.WmaDnElapsed = time.Since(ec.emaStart)
-		ec.EmaUpElapsed = time.Duration(0)
+		ec.EmaDnElapsed = time.Since(ec.emaStart).Minutes()
+		//ec.EmaUpElapsed = 0
 		ec.EmaUp = false
 	}
 }
@@ -103,6 +104,21 @@ func (ec *emaContainer) Add(value float64) {
 func (ms *MovingStats) emaCalc(value float64) {
 
 	ms.sEma.Add(value)
+	ms.EmaUpTimer = ms.sEma.EmaUpElapsed
+	ms.EmaDnTimer = ms.sEma.EmaDnElapsed
+
+	if ms.EmaUpTimer > ms.panicMinutesLimit {
+		ms.EmaBullToBearPanicSell = true
+	} else {
+		ms.EmaBullToBearPanicSell = false
+	}
+
+	if ms.EmaDnTimer > ms.panicMinutesLimit {
+		ms.EmaBearToBullPanicBuy = true
+	} else {
+		ms.EmaBearToBullPanicBuy = false
+	}
+
 	//ms.dEma.Add(value)
 	//ms.tEma.Add(value)
 

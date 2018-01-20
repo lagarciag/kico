@@ -96,6 +96,36 @@ func TestBasicPrivate(t *testing.T) {
 
 }
 
+func TestCancelNoOrder(t *testing.T) {
+	config, err := cexio.LoadViperConfig()
+
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+
+	kr := kredis.NewKredis(1)
+	t.Log("Configuration: ", config)
+
+	manager := cexioprivate.NewBot(config, kr, true)
+
+	t.Log("Created bot object")
+
+	manager.Start()
+	time.Sleep(time.Second * 2)
+	t.Log("bot started")
+
+	orderID := "1234"
+
+	err = manager.CancelOrder(orderID)
+
+	if err != nil {
+		t.Log(err.Error())
+	} else {
+		t.Error("Bad cancel result")
+	}
+
+}
+
 func TestBasicBuyCancell(t *testing.T) {
 	config, err := cexio.LoadViperConfig()
 
@@ -128,7 +158,7 @@ func TestBasicBuyCancell(t *testing.T) {
 	// This will put the order pending
 	// --------------------------------------------------
 
-	buyPrice := bid + (bid * 0.5 / 100)
+	buyPrice := bid - (bid * 5 / 100)
 
 	t.Log("BuyPrice:", buyPrice)
 
@@ -156,15 +186,150 @@ func TestBasicBuyCancell(t *testing.T) {
 
 	t.Log("OrderID pending: ", orderID)
 
+	go delayedCancelOrder(manager, orderID)
+
 	completeCancel, err := manager.WaitForOrder(orderID)
+
 	if err != nil {
 		t.Error("order error: ", err.Error())
-	}
-
-	if completeCancel {
-		t.Log("Order was completed...")
 	} else {
-		t.Log("Order was canceled")
+
+		if completeCancel {
+			t.Log("Order was completed...")
+		} else {
+			t.Log("Order was canceled")
+		}
+
 	}
 
+}
+
+func TestBasicBuySell(t *testing.T) {
+	config, err := cexio.LoadViperConfig()
+
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+
+	kr := kredis.NewKredis(1)
+	t.Log("Configuration: ", config)
+
+	manager := cexioprivate.NewBot(config, kr, true)
+
+	t.Log("Created bot object")
+
+	manager.Start()
+	time.Sleep(time.Second * 2)
+	t.Log("bot started")
+
+	//balanceData, err := manager.GetBalance()
+
+	cc1 := "XRP"
+	amountToBuy := float64(10)
+
+	bid, ask, err := manager.GetTickerPrice(cc1, "USD")
+
+	t.Logf("XRP -> bid: %f, ask: %f", bid, ask)
+
+	// --------------------------------------------------
+	// Put Buy order at 10% less the current bid price
+	// This will put the order pending
+	// --------------------------------------------------
+
+	buyPrice := bid + bid*(2/100)
+
+	t.Log("BuyPrice:", buyPrice)
+
+	complete, _, _, transactionID, orderID, err := manager.PlaceOrder(cc1, "USD", amountToBuy, buyPrice, "buy")
+
+	if err != nil {
+		t.Errorf("Order with tID %s, oID %s,  error: %s", transactionID, orderID, err.Error())
+	}
+
+	if !complete {
+		t.Logf("Order rID: %s, oID: %s,  not complete", transactionID, orderID)
+	}
+
+	ordersList, err := manager.GetOpenOrdersList(cc1, "USD")
+
+	if err != nil {
+		t.Error("Getting orders list: ", err.Error())
+	}
+
+	if len(ordersList) < 1 {
+		t.Error("Got an empty orders list")
+	}
+
+	t.Log(spew.Sdump(ordersList))
+
+	t.Log("OrderID pending: ", orderID)
+
+	// -------------------------------------------
+	//  Wait for order to be completed or canceled
+	// -------------------------------------------
+	completeCancel, err := manager.WaitForOrder(orderID)
+
+	if err != nil {
+		t.Error("order error: ", err.Error())
+	} else {
+		if completeCancel {
+			t.Log("Order was completed...")
+
+			cc1 := "XRP"
+			amountToSell := float64(10)
+
+			bid, ask, err := manager.GetTickerPrice(cc1, "USD")
+
+			t.Logf("XRP -> bid: %f, ask: %f", bid, ask)
+
+			// --------------------------------------------------
+			// Put Buy order at 10% less the current bid price
+			// This will put the order pending
+			// --------------------------------------------------
+
+			sellPrice := ask
+
+			t.Log("SellPrice:", sellPrice)
+
+			complete, _, _, transactionID, orderID, err := manager.PlaceOrder(cc1, "USD", amountToSell, sellPrice, "sell")
+
+			if err != nil {
+				t.Errorf("Order with tID %s, oID %s,  error: %s", transactionID, orderID, err.Error())
+			}
+
+			if !complete {
+				t.Logf("Order rID: %s, oID: %s,  not complete", transactionID, orderID)
+			}
+
+			completeCancel, err := manager.WaitForOrder(orderID)
+
+			if err != nil {
+				t.Error("order error: ", err.Error())
+			} else {
+
+				if completeCancel {
+					t.Log("Sell order complete")
+				} else {
+					t.Error("Sell Order incomplete....")
+				}
+			}
+
+		} else {
+			t.Error("Order was canceled")
+		}
+
+	}
+
+}
+
+func delayedCancelOrder(bot *cexioprivate.Bot, orderID string) {
+
+	time.Sleep(time.Second * 5)
+	err := bot.CancelOrder(orderID)
+
+	if err != nil {
+
+		log.Error("Error canceling order: ", err.Error())
+
+	}
 }
