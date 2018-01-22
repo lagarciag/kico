@@ -474,7 +474,7 @@ func (ms *MovingStats) timersInit() {
 
 	timeNow := time.Now()
 
-	if ms.historyIndicatorsInSlices0.MacdDnT[0] != 0 {
+	if ms.historyIndicatorsInSlices0.MacdDnT[0] != 0 && ms.historyIndicatorsInSlices0.MacdDnT[0] < 1000000 {
 		ms.MacdDnTimer = ms.historyIndicatorsInSlices0.MacdDnT[0]
 		ms.MacdDnStartTime = ms.historyIndicatorsInSlices0.MacDnSt[0]
 	} else {
@@ -483,7 +483,7 @@ func (ms *MovingStats) timersInit() {
 		ms.MacdDnTimer = 0
 	}
 
-	if ms.historyIndicatorsInSlices0.MacdUpT[0] != 0 {
+	if ms.historyIndicatorsInSlices0.MacdUpT[0] != 0 && ms.historyIndicatorsInSlices0.MacdUpT[0] < 1000000 {
 		ms.MacdUpTimer = ms.historyIndicatorsInSlices0.MacdUpT[0]
 		ms.MacdUpStartTime = ms.historyIndicatorsInSlices0.MacUpSt[0]
 	} else {
@@ -492,7 +492,7 @@ func (ms *MovingStats) timersInit() {
 		ms.MacdUpTimer = 0
 	}
 
-	if ms.historyIndicatorsInSlices0.EmaDnT[0] != 0 {
+	if ms.historyIndicatorsInSlices0.EmaDnT[0] != 0 && ms.historyIndicatorsInSlices0.EmaDnT[0] > 1000000 {
 		ms.EmaDnTimer = ms.historyIndicatorsInSlices0.EmaDnT[0]
 		ms.EmaDnStartTime = ms.historyIndicatorsInSlices0.EmDnSt[0]
 		ms.sEma.EmaDnStart = ms.EmaDnStartTime
@@ -503,7 +503,7 @@ func (ms *MovingStats) timersInit() {
 		ms.sEma.EmaDnStart = ms.EmaDnStartTime
 	}
 
-	if ms.historyIndicatorsInSlices0.EmaUpT[0] != 0 {
+	if ms.historyIndicatorsInSlices0.EmaUpT[0] != 0 && ms.historyIndicatorsInSlices0.EmaUpT[0] < 1000000 {
 		ms.EmaUpTimer = ms.historyIndicatorsInSlices0.EmaUpT[0]
 		ms.EmaUpStartTime = ms.historyIndicatorsInSlices0.EmUpSt[0]
 		ms.sEma.EmaUpStart = ms.EmaUpStartTime
