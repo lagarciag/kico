@@ -492,7 +492,7 @@ func (ms *MovingStats) timersInit() {
 		ms.MacdUpTimer = 0
 	}
 
-	if ms.historyIndicatorsInSlices0.EmaDnT[0] != 0 && ms.historyIndicatorsInSlices0.EmaDnT[0] > 1000000 {
+	if ms.historyIndicatorsInSlices0.EmaDnT[0] != 0 && ms.historyIndicatorsInSlices0.EmaDnT[0] < 1000000 {
 		ms.EmaDnTimer = ms.historyIndicatorsInSlices0.EmaDnT[0]
 		ms.EmaDnStartTime = ms.historyIndicatorsInSlices0.EmDnSt[0]
 		ms.sEma.EmaDnStart = ms.EmaDnStartTime
