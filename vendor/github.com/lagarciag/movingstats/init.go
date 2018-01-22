@@ -472,30 +472,46 @@ func (ms *MovingStats) emaMacdInit() {
 
 func (ms *MovingStats) timersInit() {
 
-	if len(ms.historyIndicatorsInSlices0.EmUpSt) > 1 {
+	timeNow := time.Now()
 
-		log.Debug("*******************************  Restoring timers")
-
-		ms.MacdUpStartTime = ms.historyIndicatorsInSlices0.MacUpSt[0]
-		ms.MacdDnStartTime = ms.historyIndicatorsInSlices0.MacDnSt[0]
-		ms.EmaUpStartTime = ms.historyIndicatorsInSlices0.EmUpSt[0]
-		ms.EmaDnStartTime = ms.historyIndicatorsInSlices0.EmDnSt[0]
+	if ms.historyIndicatorsInSlices0.MacdDnT[0] != 0 {
 		ms.MacdDnTimer = ms.historyIndicatorsInSlices0.MacdDnT[0]
-		ms.MacdUpTimer = ms.historyIndicatorsInSlices0.MacdUpT[0]
-		ms.EmaDnTimer = ms.historyIndicatorsInSlices0.EmaDnT[0]
-		ms.EmaUpTimer = ms.historyIndicatorsInSlices0.EmaUpT[0]
-
-		ms.sEma.EmaUpStart = ms.EmaUpStartTime
-		ms.sEma.EmaDnStart = ms.EmaDnStartTime
-
+		ms.MacdDnStartTime = ms.historyIndicatorsInSlices0.MacDnSt[0]
 	} else {
-		log.Warn("********************************** Reseting init timers....")
-		ms.MacdUpStartTime = time.Now()
-		ms.MacdDnStartTime = ms.MacdUpStartTime
-		ms.EmaUpStartTime = ms.MacdDnStartTime
-		ms.EmaDnStartTime = ms.MacdDnStartTime
+		log.Warn("********************************** Reseting init timers: ", "MacdDn")
+		ms.MacdDnStartTime = timeNow
 		ms.MacdDnTimer = 0
+	}
+
+	if ms.historyIndicatorsInSlices0.MacdUpT[0] != 0 {
+		ms.MacdUpTimer = ms.historyIndicatorsInSlices0.MacdUpT[0]
+		ms.MacdUpStartTime = ms.historyIndicatorsInSlices0.MacUpSt[0]
+	} else {
+		log.Warn("********************************** Reseting init timers: ", "MacdUp")
+		ms.MacdUpStartTime = timeNow
 		ms.MacdUpTimer = 0
+	}
+
+	if ms.historyIndicatorsInSlices0.EmaDnT[0] != 0 {
+		ms.EmaDnTimer = ms.historyIndicatorsInSlices0.EmaDnT[0]
+		ms.EmaDnStartTime = ms.historyIndicatorsInSlices0.EmDnSt[0]
+		ms.sEma.EmaDnStart = ms.EmaDnStartTime
+	} else {
+		log.Warn("********************************** Reseting init timers: ", "EmaDn")
+		ms.EmaDnStartTime = timeNow
+		ms.EmaDnTimer = 0
+		ms.sEma.EmaDnStart = ms.EmaDnStartTime
+	}
+
+	if ms.historyIndicatorsInSlices0.EmaUpT[0] != 0 {
+		ms.EmaUpTimer = ms.historyIndicatorsInSlices0.EmaUpT[0]
+		ms.EmaUpStartTime = ms.historyIndicatorsInSlices0.EmUpSt[0]
+		ms.sEma.EmaUpStart = ms.EmaUpStartTime
+	} else {
+		log.Warn("********************************** Reseting init timers: ", "EmaUp")
+		ms.EmaUpStartTime = timeNow
+		ms.EmaUpTimer = 0
+		ms.sEma.EmaUpStart = ms.EmaUpStartTime
 	}
 
 }
