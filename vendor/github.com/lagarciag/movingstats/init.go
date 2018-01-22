@@ -501,6 +501,7 @@ func (ms *MovingStats) timersInit() {
 		ms.EmaDnStartTime = timeNow
 		ms.EmaDnTimer = 0
 		ms.sEma.EmaDnStart = ms.EmaDnStartTime
+		ms.sEma.EmaDnElapsed = 0
 	}
 
 	if ms.historyIndicatorsInSlices0.EmaUpT[0] != 0 && ms.historyIndicatorsInSlices0.EmaUpT[0] < 1000000 {
@@ -512,6 +513,7 @@ func (ms *MovingStats) timersInit() {
 		ms.EmaUpStartTime = timeNow
 		ms.EmaUpTimer = 0
 		ms.sEma.EmaUpStart = ms.EmaUpStartTime
+		ms.sEma.EmaUpElapsed = 0
 	}
 
 }
