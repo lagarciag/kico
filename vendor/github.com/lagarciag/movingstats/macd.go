@@ -1,6 +1,10 @@
 package movingstats
 
-import "time"
+import (
+	"time"
+
+	"github.com/sirupsen/logrus"
+)
 
 func (ms *MovingStats) macdCalc(value float64) {
 
@@ -14,18 +18,20 @@ func (ms *MovingStats) macdCalc(value float64) {
 
 	if ms.macdDivergence > 0 {
 		if ms.macdBull == false {
-			ms.macdUpStartTime = time.Now()
+			logrus.Info("Reseting macdUp timer...")
+			ms.MacdUpStartTime = time.Now()
 
 		}
-		ms.MacdUpTimer = time.Since(ms.macdUpStartTime).Minutes()
+		ms.MacdUpTimer = time.Since(ms.MacdUpStartTime).Minutes()
 		ms.macdBull = true
 		//ms.MacdDnTimer = 0
 	} else {
 		if ms.macdBull == true {
-			ms.macdDnStartTime = time.Now()
+			logrus.Info("Reseting macdDn timer...")
+			ms.MacdDnStartTime = time.Now()
 
 		}
-		ms.MacdDnTimer = time.Since(ms.macdDnStartTime).Minutes()
+		ms.MacdDnTimer = time.Since(ms.MacdDnStartTime).Minutes()
 		ms.macdBull = false
 		//ms.MacdUpTimer = 0
 	}

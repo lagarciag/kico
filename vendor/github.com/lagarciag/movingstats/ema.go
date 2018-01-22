@@ -15,11 +15,13 @@ type emaContainer struct {
 	XEma       float64
 	EmaSlope   float64
 	EmaUp      bool
+	EmaDn      bool
 	EmaHistory *ringbuffer.RingBuffer
 
 	power int
 
-	emaStart     time.Time
+	EmaUpStart   time.Time
+	EmaDnStart   time.Time
 	EmaUpElapsed float64
 	EmaDnElapsed float64
 }
@@ -54,7 +56,8 @@ func newEmaContainer(periods, periodSize int, power int, initValues []float64) (
 	reversedPeriodInitValues := reverseBuffer(periodsInitValues)
 	ec.EmaHistory = ringbuffer.NewBuffer(periodSize, false, 0, 0)
 	ec.EmaHistory.PushBuffer(reversedPeriodInitValues)
-	ec.emaStart = time.Now()
+	ec.EmaUpStart = time.Now()
+	ec.EmaDnStart = time.Now()
 	return ec
 }
 
@@ -86,17 +89,19 @@ func (ec *emaContainer) Add(value float64) {
 
 	if ec.EmaSlope > 0 {
 		if ec.EmaUp == false {
-			ec.emaStart = time.Now()
+			ec.EmaUpStart = time.Now()
 		}
-		ec.EmaUpElapsed = time.Since(ec.emaStart).Minutes()
+		ec.EmaUpElapsed = time.Since(ec.EmaUpStart).Minutes()
 		//ec.EmaDnElapsed = 0
 		ec.EmaUp = true
+		ec.EmaDn = false
 	} else {
-		if ec.EmaUp == true {
-			ec.emaStart = time.Now()
+		if ec.EmaDn == false {
+			ec.EmaUpStart = time.Now()
 		}
-		ec.EmaDnElapsed = time.Since(ec.emaStart).Minutes()
+		ec.EmaDnElapsed = time.Since(ec.EmaDnStart).Minutes()
 		//ec.EmaUpElapsed = 0
+		ec.EmaDn = true
 		ec.EmaUp = false
 	}
 }

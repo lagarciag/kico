@@ -122,9 +122,9 @@ func (bot *Bot) Restart() {
 	//--------------------------
 	// Stop price update timer
 	//--------------------------
-	for _, pair := range bot.pairs {
-		bot.priceUpdateTimer[pair].Stop()
-	}
+	//for _, pair := range bot.pairs {
+	//bot.priceUpdateTimer[pair].Stop()
+	//}
 
 	close(bot.apiStop)
 	time.Sleep(time.Second * 2)

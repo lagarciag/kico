@@ -55,13 +55,18 @@ type IndicatorsHistory struct {
 
 	EmaUpT  []float64 `json:"ema_up_t"`
 	EmaDnT  []float64 `json:"ema_dn_t"`
-	MacdUp  []float64 `json:"macd_up"`
+	MacdUpT []float64 `json:"macd_up_t"`
 	MacdDnT []float64 `json:"macd_dn_t"`
 
 	EmaPanicSell  []bool `json:"ema_panic_sell"`
 	EmaPanicBuy   []bool `json:"ema_panic_buy"`
 	MacdPanicSell []bool `json:"macd_panic_sell"`
 	MacdPanicBuy  []bool `json:"macd_panic_buy"`
+
+	EmUpSt  []time.Time `json:"em_up_st"`
+	EmDnSt  []time.Time `json:"em_dn_st"`
+	MacUpSt []time.Time `json:"mac_up_st"`
+	MacDnSt []time.Time `json:"mac_dn_st"`
 }
 
 type Indicators struct {
@@ -110,13 +115,18 @@ type Indicators struct {
 
 	EmaUpT  float64 `json:"ema_up_t"`
 	EmaDnT  float64 `json:"ema_dn_t"`
-	MacdUp  float64 `json:"macd_up_t"`
+	MacdUpT float64 `json:"macd_up_t"`
 	MacdDnT float64 `json:"macd_dn_t"`
 
 	EmaPanicSell  bool `json:"ema_panic_sell"`
 	EmaPanicBuy   bool `json:"ema_panic_buy"`
 	MacdPanicSell bool `json:"macd_panic_sell"`
 	MacdPanicBuy  bool `json:"macd_panic_buy"`
+
+	EmUpSt  time.Time `json:"em_up_st"`
+	EmDnSt  time.Time `json:"em_dn_st"`
+	MacUpSt time.Time `json:"mac_up_st"`
+	MacDnSt time.Time `json:"mac_dn_st"`
 }
 
 type MovingStats struct {
@@ -197,10 +207,10 @@ type MovingStats struct {
 	MacdUpTimer float64
 	MacdDnTimer float64
 
-	emaUpStartTime  time.Time
-	emaDnStartTime  time.Time
-	macdUpStartTime time.Time
-	macdDnStartTime time.Time
+	EmaUpStartTime  time.Time
+	EmaDnStartTime  time.Time
+	MacdUpStartTime time.Time
+	MacdDnStartTime time.Time
 
 	EmaBullToBearPanicSell  bool
 	EmaBearToBullPanicBuy   bool
@@ -249,12 +259,6 @@ func NewMovingStats(size int, latestIndicators,
 	//window := float64(size)
 	ms := &MovingStats{}
 	ms.panicMinutesLimit = float64(size * panicMinutesLimitMultiplier)
-	ms.macdUpStartTime = time.Now()
-	ms.macdDnStartTime = ms.macdUpStartTime
-	ms.emaUpStartTime = ms.macdDnStartTime
-	ms.emaDnStartTime = ms.macdDnStartTime
-	ms.MacdDnTimer = 0
-	ms.MacdUpTimer = 0
 
 	ms.ID = ID
 	ms.dirtyHistory = dirtyHistory
@@ -296,6 +300,8 @@ func NewMovingStats(size int, latestIndicators,
 	// Initialize EMA & Macd emas
 	// ---------------------------
 	ms.emaMacdInit()
+
+	ms.timersInit()
 
 	initValue := `
 	ID     : %s

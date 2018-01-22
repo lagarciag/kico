@@ -2,6 +2,7 @@ package movingstats
 
 import (
 	"math"
+	"time"
 
 	"github.com/lagarciag/multiema"
 	log "github.com/sirupsen/logrus"
@@ -67,6 +68,21 @@ func createIndicatorsHistorySlice(indHistory []Indicators) (indicatorsHistorySli
 	indicatorsHistorySlices.Buy = make([]bool, size)
 	indicatorsHistorySlices.Sell = make([]bool, size)
 
+	indicatorsHistorySlices.EmaUpT = make([]float64, size)
+	indicatorsHistorySlices.EmaDnT = make([]float64, size)
+	indicatorsHistorySlices.MacdUpT = make([]float64, size)
+	indicatorsHistorySlices.MacdDnT = make([]float64, size)
+
+	indicatorsHistorySlices.EmaPanicSell = make([]bool, size)
+	indicatorsHistorySlices.EmaPanicBuy = make([]bool, size)
+	indicatorsHistorySlices.MacdPanicSell = make([]bool, size)
+	indicatorsHistorySlices.MacdPanicBuy = make([]bool, size)
+
+	indicatorsHistorySlices.EmUpSt = make([]time.Time, size)
+	indicatorsHistorySlices.EmDnSt = make([]time.Time, size)
+	indicatorsHistorySlices.MacUpSt = make([]time.Time, size)
+	indicatorsHistorySlices.MacDnSt = make([]time.Time, size)
+
 	for i, indicator := range indHistory {
 
 		indicatorsHistorySlices.LastValue[i] = indicator.LastValue
@@ -108,6 +124,21 @@ func createIndicatorsHistorySlice(indHistory []Indicators) (indicatorsHistorySli
 
 		indicatorsHistorySlices.Buy[i] = indicator.Buy
 		indicatorsHistorySlices.Sell[i] = indicator.Sell
+
+		indicatorsHistorySlices.EmaUpT[i] = indicator.EmaUpT
+		indicatorsHistorySlices.EmaDnT[i] = indicator.EmaDnT
+		indicatorsHistorySlices.MacdUpT[i] = indicator.MacdUpT
+		indicatorsHistorySlices.MacdDnT[i] = indicator.MacdDnT
+
+		indicatorsHistorySlices.EmaPanicSell[i] = indicator.EmaPanicSell
+		indicatorsHistorySlices.EmaPanicBuy[i] = indicator.EmaPanicBuy
+		indicatorsHistorySlices.MacdPanicSell[i] = indicator.MacdPanicSell
+		indicatorsHistorySlices.MacdPanicBuy[i] = indicator.MacdPanicBuy
+
+		indicatorsHistorySlices.EmUpSt[i] = indicator.EmUpSt
+		indicatorsHistorySlices.EmDnSt[i] = indicator.EmDnSt
+		indicatorsHistorySlices.MacUpSt[i] = indicator.MacUpSt
+		indicatorsHistorySlices.MacDnSt[i] = indicator.MacDnSt
 
 	}
 
@@ -404,6 +435,11 @@ func (ms *MovingStats) emaMacdInit() {
 	ms.sEma = newEmaContainer(emaPeriod, ms.windowSize,
 		1,
 		ms.historyIndicatorsInSlices0.Ema)
+
+	ms.sEma.EmaSlope = ms.historyIndicatorsInSlices0.Slope[0]
+	ms.sEma.EmaUp = ms.historyIndicatorsInSlices0.EmaUp[0]
+	ms.sEma.EmaDn = !ms.historyIndicatorsInSlices0.EmaUp[0]
+
 	//ms.dEma = newEmaContainer(emaPeriod, size, 2, historyIndicatorsInSlices.d)
 	//ms.tEma = newEmaContainer(emaPeriod, size, 3, []float64{0})
 
@@ -426,5 +462,40 @@ func (ms *MovingStats) emaMacdInit() {
 		ms.tEma = ewma.NewMovingAverage(window)
 		ms.tEmaHistory = ringbuffer.NewBuffer(size, false)
 	*/
+
+	ms.macd = ms.historyIndicatorsInSlices0.Macd[0]
+	ms.macdBull = ms.historyIndicatorsInSlices0.MacdBull[0]
+
+	ms.timersInit()
+
+}
+
+func (ms *MovingStats) timersInit() {
+
+	if len(ms.historyIndicatorsInSlices0.EmUpSt) > 1 {
+
+		log.Debug("*******************************  Restoring timers")
+
+		ms.MacdUpStartTime = ms.historyIndicatorsInSlices0.MacUpSt[0]
+		ms.MacdDnStartTime = ms.historyIndicatorsInSlices0.MacDnSt[0]
+		ms.EmaUpStartTime = ms.historyIndicatorsInSlices0.EmUpSt[0]
+		ms.EmaDnStartTime = ms.historyIndicatorsInSlices0.EmDnSt[0]
+		ms.MacdDnTimer = ms.historyIndicatorsInSlices0.MacdDnT[0]
+		ms.MacdUpTimer = ms.historyIndicatorsInSlices0.MacdUpT[0]
+		ms.EmaDnTimer = ms.historyIndicatorsInSlices0.EmaDnT[0]
+		ms.EmaUpTimer = ms.historyIndicatorsInSlices0.EmaUpT[0]
+
+		ms.sEma.EmaUpStart = ms.EmaUpStartTime
+		ms.sEma.EmaDnStart = ms.EmaDnStartTime
+
+	} else {
+		log.Warn("********************************** Reseting init timers....")
+		ms.MacdUpStartTime = time.Now()
+		ms.MacdDnStartTime = ms.MacdUpStartTime
+		ms.EmaUpStartTime = ms.MacdDnStartTime
+		ms.EmaDnStartTime = ms.MacdDnStartTime
+		ms.MacdDnTimer = 0
+		ms.MacdUpTimer = 0
+	}
 
 }
