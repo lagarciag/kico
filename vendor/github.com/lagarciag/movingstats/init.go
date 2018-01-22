@@ -153,7 +153,7 @@ func (ms *MovingStats) createIndicatorsHistorySlices(indHistory0, indHistory1, i
 
 	ms.historyIndicatorsInSlicesAll = createIndicatorsHistorySlice(ms.indicatorsHistoryAll)
 
-	log.Info("ms.indicatorsHistoryAll.LastValue", ms.historyIndicatorsInSlicesAll.LastValue)
+	//log.Info("ms.indicatorsHistoryAll.LastValue", ms.historyIndicatorsInSlicesAll.LastValue)
 
 	if ms.historyIndicatorsInSlices0.ATR[0] < 0 {
 		ms.historyIndicatorsInSlices0.ATR[0] = 0

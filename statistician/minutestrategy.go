@@ -428,10 +428,12 @@ func (ms *MinuteStrategy) buySellUpdate() {
 			ms.sell = false
 		}
 
-		if ms.count%6 == 0 {
-			log.Infof("** BUY STATUS UPDATE for %s :%v", buyKey, ms.buy)
-			log.Infof("** SEL STATUS UPDATE for %s :%v", sellKey, ms.sell)
-		}
+		/*
+			if ms.count%6 == 0 {
+				log.Infof("** BUY STATUS UPDATE for %s :%v", buyKey, ms.buy)
+				log.Infof("** SEL STATUS UPDATE for %s :%v", sellKey, ms.sell)
+			}
+		*/
 	}
 }
 

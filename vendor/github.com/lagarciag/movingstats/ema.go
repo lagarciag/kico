@@ -97,7 +97,7 @@ func (ec *emaContainer) Add(value float64) {
 		ec.EmaDn = false
 	} else {
 		if ec.EmaDn == false {
-			ec.EmaUpStart = time.Now()
+			ec.EmaDnStart = time.Now()
 		}
 		ec.EmaDnElapsed = time.Since(ec.EmaDnStart).Minutes()
 		//ec.EmaUpElapsed = 0

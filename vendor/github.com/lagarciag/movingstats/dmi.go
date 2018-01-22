@@ -90,13 +90,13 @@ func (ms *MovingStats) dmiCalc() {
 
 	pmAvr := ms.plusDMAvr.Value() * float64(100)
 	if pmAvr < 0 {
-		log.Errorf("ms.plusDMAvr * 100 < 0 - %d , %s", ms.windowSize, ms.ID)
+		log.Errorf("ms.plusDMAvr * 100 < 0 - %d , %s == %f", ms.windowSize, ms.ID, pmAvr)
 		pmAvr = math.Abs(pmAvr)
 	}
 
 	mmAvr := ms.minusDMAvr.Value() * float64(100)
 	if mmAvr < 0 {
-		log.Errorf("ms.minusDMAvr * 100 < 0 - %d , %s", ms.windowSize, ms.ID)
+		log.Errorf("ms.minusDMAvr * 100 < 0 - %d , %s == %f", ms.windowSize, ms.ID, mmAvr)
 		mmAvr = math.Abs(mmAvr)
 	}
 
